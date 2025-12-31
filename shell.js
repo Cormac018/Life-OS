@@ -2,10 +2,10 @@
    Life OS Shell Router
    - Adds top-level navigation between modules
    - Does NOT modify workouts.js or app.js
-   ========================= */
+========================= */
 
 (function () {
-const ROUTES = ["today", "health", "workouts", "metrics", "goals", "plan", "finances", "journal", "people"];
+  const ROUTES = ["today", "workouts", "metrics", "goals", "plan", "finances", "journal", "people"];
 
   function getRoute() {
     const raw = (window.location.hash || "").replace("#", "").trim().toLowerCase();
@@ -35,7 +35,6 @@ const ROUTES = ["today", "health", "workouts", "metrics", "goals", "plan", "fina
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    // Ensure initial hash exists for consistent behavior
     if (!window.location.hash) {
       window.location.hash = "#workouts";
     }
