@@ -55,18 +55,33 @@
     return LifeOSDB.getCollection("metricEntries").filter((e) => e.metricId === metricId);
   }
 
-  function upsertEntry(metricId, date, value) {
-    LifeOSDB.upsert("metricEntries", {
-      metricId,
-      date,
-      value,
-      createdAt: LifeOSDB.nowISO(),
-    });
-  }
+function upsertEntry(metricId, date, value) {
+  // "Set" semantics: ensure there is only ONE entry per (metricId + date).
+  const existing = LifeOSDB
+    .getCollection("metricEntries")
+    .filter((e) => e.metricId === metricId && e.date === date);
 
-  function findEntryByDate(metricId, date) {
-    return getEntries(metricId).find((e) => e.date === date) || null;
-  }
+  existing.forEach((e) => {
+    if (e && e.id) LifeOSDB.remove("metricEntries", e.id);
+  });
+
+  LifeOSDB.upsert("metricEntries", {
+    metricId,
+    date,
+    value,
+    createdAt: LifeOSDB.nowISO(),
+  });
+}
+
+function findEntryByDate(metricId, date) {
+  // If duplicates exist for the same date, pick the newest entry.
+  const matches = getEntries(metricId)
+    .filter((e) => e.date === date)
+    .slice()
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+
+  return matches[0] || null;
+}
 
   function latestEntry(metricId) {
     const arr = getEntries(metricId).slice().sort((a, b) => b.date.localeCompare(a.date));
