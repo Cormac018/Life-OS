@@ -32,14 +32,25 @@
     return LifeOSDB.getCollection("mealPlans").slice();
   }
 
-  function upsertMetric(metricId, date, value) {
-    LifeOSDB.upsert("metricEntries", {
-      metricId,
-      date,
-      value,
-      createdAt: LifeOSDB.nowISO(),
-    });
-  }
+function upsertMetric(metricId, date, value) {
+  // "Set" semantics: ensure there is only ONE entry per (metricId + date).
+  const existing = LifeOSDB
+    .getCollection("metricEntries")
+    .filter((e) => e.metricId === metricId && e.date === date);
+
+  // Remove any duplicates (or old values) for this date
+  existing.forEach((e) => {
+    if (e && e.id) LifeOSDB.remove("metricEntries", e.id);
+  });
+
+  // Insert the single source-of-truth entry
+  LifeOSDB.upsert("metricEntries", {
+    metricId,
+    date,
+    value,
+    createdAt: LifeOSDB.nowISO(),
+  });
+}
 
   function renderTemplateSelect() {
     const sel = document.getElementById("mealPlanTemplateSelect");
