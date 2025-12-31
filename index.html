@@ -1,163 +1,212 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Life OS</title>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gym Log</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Life OS Top Nav -->
+    <nav class="lifeos-nav" aria-label="Life OS navigation">
+      <a href="#today" data-route="today">Today</a>
+      <a href="#workouts" data-route="workouts">Health</a>
+      <a href="#metrics" data-route="metrics">Metrics</a>
+      <a href="#goals" data-route="goals">Goals</a>
+      <a href="#plan" data-route="plan">Plan</a>
+      <a href="#finances" data-route="finances">Finances</a>
+      <a href="#journal" data-route="journal">Journal</a>
+      <a href="#people" data-route="people">People</a>
+    </nav>
 
-  <link rel="stylesheet" href="./style.css" />
-  <link rel="manifest" href="./manifest.json" />
-
-  <!-- iOS PWA friendliness -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#0b0b0c" />
-</head>
-
-<body>
-  <!-- Top navigation (Life OS) -->
-  <nav class="lifeos-nav">
-    <!-- IMPORTANT: Health routes to #workouts (your intuitive area), not a new route. -->
-    <a href="#today" data-route="today">Today</a>
-    <a href="#workouts" data-route="workouts">Health</a>
-    <a href="#metrics" data-route="metrics">Metrics</a>
-    <a href="#goals" data-route="goals">Goals</a>
-    <a href="#plan" data-route="plan">Plan</a>
-    <a href="#finances" data-route="finances">Finances</a>
-    <a href="#journal" data-route="journal">Journal</a>
-    <a href="#people" data-route="people">People</a>
-  </nav>
-
-  <main class="lifeos-main">
-
-    <!-- ========================= -->
-    <!-- TODAY -->
-    <!-- ========================= -->
+    <main class="lifeos-main">
+      <!-- Placeholder views -->
     <section id="view-today" class="lifeos-view">
-      <h1 class="app-title">Today</h1>
+  <h1 class="app-title">Today</h1>
 
-      <h2>Active goals</h2>
-      <div id="todayGoals" class="panel"></div>
+  <!-- Goals summary -->
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h2 style="margin:0 0 10px 0;">Active goals</h2>
+    <div id="todayGoals"></div>
+  </div>
+<!-- Diet summary -->
+<div class="panel" style="padding:14px; margin-top:12px;">
+  <h2 style="margin:0 0 10px 0;">Diet (today)</h2>
 
-      <h2>Diet (today)</h2>
-      <div id="todayDiet" class="panel"></div>
+  <div id="todayDietSummary" style="font-size:14px;"></div>
+  <div id="todayDietHint" style="margin-top:8px; color:var(--muted); font-size:13px;"></div>
 
-      <div class="row">
-        <a class="btn" href="#workouts">Log diet</a>
-        <a class="btn" href="#metrics">Log weight</a>
-      </div>
+  <div class="btn-row" style="margin-top:10px;">
+    <button id="jumpToMetricsDietBtn" type="button">Log diet</button>
+    <button id="jumpToMetricsWeightBtn" type="button">Log weight</button>
+  </div>
+</div>
 
-      <h2>Plan</h2>
-      <div id="todayPlan" class="panel"></div>
+  <!-- Plan for today -->
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h2 style="margin:0 0 10px 0;">Plan</h2>
 
-      <h2>Life OS Data</h2>
-      <div class="panel">
-        <button id="lifeosExportBtn">Export Life OS</button>
-        <label class="file-input">
-          <input id="lifeosImportInput" type="file" accept="application/json" />
-          Import Life OS
-        </label>
-        <div id="lifeosImportStatus" class="muted" style="margin-top:10px;"></div>
-        <p class="muted" style="margin-top:10px;">
-          This export/import is for Life OS modules (Goals, Metrics, Plan, People, etc.).
-          Your workout app export/import remains unchanged.
-        </p>
-      </div>
-    </section>
+    <form id="planItemForm">
+      <label>
+        What are you doing?
+        <input type="text" id="planTitle" placeholder="e.g. Upper A workout" required />
+      </label>
 
-    <!-- ========================= -->
-    <!-- HEALTH (routes to #workouts) -->
-    <!-- Workouts + Sleep + Body + Diet live here -->
-    <!-- ========================= -->
-    <section id="view-workouts" class="lifeos-view">
-      <h1 class="app-title">Health</h1>
+      <label>
+        Category
+        <select id="planCategory">
+          <option value="training">Training</option>
+          <option value="health">Health</option>
+          <option value="work">Work</option>
+          <option value="admin">Admin</option>
+          <option value="social">Social</option>
+          <option value="finance">Finance</option>
+          <option value="rest">Rest</option>
+        </select>
+      </label>
 
-      <!-- Simple sub-nav to reduce “clumsy” feel -->
-      <div class="row">
-        <button class="btn" type="button" onclick="document.getElementById('health-workouts').scrollIntoView({behavior:'smooth'});">Workouts</button>
-        <button class="btn" type="button" onclick="document.getElementById('health-sleep').scrollIntoView({behavior:'smooth'});">Sleep</button>
-        <button class="btn" type="button" onclick="document.getElementById('health-body').scrollIntoView({behavior:'smooth'});">Body</button>
-        <button class="btn" type="button" onclick="document.getElementById('health-diet').scrollIntoView({behavior:'smooth'});">Diet</button>
-      </div>
+      <label>
+        Link to goal (optional)
+        <select id="planGoalLink">
+          <option value="">No goal</option>
+        </select>
+      </label>
 
-      <!-- ---------- Workouts (your existing stable app expects these IDs) ---------- -->
-      <section id="health-workouts" class="panel">
-        <h2 style="margin-top:0;">Gym Log</h2>
+      <button type="submit">Add to today</button>
+    </form>
 
-        <div class="row">
-          <button id="trainTabBtn" class="btn" type="button">Train</button>
-          <button id="progressTabBtn" class="btn" type="button">Progress</button>
-          <button id="themeToggle" class="btn" type="button">Theme</button>
+    <div style="margin-top:12px;">
+      <ul id="todayPlanList"></ul>
+    </div>
+  </div>
+
+  <!-- Life OS Data (export/import) -->
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h2 style="margin:0 0 10px 0;">Life OS Data</h2>
+
+    <div class="btn-row">
+      <button id="lifeosExportBtn" type="button">Export Life OS</button>
+
+      <label class="btn-file">
+        Import Life OS
+        <input id="lifeosImportInput" type="file" accept="application/json" />
+      </label>
+    </div>
+
+    <div id="lifeosImportStatus" style="margin-top:10px; color:var(--muted); font-size:13px;"></div>
+
+    <p style="margin-top:12px; color:var(--muted); font-size:13px;">
+      This export/import is for Life OS modules (Goals, Metrics, Plan, People, etc.). Your workout app export/import remains unchanged.
+    </p>
+  </div>
+</section>
+
+      <!-- Workouts view (your existing app unchanged, just wrapped) -->
+      <section id="view-workouts" class="lifeos-view">
+        <h1 class="app-title">Gym Log</h1>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="train">Train</button>
+          <button class="tab" data-tab="progress">Progress</button>
+          <button
+            id="themeToggle"
+            type="button"
+            class="tab tab--icon"
+            aria-label="Toggle theme"
+          >
+            Theme
+          </button>
         </div>
 
-        <div id="currentSession" class="panel"></div>
-
-        <div class="row">
-          <button id="completeSessionBtn" class="btn" type="button">Complete Session</button>
-          <button id="logRestDayBtn" class="btn" type="button">Log Rest Day</button>
-        </div>
-
-        <div id="restNotice" class="panel"></div>
-
-        <div id="upperCContainer" class="panel">
-          <p class="muted">Optional session available: Upper C — Delts & Arms Pump</p>
-          <div class="row">
-            <button id="startUpperCBtn" class="btn" type="button">Start Upper C</button>
-            <button id="skipUpperCBtn" class="btn" type="button">Skip Upper C</button>
+        <div id="trainTab" class="tab-content active">
+          <h2 id="currentSession"></h2>
+          <div class="btn-row">
+            <button id="completeSessionBtn" type="button">Complete Session</button>
+            <button id="logRestDayBtn" type="button">Log Rest Day</button>
           </div>
-        </div>
 
-        <h3 id="workoutPlanTitle">Workout Plan</h3>
-        <div id="workoutPlan" class="panel"></div>
+          <div id="restNotice" style="margin: 10px 0"></div>
+          <div id="upperCContainer" style="display: none">
+            <p><strong>Optional session available:</strong> Upper C — Delts & Arms Pump</p>
+            <button id="startUpperCBtn" type="button">Start Upper C</button>
+            <button id="skipUpperCBtn" type="button">Skip Upper C</button>
+          </div>
 
-        <!-- Log form (app.js expects these IDs) -->
-        <div id="logFormDock" class="panel">
+          <h3 id="workoutPlanTitle">Workout Plan</h3>
+          <div id="workoutPlan"></div>
+
+          <!-- NEW: dock where the log form lives when no card is selected -->
+          <div id="logFormDock"></div>
+
           <form id="logForm">
+            <!-- Pattern -->
             <label>
               Pattern
-              <select id="pattern"></select>
+              <select id="pattern">
+                <option value="incline_press">Incline Press</option>
+                <option value="horizontal_pull">Horizontal Pull</option>
+                <option value="vertical_pull">Vertical Pull</option>
+                <option value="lateral_raise">Lateral Raise</option>
+                <option value="rear_delt">Rear Delt / Face Pull</option>
+                <option value="vertical_press">Vertical Press</option>
+                <option value="triceps">Triceps</option>
+                <option value="biceps">Biceps</option>
+                <option value="knee_dominant">Knee-Dominant (Quads)</option>
+                <option value="single_leg_quad">Single-Leg Quads</option>
+                <option value="hip_hinge">Hip Hinge</option>
+                <option value="glute_unilateral">Glute-Biased Unilateral</option>
+                <option value="hamstring_accessory">Hamstring Accessory</option>
+                <option value="calves">Calves</option>
+                <option value="core">Core (Abs)</option>
+              </select>
             </label>
 
+            <!-- Variant -->
             <label>
-              Variant
+              Variant (select or type)
               <select id="variantSelect"></select>
             </label>
 
-            <label id="variantCustomLabel" style="display:none;">
+            <label id="variantCustomLabel" style="display: none">
               Custom variant
-              <input id="variantCustom" type="text" />
+              <input type="text" id="variantCustom" placeholder="Type your variant name" />
             </label>
 
-            <div class="row">
-              <label style="flex:1;">
-                Weight (kg)
-                <input id="weight" type="number" step="0.5" />
-              </label>
-              <label style="flex:1;">
-                Reps
-                <input id="reps" type="number" step="1" />
-              </label>
-            </div>
+            <!-- Weight -->
+            <label>
+              Weight (kg)
+              <input type="number" id="weight" required />
+            </label>
+
+            <!-- Reps -->
+            <label>
+              Reps
+              <input type="number" id="reps" required />
+            </label>
 
             <button type="submit">Save Set</button>
           </form>
+
+          <h2 id="historyTitle">History (All Patterns)</h2>
+          <div id="summary"></div>
+          <ul id="history"></ul>
+
+          <div class="btn-row">
+            <button id="backBtn" type="button" style="display: none">Back</button>
+            <button id="exportDataBtn" type="button">Export data</button>
+
+            <label class="btn-file">
+              Import data
+              <input id="importDataInput" type="file" accept="application/json" />
+            </label>
+
+            <button id="clearAll" type="button">Clear all data</button>
+          </div>
         </div>
 
-        <h3 id="historyTitle">History</h3>
-        <div class="row">
-          <button id="backBtn" class="btn" type="button">Back</button>
-          <button id="exportDataBtn" class="btn" type="button">Export data</button>
-          <label class="file-input">
-            <input id="importDataInput" type="file" accept="application/json" />
-            Import data
-          </label>
-          <button id="clearAll" class="btn" type="button">Clear all data</button>
-        </div>
+        <div id="progressTab" class="tab-content">
+          <h2>Progress</h2>
 
-        <div id="summary" class="panel"></div>
-        <ul id="history" class="panel"></ul>
-
-        <h3>Progress</h3>
-        <div class="panel">
           <label>
             Exercise slot
             <select id="progressExerciseSelect"></select>
@@ -165,321 +214,367 @@
 
           <label>
             Variant filter
-            <select id="progressVariantSelect"></select>
+            <select id="progressVariantSelect" disabled>
+              <option value="">All variants</option>
+            </select>
           </label>
 
-          <div id="progressSummary" class="panel"></div>
-          <div id="progressChartHint" class="muted"></div>
-          <canvas id="progressChart" height="160"></canvas>
-          <div id="progressTable" class="panel"></div>
+          <div id="progressSummary"></div>
+
+          <h3>Trend</h3>
+          <div id="progressChartWrap" class="panel" style="padding: 14px">
+            <canvas
+              id="progressChart"
+              width="700"
+              height="260"
+              style="width: 100%; height: 260px; display: block"
+            ></canvas>
+            <div
+              id="progressChartHint"
+              style="margin-top: 10px; color: var(--muted); font-size: 13px"
+            ></div>
+          </div>
+
+          <h3>Best set per workout</h3>
+          <div id="progressTable"></div>
         </div>
       </section>
+<section id="view-metrics" class="lifeos-view">
+  <h1 class="app-title">Metrics</h1>
 
-      <!-- ---------- Sleep ---------- -->
-      <section id="health-sleep" class="panel">
-        <h2 style="margin-top:0;">Sleep</h2>
+  <div class="panel" style="padding:14px;">
+    <h2 style="margin-top:0;">Bodyweight</h2>
 
-        <form id="sleepForm">
-          <label>
-            Date
-            <input type="date" id="sleepDate" required />
-          </label>
+    <form id="bodyweightForm">
+      <label>
+        Date
+        <input type="date" id="bwDate" required />
+      </label>
 
-          <label>
-            Duration (hours)
-            <input type="number" id="sleepHours" min="0" step="0.1" required />
-          </label>
+      <label>
+        Weight (kg)
+        <input type="number" id="bwValue" step="0.1" required />
+      </label>
 
-          <label>
-            Quality (1–5)
-            <input type="number" id="sleepQuality" min="1" max="5" step="1" required />
-          </label>
+      <button type="submit">Add entry</button>
+    </form>
+  </div>
 
-          <button type="submit">Add sleep entry</button>
-        </form>
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h3 style="margin-top:0;">History</h3>
+    <ul id="bodyweightList"></ul>
+  </div>
+  <div class="panel" style="padding:14px; margin-top:12px;">
+  <h2 style="margin-top:0;">Sleep</h2>
 
-        <h3>Sleep history</h3>
-        <ul id="sleepList"></ul>
+  <form id="sleepForm">
+    <label>
+      Date
+      <input type="date" id="sleepDate" required />
+    </label>
+
+    <label>
+      Duration (hours)
+      <input type="number" id="sleepHours" step="0.1" min="0" max="24" required />
+    </label>
+
+    <label>
+      Quality (1–5)
+      <input type="number" id="sleepQuality" step="1" min="1" max="5" required />
+    </label>
+
+    <button type="submit">Add sleep entry</button>
+  </form>
+</div>
+
+<div class="panel" style="padding:14px; margin-top:12px;">
+  <h3 style="margin-top:0;">Sleep history</h3>
+  <ul id="sleepList"></ul>
+</div>
+<!-- Body composition -->
+<div class="panel" style="padding:14px; margin-top:12px;">
+  <h2 style="margin-top:0;">Body composition</h2>
+
+  <form id="bodyCompForm">
+    <label>
+      Date
+      <input type="date" id="bcDate" required />
+    </label>
+
+    <label>
+      Body fat %
+      <input type="number" id="bcBodyFat" step="0.1" min="0" max="100" />
+    </label>
+
+    <label>
+      Body water %
+      <input type="number" id="bcBodyWater" step="0.1" min="0" max="100" />
+    </label>
+
+    <label>
+      Bone metric (unknown unit)
+      <input type="number" id="bcBoneMetric" step="0.1" min="0" />
+    </label>
+
+    <button type="submit">Save body comp</button>
+  </form>
+
+  <div id="leanMassHint" style="margin-top:10px; color:var(--muted); font-size:13px;"></div>
+</div>
+
+<!-- Measurements -->
+<div class="panel" style="padding:14px; margin-top:12px;">
+  <h2 style="margin-top:0;">Measurements (cm)</h2>
+
+  <form id="measureForm">
+    <label>
+      Date
+      <input type="date" id="mDate" required />
+    </label>
+
+    <label>
+      Waist (cm)
+      <input type="number" id="mWaist" step="0.1" min="0" />
+    </label>
+
+    <label>
+      Chest (cm)
+      <input type="number" id="mChest" step="0.1" min="0" />
+    </label>
+
+    <label>
+      Shoulders (cm)
+      <input type="number" id="mShoulders" step="0.1" min="0" />
+    </label>
+
+    <label>
+      Thigh (cm)
+      <input type="number" id="mThigh" step="0.1" min="0" />
+    </label>
+
+    <label>
+      Biceps (cm)
+      <input type="number" id="mBiceps" step="0.1" min="0" />
+    </label>
+
+    <button type="submit">Save measurements</button>
+  </form>
+</div>
+
+<div class="panel" style="padding:14px; margin-top:12px;">
+  <h3 style="margin-top:0;">Body comp & measurements history</h3>
+  <ul id="bodyCompList"></ul>
+</div>
+<!-- Diet -->
+<div class="panel" style="padding:14px; margin-top:12px;">
+  <h2 style="margin-top:0;">Diet</h2>
+
+  <form id="dietForm">
+    <label>
+      Date
+      <input type="date" id="dietDate" required />
+    </label>
+
+    <label>
+      Calories (kcal)
+      <input type="number" id="dietCalories" step="1" min="0" />
+    </label>
+
+    <label>
+      Protein (g)
+      <input type="number" id="dietProtein" step="1" min="0" />
+    </label>
+
+    <button type="submit">Save diet</button>
+  </form>
+<hr style="margin:14px 0; border:none; border-top:1px solid rgba(128,128,128,0.25);" />
+
+<!-- Meal templates -->
+<h3 style="margin:0 0 10px 0;">Meal templates</h3>
+
+<form id="mealTemplateForm">
+  <label>
+    Meal name
+    <input type="text" id="mealName" placeholder="e.g. Chicken rice bowl" required />
+  </label>
+
+  <label>
+    Calories (per serving)
+    <input type="number" id="mealCalories" step="1" min="0" required />
+  </label>
+
+  <label>
+    Protein (g per serving)
+    <input type="number" id="mealProtein" step="1" min="0" required />
+  </label>
+
+  <label>
+    Ingredients (one per line)
+    <textarea id="mealIngredients" rows="5" placeholder="e.g.&#10;Chicken breast, 500, g&#10;Rice, 300, g&#10;Broccoli, 1, head"></textarea>
+  </label>
+
+  <button type="submit">Save template</button>
+</form>
+
+<div id="mealTemplateList" style="margin-top:12px;"></div>
+
+<hr style="margin:14px 0; border:none; border-top:1px solid rgba(128,128,128,0.25);" />
+
+<!-- Plan meals for a day -->
+<h3 style="margin:0 0 10px 0;">Plan meals for a day</h3>
+
+<form id="mealPlanForm">
+  <label>
+    Date
+    <input type="date" id="mealPlanDate" required />
+  </label>
+
+  <label>
+    Template
+    <select id="mealPlanTemplateSelect" required></select>
+  </label>
+
+  <label>
+    Servings
+    <input type="number" id="mealPlanServings" step="0.5" min="0.5" value="1" required />
+  </label>
+
+  <button type="submit">Add meal</button>
+</form>
+
+<div id="mealDaySummary" style="margin-top:10px; font-size:14px;"></div>
+<div class="btn-row" style="margin-top:10px;">
+  <button id="applyMealsToDietBtn" type="button">Apply to Diet totals</button>
+</div>
+
+<ul id="mealDayList" style="margin-top:12px;"></ul>
+
+<hr style="margin:14px 0; border:none; border-top:1px solid rgba(128,128,128,0.25);" />
+
+<!-- Weekly shopping list -->
+<h3 style="margin:0 0 10px 0;">Weekly shopping list</h3>
+
+<form id="shoppingListForm">
+  <label>
+    Week starting (Monday)
+    <input type="date" id="shoppingWeekStart" required />
+  </label>
+
+  <button type="submit">Generate shopping list</button>
+</form>
+
+<div id="shoppingListOutput" style="margin-top:12px;"></div>
+
+  <div id="dietHint" style="margin-top:10px; color:var(--muted); font-size:13px;"></div>
+</div>
+
+<div class="panel" style="padding:14px; margin-top:12px;">
+  <h3 style="margin-top:0;">Diet history</h3>
+  <ul id="dietList"></ul>
+</div>
+
+</section>
+
+      <section id="view-goals" class="lifeos-view">
+  <h1 class="app-title">Goals</h1>
+
+  <div class="panel" style="padding:14px;">
+    <h2 style="margin-top:0;">Create goal</h2>
+
+    <form id="goalForm">
+      <label>
+        Goal title
+        <input type="text" id="goalTitle" placeholder="e.g. Cut to 75kg" required />
+      </label>
+
+      <label>
+        Start date
+        <input type="date" id="goalStartDate" required />
+      </label>
+
+      <label>
+        Target date
+        <input type="date" id="goalTargetDate" required />
+      </label>
+
+      <label>
+        Track metric
+        <select id="goalMetricSelect" required></select>
+      </label>
+
+      <button type="submit">Create goal</button>
+    </form>
+  </div>
+
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h2 style="margin-top:0;">Your goals</h2>
+    <div id="goalsList"></div>
+  </div>
+</section>
+
+     <section id="view-plan" class="lifeos-view">
+  <h1 class="app-title">Plan</h1>
+
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h2 style="margin:0 0 10px 0;">Weekly plan</h2>
+
+    <label>
+      Week starting (Monday)
+      <input type="date" id="weekStart" />
+    </label>
+
+    <label>
+      Filter by category
+      <select id="weekCategoryFilter">
+        <option value="">All categories</option>
+        <option value="training">Training</option>
+        <option value="health">Health</option>
+        <option value="work">Work</option>
+        <option value="admin">Admin</option>
+        <option value="social">Social</option>
+        <option value="finance">Finance</option>
+        <option value="rest">Rest</option>
+      </select>
+    </label>
+
+    <div class="btn-row" style="margin-top:10px;">
+      <button id="prevWeekBtn" type="button">Prev week</button>
+      <button id="thisWeekBtn" type="button">This week</button>
+      <button id="nextWeekBtn" type="button">Next week</button>
+    </div>
+  </div>
+
+  <div id="weekWrap" style="margin-top:12px;"></div>
+</section>
+
+      <section id="view-finances" class="lifeos-view">
+        <h1 class="app-title">Finances</h1>
+        <p>Placeholder.</p>
       </section>
 
-      <!-- ---------- Body composition + Measurements ---------- -->
-      <section id="health-body" class="panel">
-        <h2 style="margin-top:0;">Body composition</h2>
-
-        <form id="bodyCompForm">
-          <label>
-            Date
-            <input type="date" id="bodyCompDate" required />
-          </label>
-
-          <label>
-            Body fat %
-            <input type="number" id="bodyFatPct" step="0.1" />
-          </label>
-
-          <label>
-            Body water %
-            <input type="number" id="bodyWaterPct" step="0.1" />
-          </label>
-
-          <label>
-            Bone metric (unknown unit)
-            <input type="number" id="boneMetric" step="0.1" />
-          </label>
-
-          <button type="submit">Save body comp</button>
-        </form>
-
-        <h2>Measurements (cm)</h2>
-        <form id="measuresForm">
-          <label>
-            Date
-            <input type="date" id="measuresDate" required />
-          </label>
-
-          <label>
-            Waist (cm)
-            <input type="number" id="waistCm" step="0.1" />
-          </label>
-
-          <label>
-            Chest (cm)
-            <input type="number" id="chestCm" step="0.1" />
-          </label>
-
-          <label>
-            Shoulders (cm)
-            <input type="number" id="shouldersCm" step="0.1" />
-          </label>
-
-          <label>
-            Thigh (cm)
-            <input type="number" id="thighCm" step="0.1" />
-          </label>
-
-          <label>
-            Biceps (cm)
-            <input type="number" id="bicepsCm" step="0.1" />
-          </label>
-
-          <button type="submit">Save measurements</button>
-        </form>
-
-        <h3>Body comp &amp; measurements history</h3>
-        <ul id="bodyCompList"></ul>
+      <section id="view-journal" class="lifeos-view">
+        <h1 class="app-title">Journal</h1>
+        <p>Placeholder.</p>
       </section>
 
-      <!-- ---------- Diet (includes templates + apply) ---------- -->
-      <section id="health-diet" class="panel">
-        <h2 style="margin-top:0;">Diet</h2>
-
-        <form id="dietForm">
-          <label>
-            Date
-            <input type="date" id="dietDate" required />
-          </label>
-
-          <label>
-            Calories (kcal)
-            <input type="number" id="dietCalories" step="1" />
-          </label>
-
-          <label>
-            Protein (g)
-            <input type="number" id="dietProtein" step="1" />
-          </label>
-
-          <button type="submit">Save diet</button>
-        </form>
-
-        <hr />
-
-        <h3>Meal templates</h3>
-        <form id="mealTemplateForm">
-          <label>
-            Meal name
-            <input type="text" id="mealName" required />
-          </label>
-
-          <label>
-            Calories (per serving)
-            <input type="number" id="mealCalories" step="1" required />
-          </label>
-
-          <label>
-            Protein (g per serving)
-            <input type="number" id="mealProtein" step="1" required />
-          </label>
-
-          <label>
-            Ingredients (one per line)
-            <textarea id="mealIngredients" rows="5"></textarea>
-          </label>
-
-          <button type="submit">Save template</button>
-        </form>
-
-        <div id="mealTemplateList" class="panel"></div>
-
-        <hr />
-
-        <h3>Plan meals for a day</h3>
-        <form id="mealPlanForm">
-          <label>
-            Date
-            <input type="date" id="mealPlanDate" required />
-          </label>
-
-          <label>
-            Template
-            <select id="mealPlanTemplateSelect" required></select>
-          </label>
-
-          <label>
-            Servings
-            <input type="number" id="mealPlanServings" step="0.1" min="0.1" value="1" required />
-          </label>
-
-          <button type="submit">Add meal</button>
-        </form>
-
-        <div id="mealPlanList" class="panel"></div>
-
-        <button id="applyMealsToDietBtn" class="btn" type="button">Apply to Diet totals</button>
-
-        <hr />
-
-        <h3>Weekly shopping list</h3>
-        <form id="shoppingListForm">
-          <label>
-            Week starting (Monday)
-            <input type="date" id="shoppingWeekStart" required />
-          </label>
-          <button type="submit">Generate shopping list</button>
-        </form>
-
-        <div id="shoppingListOutput" class="panel"></div>
-
-        <h3>Diet history</h3>
-        <ul id="dietList"></ul>
+      <section id="view-people" class="lifeos-view">
+        <h1 class="app-title">People</h1>
+        <p>Placeholder.</p>
       </section>
-    </section>
+    </main>
 
-    <!-- ========================= -->
-    <!-- METRICS (keep focused: Bodyweight only) -->
-    <!-- ========================= -->
-    <section id="view-metrics" class="lifeos-view">
-      <h1 class="app-title">Metrics</h1>
+    <!-- Your existing scripts (unchanged order) -->
+   <script src="workouts.js"></script>
+<script src="app.js"></script>
 
-      <h2 style="margin-top:0;">Bodyweight</h2>
-      <form id="bodyweightForm" class="panel">
-        <label>
-          Date
-          <input type="date" id="bwDate" required />
-        </label>
-        <label>
-          Weight (kg)
-          <input type="number" id="bwValue" step="0.1" required />
-        </label>
-        <button type="submit">Add entry</button>
-      </form>
+<script src="db.js"></script>
+<script src="lifeos-export.js"></script>
+<script src="lifeos.js"></script>
 
-      <h3>History</h3>
-      <ul id="bodyweightList" class="panel"></ul>
-
-      <p class="muted">
-        Sleep, diet, and other health logs live under Health.
-      </p>
-    </section>
-
-    <!-- ========================= -->
-    <!-- GOALS -->
-    <!-- ========================= -->
-    <section id="view-goals" class="lifeos-view">
-      <h1 class="app-title">Goals</h1>
-
-      <h2>Create goal</h2>
-      <form id="goalForm" class="panel">
-        <label>
-          Goal title
-          <input type="text" id="goalTitle" required />
-        </label>
-
-        <label>
-          Start date
-          <input type="date" id="goalStartDate" required />
-        </label>
-
-        <label>
-          Target date
-          <input type="date" id="goalTargetDate" required />
-        </label>
-
-        <label>
-          Track metric
-          <select id="goalMetricSelect" required></select>
-        </label>
-
-        <button type="submit">Create goal</button>
-      </form>
-
-      <h2>Your goals</h2>
-      <div id="goalsList" class="panel"></div>
-    </section>
-
-    <!-- ========================= -->
-    <!-- PLAN -->
-    <!-- ========================= -->
-    <section id="view-plan" class="lifeos-view">
-      <h1 class="app-title">Plan</h1>
-
-      <h2>Weekly plan</h2>
-      <div id="planRoot" class="panel"></div>
-    </section>
-
-    <!-- ========================= -->
-    <!-- FINANCES -->
-    <!-- ========================= -->
-    <section id="view-finances" class="lifeos-view">
-      <h1 class="app-title">Finances</h1>
-      <div class="panel">Placeholder.</div>
-    </section>
-
-    <!-- ========================= -->
-    <!-- JOURNAL -->
-    <!-- ========================= -->
-    <section id="view-journal" class="lifeos-view">
-      <h1 class="app-title">Journal</h1>
-      <div class="panel">Placeholder.</div>
-    </section>
-
-    <!-- ========================= -->
-    <!-- PEOPLE -->
-    <!-- ========================= -->
-    <section id="view-people" class="lifeos-view">
-      <h1 class="app-title">People</h1>
-      <div class="panel">Placeholder.</div>
-    </section>
-
-  </main>
-
-  <!-- ========================= -->
-  <!-- Script order matters -->
-  <!-- ========================= -->
-  <script src="./db.js"></script>
-  <script src="./lifeos-export.js"></script>
-  <script src="./lifeos.js"></script>
-
-  <script src="./shell.js"></script>
-
-  <script src="./metrics.js"></script>
-  <script src="./goals.js"></script>
-  <script src="./plan.js"></script>
-  <script src="./diet-templates.js"></script>
-  <script src="./today.js"></script>
-
-  <!-- Workouts app -->
-  <script src="./workouts.js"></script>
-  <script src="./app.js"></script>
-</body>
+<script src="metrics.js"></script>
+<script src="diet-templates.js"></script>
+<script src="goals.js"></script>
+<script src="today.js"></script>
+<script src="plan.js"></script>
+<script src="shell.js"></script>
 </html>
