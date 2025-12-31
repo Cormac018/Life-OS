@@ -5,7 +5,7 @@
    ========================= */
 
 (function () {
-  const ROUTES = ["today", "workouts", "metrics", "goals", "plan", "finances", "journal", "people"];
+const ROUTES = ["today", "health", "workouts", "metrics", "goals", "plan", "finances", "journal", "people"];
 
   function getRoute() {
     const raw = (window.location.hash || "").replace("#", "").trim().toLowerCase();
