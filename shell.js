@@ -1,0 +1,45 @@
+/* =========================
+   Life OS Shell Router
+   - Adds top-level navigation between modules
+   - Does NOT modify workouts.js or app.js
+   ========================= */
+
+(function () {
+  const ROUTES = ["today", "workouts", "metrics", "goals", "plan", "finances", "journal", "people"];
+
+  function getRoute() {
+    const raw = (window.location.hash || "").replace("#", "").trim().toLowerCase();
+    if (!raw) return "workouts";
+    return ROUTES.includes(raw) ? raw : "workouts";
+  }
+
+  function setActiveNav(route) {
+    const links = document.querySelectorAll(".lifeos-nav a[data-route]");
+    links.forEach((a) => {
+      a.classList.toggle("active", a.getAttribute("data-route") === route);
+    });
+  }
+
+  function setActiveView(route) {
+    const views = document.querySelectorAll(".lifeos-view");
+    views.forEach((v) => v.classList.remove("active"));
+
+    const active = document.getElementById(`view-${route}`);
+    if (active) active.classList.add("active");
+  }
+
+  function render() {
+    const route = getRoute();
+    setActiveNav(route);
+    setActiveView(route);
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    // Ensure initial hash exists for consistent behavior
+    if (!window.location.hash) {
+      window.location.hash = "#workouts";
+    }
+    window.addEventListener("hashchange", render);
+    render();
+  });
+})();

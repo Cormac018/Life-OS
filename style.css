@@ -1,0 +1,564 @@
+:root{
+  --bg: #0b0f17;
+  --surface: #0f1623;
+  --surface-2: #121c2c;
+  --card: #0f172a;
+  --text: rgba(255,255,255,.92);
+  --muted: rgba(255,255,255,.68);
+  --faint: rgba(255,255,255,.48);
+  --border: rgba(255,255,255,.10);
+  --border-strong: rgba(255,255,255,.16);
+
+  --accent: #4f8cff;
+  --accent-2: #7aa7ff;
+
+  --danger: #ff5a6b;
+
+  --radius: 14px;
+  --radius-sm: 10px;
+
+  --shadow: 0 10px 30px rgba(0,0,0,.35);
+  --shadow-soft: 0 8px 20px rgba(0,0,0,.25);
+
+  --pad: 14px;
+  --pad-lg: 18px;
+
+  --tap: 44px; /* mobile tap target */
+  --maxw: 760px;
+
+  --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body{
+  margin: 0;
+  font-family: var(--font);
+  color: var(--text);
+  background:
+  radial-gradient(800px 500px at 20% 0%, rgba(79,140,255,.18), transparent 55%),
+  radial-gradient(700px 480px at 90% 10%, rgba(122,167,255,.14), transparent 60%),
+  var(--bg);
+
+background-repeat: no-repeat;
+background-attachment: fixed;
+background-size: 100% 100%, 100% 100%, auto;
+}
+
+.app-title{
+  max-width: var(--maxw);
+  margin: 16px auto 10px;
+  padding: 0 var(--pad);
+  font-size: 22px;
+  letter-spacing: .2px;
+}
+
+.tabs{
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 var(--pad);
+  display: flex;
+  gap: 10px;
+}
+
+.tab{
+  height: var(--tap);
+  flex: 1;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+  font-weight: 650;
+  letter-spacing: .2px;
+}
+
+.tab.active{
+  border-color: rgba(79,140,255,.55);
+  background: rgba(79,140,255,.18);
+  box-shadow: 0 10px 24px rgba(79,140,255,.10);
+}
+
+.tab-content{
+  display: none;
+  max-width: var(--maxw);
+  margin: 14px auto 28px;
+  padding: 0 var(--pad);
+}
+
+.tab-content.active{ display:block; }
+
+h2, h3{
+  margin: 14px 0 10px;
+  letter-spacing: .2px;
+}
+
+#currentSession{
+  font-size: 16px;
+  color: var(--muted);
+  margin-top: 14px;
+}
+
+hr.sep{
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 14px 0;
+}
+
+/* Base controls */
+button{
+  height: var(--tap);
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+  font-weight: 650;
+  letter-spacing: .2px;
+}
+
+button:active{ transform: translateY(1px); }
+
+.btn-row{
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 10px 0 8px;
+}
+
+#completeSessionBtn{
+  background: rgba(79,140,255,.18);
+  border-color: rgba(79,140,255,.55);
+}
+
+#logRestDayBtn{
+  background: rgba(255,255,255,.06);
+}
+
+#clearAll{
+  background: rgba(255,90,107,.12);
+  border-color: rgba(255,90,107,.35);
+  color: var(--text);
+}
+
+#backBtn{
+  background: rgba(255,255,255,.06);
+}
+
+/* Small / ghost buttons used inside cards */
+.btn-small{
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-weight: 650;
+}
+
+.btn-ghost{
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.btn-ghost:hover{
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+/* Notices / panels */
+.panel{
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--pad);
+  box-shadow: var(--shadow-soft);
+}
+
+#restNotice{
+  margin: 10px 0;
+  color: var(--muted);
+}
+
+#upperCContainer{
+  margin: 10px 0;
+}
+
+/* Workout plan */
+#workoutPlanTitle{
+  margin-top: 18px;
+}
+
+.workout-list{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.workout-card{
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  border-radius: var(--radius);
+  padding: var(--pad);
+  box-shadow: var(--shadow-soft);
+}
+
+.workout-card.selected{
+  border-color: rgba(79,140,255,.55);
+  background: rgba(79,140,255,.10);
+}
+
+.workout-card__top{
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.workout-card__title{
+  display:flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.workout-card__title strong{
+  font-size: 16px;
+}
+
+.tag{
+  font-size: 12px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.badge{
+  font-size: 12px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.badge--complete{
+  border-color: rgba(79,140,255,.45);
+  color: rgba(122,167,255,.95);
+  background: rgba(79,140,255,.14);
+}
+
+.workout-card__meta{
+  margin-top: 6px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.workout-card__progress{
+  margin-top: 8px;
+  color: var(--text);
+}
+
+.workout-card__last{
+  margin-top: 10px;
+  color: var(--muted);
+}
+
+.details{
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.card-actions{
+  margin-top: 10px;
+  display:flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hint{
+  margin-top: 8px;
+  color: var(--faint);
+  font-style: italic;
+}
+
+/* Form */
+#logForm{
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  border-radius: var(--radius);
+  padding: var(--pad-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+#logForm label{
+  display:block;
+  margin: 10px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+#logForm select,
+#logForm input{
+  width: 100%;
+  margin-top: 6px;
+  height: var(--tap);
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.95);
+  padding: 0 12px;
+  font-size: 15px;
+}
+
+#logForm select option{
+  color: #111; /* improves legibility in the dropdown list on most browsers */
+}
+
+#logForm button[type="submit"]{
+  width: 100%;
+  margin-top: 12px;
+  background: rgba(79,140,255,.18);
+  border-color: rgba(79,140,255,.55);
+}
+
+/* History */
+#historyTitle{
+  margin-top: 18px;
+}
+
+#summary{
+  margin: 10px 0 0;
+  color: var(--muted);
+}
+
+#history{
+  padding: 0;
+  margin: 10px 0 0;
+}
+
+.history-card{
+  list-style: none;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  border-radius: var(--radius);
+  padding: var(--pad);
+  margin: 12px 0;
+  box-shadow: var(--shadow-soft);
+}
+
+.history-card__top{
+  display:flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.history-card__when{
+  color: var(--faint);
+}
+
+.history-card__best{
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.history-card__sets{
+  margin-top: 10px;
+  color: var(--muted);
+}
+
+.set-line{
+  margin: 3px 0;
+}
+
+.set-line.best{
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* Progress tab */
+#progressSummary > div,
+#progressTable > div{
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  box-shadow: var(--shadow-soft);
+}
+
+#progressTab label{
+  display:block;
+  color: var(--muted);
+  font-size: 13px;
+  margin: 10px 0;
+}
+
+#progressTab select{
+  width: 100%;
+  margin-top: 6px;
+  height: var(--tap);
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.95);
+  padding: 0 12px;
+  font-size: 15px;
+}
+
+#progressTab select option{
+  color: #111;
+}
+
+/* Tables */
+table{
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td{
+  text-align: left;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+}
+
+th{ color: var(--text); font-weight: 750; }
+/* =========================
+   Inline logger (card-mounted)
+   ========================= */
+
+#logForm.is-inline{
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+#logForm.is-inline label{
+  margin: 8px 0;
+}
+
+#logForm.is-inline button[type="submit"]{
+  margin-top: 10px;
+}
+
+/* Dock is invisible unless holding the form */
+#logFormDock:empty{
+  display: none;
+}
+/* Completed slots (visual dim, still tappable) */
+.workout-card.is-complete{
+  opacity: 0.62;
+}
+
+.workout-card.is-complete.selected{
+  opacity: 0.92; /* keep selected readable */
+}
+
+.workout-card.is-complete .badge--complete{
+  opacity: 1;
+}
+/* Theme toggle button (fits in tabs row) */
+.tab.tab--icon{
+  flex: 0 0 auto;
+  padding: 0 14px;
+}
+
+/* Light theme override */
+html[data-theme="light"]{
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --surface-2: #ffffff;
+  --card: #ffffff;
+
+  --text: rgba(10,14,20,.92);
+  --muted: rgba(10,14,20,.68);
+  --faint: rgba(10,14,20,.50);
+
+  --border: rgba(10,14,20,.10);
+  --border-strong: rgba(10,14,20,.16);
+
+  --shadow-soft: 0 10px 26px rgba(10,14,20,.10);
+  --shadow: 0 16px 40px rgba(10,14,20,.14);
+}
+/* File button (Import) */
+.btn-file{
+  height: var(--tap);
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+  font-weight: 650;
+  letter-spacing: .2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.btn-file input{
+  display: none;
+}
+#progressChartWrap{
+  margin-top: 10px;
+}
+/* Progress tab dropdown readability */
+#progressTab select{
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+
+#progressTab option{
+  color: #111; /* native dropdowns on light bg */
+}
+
+html[data-theme="dark"] #progressTab option{
+  color: #111; /* Android Chrome requires dark text */
+}
+/* =========================
+   Life OS Shell (Nav + Views)
+   ========================= */
+
+.lifeos-nav {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.25);
+  background: var(--bg, #fff);
+}
+
+.lifeos-nav a {
+  flex: 0 0 auto;
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid rgba(127, 127, 127, 0.25);
+}
+
+.lifeos-nav a.active {
+  font-weight: 600;
+  border-color: rgba(127, 127, 127, 0.6);
+}
+
+.lifeos-main {
+  padding: 8px;
+}
+
+/* Router shows one view at a time */
+.lifeos-view {
+  display: none;
+}
+
+.lifeos-view.active {
+  display: block;
+}
