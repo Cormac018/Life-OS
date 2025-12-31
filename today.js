@@ -29,16 +29,10 @@
     return "";
   }
 
-function getMetricEntry(metricId, date) {
-  // If duplicates exist for the same date, pick the newest entry.
-  const matches = LifeOSDB
-    .getCollection("metricEntries")
-    .filter((e) => e.metricId === metricId && e.date === date)
-    .slice()
-    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-
-  return matches[0] || null;
-}
+  function getMetricEntry(metricId, date) {
+    const entries = LifeOSDB.getCollection("metricEntries").filter((e) => e.metricId === metricId);
+    return entries.find((e) => e.date === date) || null;
+  }
 
   function latestMetricEntry(metricId) {
     const entries = LifeOSDB.getCollection("metricEntries")
@@ -339,10 +333,6 @@ function getMetricEntry(metricId, date) {
     populatePlanGoalLink();
     renderTodayPlan();
     wirePlanForm();
-
-   window.addEventListener("lifeos:metrics-updated", () => {
-  renderTodayDiet();
-});
 
     window.addEventListener("hashchange", () => {
       if ((window.location.hash || "").toLowerCase() === "#today") {
