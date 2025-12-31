@@ -102,6 +102,191 @@
 </section>
 
       <!-- Workouts view (your existing app unchanged, just wrapped) -->
+      <section id="view-health" class="lifeos-view">
+  <h1 class="app-title">Health</h1>
+
+  <p style="color: var(--muted); margin-top: 0;">
+    Log your health inputs here. Metrics is reserved for core body tracking (e.g., bodyweight).
+  </p>
+
+  <!-- Sleep -->
+  <h2 style="margin-top:0;">Sleep</h2>
+  <form id="sleepForm" class="panel">
+    <label>
+      Date
+      <input type="date" id="sleepDate" required />
+    </label>
+
+    <label>
+      Duration (hours)
+      <input type="number" id="sleepHours" min="0" step="0.1" required />
+    </label>
+
+    <label>
+      Quality (1–5)
+      <input type="number" id="sleepQuality" min="1" max="5" step="1" required />
+    </label>
+
+    <button type="submit">Add sleep entry</button>
+  </form>
+
+  <h3>Sleep history</h3>
+  <ul id="sleepList"></ul>
+
+  <!-- Body composition -->
+  <h2 style="margin-top:0;">Body composition</h2>
+  <form id="bodyCompForm" class="panel">
+    <label>
+      Date
+      <input type="date" id="bodyCompDate" required />
+    </label>
+
+    <label>
+      Body fat %
+      <input type="number" id="bodyFatPct" step="0.1" />
+    </label>
+
+    <label>
+      Body water %
+      <input type="number" id="bodyWaterPct" step="0.1" />
+    </label>
+
+    <label>
+      Bone metric (unknown unit)
+      <input type="number" id="boneMetric" step="0.1" />
+    </label>
+
+    <button type="submit">Save body comp</button>
+  </form>
+
+  <!-- Measurements -->
+  <h2 style="margin-top:0;">Measurements (cm)</h2>
+  <form id="measuresForm" class="panel">
+    <label>
+      Date
+      <input type="date" id="measuresDate" required />
+    </label>
+
+    <label>
+      Waist (cm)
+      <input type="number" id="waistCm" step="0.1" />
+    </label>
+
+    <label>
+      Chest (cm)
+      <input type="number" id="chestCm" step="0.1" />
+    </label>
+
+    <label>
+      Shoulders (cm)
+      <input type="number" id="shouldersCm" step="0.1" />
+    </label>
+
+    <label>
+      Thigh (cm)
+      <input type="number" id="thighCm" step="0.1" />
+    </label>
+
+    <label>
+      Biceps (cm)
+      <input type="number" id="bicepsCm" step="0.1" />
+    </label>
+
+    <button type="submit">Save measurements</button>
+  </form>
+
+  <h3>Body comp &amp; measurements history</h3>
+  <ul id="bodyCompList"></ul>
+
+  <!-- Diet -->
+  <h2 style="margin-top:0;">Diet</h2>
+  <form id="dietForm" class="panel">
+    <label>
+      Date
+      <input type="date" id="dietDate" required />
+    </label>
+
+    <label>
+      Calories (kcal)
+      <input type="number" id="dietCalories" step="1" />
+    </label>
+
+    <label>
+      Protein (g)
+      <input type="number" id="dietProtein" step="1" />
+    </label>
+
+    <button type="submit">Save diet</button>
+  </form>
+
+  <hr />
+
+  <h3>Meal templates</h3>
+  <form id="mealTemplateForm" class="panel">
+    <label>
+      Meal name
+      <input type="text" id="mealName" required />
+    </label>
+
+    <label>
+      Calories (per serving)
+      <input type="number" id="mealCalories" step="1" required />
+    </label>
+
+    <label>
+      Protein (g per serving)
+      <input type="number" id="mealProtein" step="1" required />
+    </label>
+
+    <label>
+      Ingredients (one per line)
+      <textarea id="mealIngredients" rows="5"></textarea>
+    </label>
+
+    <button type="submit">Save template</button>
+  </form>
+
+  <hr />
+
+  <h3>Plan meals for a day</h3>
+  <form id="plannedMealForm" class="panel">
+    <label>
+      Date
+      <input type="date" id="plannedMealDate" required />
+    </label>
+
+    <label>
+      Template
+      <select id="plannedMealTemplate" required></select>
+    </label>
+
+    <label>
+      Servings
+      <input type="number" id="plannedMealServings" step="0.1" min="0.1" value="1" required />
+    </label>
+
+    <button type="submit">Add meal</button>
+  </form>
+
+  <button id="applyMealsToDietBtn" class="panel">Apply to Diet totals</button>
+
+  <hr />
+
+  <h3>Weekly shopping list</h3>
+  <form id="shoppingListForm" class="panel">
+    <label>
+      Week starting (Monday)
+      <input type="date" id="shoppingWeekStart" required />
+    </label>
+    <button type="submit">Generate shopping list</button>
+  </form>
+
+  <div id="shoppingListOutput" class="panel"></div>
+
+  <h3>Diet history</h3>
+  <ul id="dietList"></ul>
+</section>
+
       <section id="view-workouts" class="lifeos-view">
         <h1 class="app-title">Gym Log</h1>
 
@@ -263,215 +448,11 @@
   <div class="panel" style="padding:14px; margin-top:12px;">
     <h3 style="margin-top:0;">History</h3>
     <ul id="bodyweightList"></ul>
+    <p style="color: var(--muted);">
+  Sleep, diet, and other health logs are now under the Health tab.
+</p>
   </div>
   <div class="panel" style="padding:14px; margin-top:12px;">
-  <h2 style="margin-top:0;">Sleep</h2>
-
-  <form id="sleepForm">
-    <label>
-      Date
-      <input type="date" id="sleepDate" required />
-    </label>
-
-    <label>
-      Duration (hours)
-      <input type="number" id="sleepHours" step="0.1" min="0" max="24" required />
-    </label>
-
-    <label>
-      Quality (1–5)
-      <input type="number" id="sleepQuality" step="1" min="1" max="5" required />
-    </label>
-
-    <button type="submit">Add sleep entry</button>
-  </form>
-</div>
-
-<div class="panel" style="padding:14px; margin-top:12px;">
-  <h3 style="margin-top:0;">Sleep history</h3>
-  <ul id="sleepList"></ul>
-</div>
-<!-- Body composition -->
-<div class="panel" style="padding:14px; margin-top:12px;">
-  <h2 style="margin-top:0;">Body composition</h2>
-
-  <form id="bodyCompForm">
-    <label>
-      Date
-      <input type="date" id="bcDate" required />
-    </label>
-
-    <label>
-      Body fat %
-      <input type="number" id="bcBodyFat" step="0.1" min="0" max="100" />
-    </label>
-
-    <label>
-      Body water %
-      <input type="number" id="bcBodyWater" step="0.1" min="0" max="100" />
-    </label>
-
-    <label>
-      Bone metric (unknown unit)
-      <input type="number" id="bcBoneMetric" step="0.1" min="0" />
-    </label>
-
-    <button type="submit">Save body comp</button>
-  </form>
-
-  <div id="leanMassHint" style="margin-top:10px; color:var(--muted); font-size:13px;"></div>
-</div>
-
-<!-- Measurements -->
-<div class="panel" style="padding:14px; margin-top:12px;">
-  <h2 style="margin-top:0;">Measurements (cm)</h2>
-
-  <form id="measureForm">
-    <label>
-      Date
-      <input type="date" id="mDate" required />
-    </label>
-
-    <label>
-      Waist (cm)
-      <input type="number" id="mWaist" step="0.1" min="0" />
-    </label>
-
-    <label>
-      Chest (cm)
-      <input type="number" id="mChest" step="0.1" min="0" />
-    </label>
-
-    <label>
-      Shoulders (cm)
-      <input type="number" id="mShoulders" step="0.1" min="0" />
-    </label>
-
-    <label>
-      Thigh (cm)
-      <input type="number" id="mThigh" step="0.1" min="0" />
-    </label>
-
-    <label>
-      Biceps (cm)
-      <input type="number" id="mBiceps" step="0.1" min="0" />
-    </label>
-
-    <button type="submit">Save measurements</button>
-  </form>
-</div>
-
-<div class="panel" style="padding:14px; margin-top:12px;">
-  <h3 style="margin-top:0;">Body comp & measurements history</h3>
-  <ul id="bodyCompList"></ul>
-</div>
-<!-- Diet -->
-<div class="panel" style="padding:14px; margin-top:12px;">
-  <h2 style="margin-top:0;">Diet</h2>
-
-  <form id="dietForm">
-    <label>
-      Date
-      <input type="date" id="dietDate" required />
-    </label>
-
-    <label>
-      Calories (kcal)
-      <input type="number" id="dietCalories" step="1" min="0" />
-    </label>
-
-    <label>
-      Protein (g)
-      <input type="number" id="dietProtein" step="1" min="0" />
-    </label>
-
-    <button type="submit">Save diet</button>
-  </form>
-<hr style="margin:14px 0; border:none; border-top:1px solid rgba(128,128,128,0.25);" />
-
-<!-- Meal templates -->
-<h3 style="margin:0 0 10px 0;">Meal templates</h3>
-
-<form id="mealTemplateForm">
-  <label>
-    Meal name
-    <input type="text" id="mealName" placeholder="e.g. Chicken rice bowl" required />
-  </label>
-
-  <label>
-    Calories (per serving)
-    <input type="number" id="mealCalories" step="1" min="0" required />
-  </label>
-
-  <label>
-    Protein (g per serving)
-    <input type="number" id="mealProtein" step="1" min="0" required />
-  </label>
-
-  <label>
-    Ingredients (one per line)
-    <textarea id="mealIngredients" rows="5" placeholder="e.g.&#10;Chicken breast, 500, g&#10;Rice, 300, g&#10;Broccoli, 1, head"></textarea>
-  </label>
-
-  <button type="submit">Save template</button>
-</form>
-
-<div id="mealTemplateList" style="margin-top:12px;"></div>
-
-<hr style="margin:14px 0; border:none; border-top:1px solid rgba(128,128,128,0.25);" />
-
-<!-- Plan meals for a day -->
-<h3 style="margin:0 0 10px 0;">Plan meals for a day</h3>
-
-<form id="mealPlanForm">
-  <label>
-    Date
-    <input type="date" id="mealPlanDate" required />
-  </label>
-
-  <label>
-    Template
-    <select id="mealPlanTemplateSelect" required></select>
-  </label>
-
-  <label>
-    Servings
-    <input type="number" id="mealPlanServings" step="0.5" min="0.5" value="1" required />
-  </label>
-
-  <button type="submit">Add meal</button>
-</form>
-
-<div id="mealDaySummary" style="margin-top:10px; font-size:14px;"></div>
-<div class="btn-row" style="margin-top:10px;">
-  <button id="applyMealsToDietBtn" type="button">Apply to Diet totals</button>
-</div>
-
-<ul id="mealDayList" style="margin-top:12px;"></ul>
-
-<hr style="margin:14px 0; border:none; border-top:1px solid rgba(128,128,128,0.25);" />
-
-<!-- Weekly shopping list -->
-<h3 style="margin:0 0 10px 0;">Weekly shopping list</h3>
-
-<form id="shoppingListForm">
-  <label>
-    Week starting (Monday)
-    <input type="date" id="shoppingWeekStart" required />
-  </label>
-
-  <button type="submit">Generate shopping list</button>
-</form>
-
-<div id="shoppingListOutput" style="margin-top:12px;"></div>
-
-  <div id="dietHint" style="margin-top:10px; color:var(--muted); font-size:13px;"></div>
-</div>
-
-<div class="panel" style="padding:14px; margin-top:12px;">
-  <h3 style="margin-top:0;">Diet history</h3>
-  <ul id="dietList"></ul>
-</div>
 
 </section>
 
