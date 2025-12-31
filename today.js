@@ -340,6 +340,10 @@ function getMetricEntry(metricId, date) {
     renderTodayPlan();
     wirePlanForm();
 
+   window.addEventListener("lifeos:metrics-updated", () => {
+  renderTodayDiet();
+});
+
     window.addEventListener("hashchange", () => {
       if ((window.location.hash || "").toLowerCase() === "#today") {
         renderTodayGoals();
