@@ -35,8 +35,11 @@
 
     btn.addEventListener("click", () => {
       const payload = global.LifeOSDB.exportAll();
-      const stamp = new Date().toISOString().slice(0, 10);
-      downloadJSON(`lifeos-export-${stamp}.json`, payload);
+    const d = new Date();
+const stamp = d.toISOString().slice(0, 10);
+const time = d.toISOString().slice(11, 16).replace(":", ""); // HHMM
+downloadJSON(`lifeos-export-${stamp}-${time}.json`, payload);
+
     });
   }
 
@@ -53,11 +56,28 @@
         const text = await readFileAsText(file);
         const payload = JSON.parse(text);
 
-        global.LifeOSDB.importAll(payload, opts);
+      // Basic validation for clearer errors
+if (!payload || typeof payload !== "object" || payload.app !== "LifeOS") {
+  throw new Error("This file is not a valid LifeOS export.");
+}
 
-        if (status) {
-          status.textContent = `Imported successfully (${file.name}).`;
-        }
+if (opts && opts.overwrite === true) {
+  const ok = confirm("This will OVERWRITE your current LifeOS data on this device. Continue?");
+  if (!ok) {
+    if (status) status.textContent = "Import cancelled.";
+    return;
+  }
+}
+
+global.LifeOSDB.importAll(payload, opts);
+
+// Let the app re-render based on new data (modules can listen to this)
+document.dispatchEvent(new Event("lifeos:data-imported"));
+
+if (status) {
+  status.textContent = `Imported successfully (${file.name}).`;
+}
+
       } catch (err) {
         if (status) {
           status.textContent = `Import failed: ${err.message}`;

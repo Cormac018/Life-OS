@@ -12,7 +12,7 @@
     // existing
     bodyweight: { id: "bodyweight", name: "Bodyweight", unit: "kg", type: "number", sourceModule: "health" },
     sleepHours: { id: "sleep_hours", name: "Sleep duration", unit: "hours", type: "number", sourceModule: "health" },
-    sleepQuality: { id: "sleep_quality", name: "Sleep quality", unit: "1–5", type: "number", sourceModule: "health" },
+   sleepQuality: { id: "sleep_quality", name: "Sleep quality", unit: "1–100", type: "number", sourceModule: "health" },
 
     // body composition
     bodyFat: { id: "body_fat_pct", name: "Body fat", unit: "%", type: "number", sourceModule: "health" },
@@ -56,13 +56,38 @@
   }
 
   function upsertEntry(metricId, date, value) {
-    LifeOSDB.upsert("metricEntries", {
-      metricId,
-      date,
-      value,
-      createdAt: LifeOSDB.nowISO(),
-    });
+  const id = `m_${metricId}_${date}`;
+  const now = LifeOSDB.nowISO();
+
+  LifeOSDB.upsert("metricEntries", {
+    id,
+    metricId,
+    date,
+    value,
+    note: "",
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+function removeEntry(entry) {
+  if (entry && entry.id) {
+    LifeOSDB.remove("metricEntries", entry.id);
+    return;
   }
+
+  // Legacy fallback: remove by metricId+date if id is missing
+  if (!entry || !entry.metricId || !entry.date) return;
+
+  const all = LifeOSDB.getCollection("metricEntries");
+  const next = all.filter((e) => {
+    if (!e) return false;
+    if (e.id) return true; // keep all id-based entries
+    return !(e.metricId === entry.metricId && e.date === entry.date && e.value === entry.value);
+  });
+
+  LifeOSDB.setCollection("metricEntries", next);
+  LifeOSDB.touchMeta();
+}
 
   function findEntryByDate(metricId, date) {
     return getEntries(metricId).find((e) => e.date === date) || null;
@@ -102,7 +127,7 @@
       `;
 
       li.querySelector("button").addEventListener("click", () => {
-        LifeOSDB.remove("metricEntries", e.id);
+        removeEntry(e);
         renderBodyweightList();
         renderBodyCompList();
         renderLeanMassHint();
@@ -169,7 +194,7 @@
       const quality = qualityByDate.get(date) || null;
 
       const hoursText = hours ? `${hours.value}h` : "—";
-      const qualityText = quality ? `${quality.value}/5` : "—";
+      const qualityText = quality ? `${quality.value}/100` : "—";
 
       const li = document.createElement("li");
       li.style.display = "flex";
@@ -187,31 +212,319 @@
 
       const delHoursBtn = li.querySelector("[data-del-hours]");
       delHoursBtn.addEventListener("click", () => {
-        const id = delHoursBtn.getAttribute("data-del-hours");
-        if (id) LifeOSDB.remove("metricEntries", id);
-        renderSleepList();
-      });
+  if (hours) removeEntry(hours);
+  renderSleepList();
+});
 
       const delQualityBtn = li.querySelector("[data-del-quality]");
       delQualityBtn.addEventListener("click", () => {
-        const id = delQualityBtn.getAttribute("data-del-quality");
-        if (id) LifeOSDB.remove("metricEntries", id);
-        renderSleepList();
-      });
+  if (quality) removeEntry(quality);
+  renderSleepList();
+});
 
       list.appendChild(li);
     });
   }
+  // -------------------------
+  // Sleep insights (Last night, streaks, chart, averages)
+  // -------------------------
+
+  function toISODateLocal(d) {
+    const x = new Date(d);
+    const y = x.getFullYear();
+    const m = String(x.getMonth() + 1).padStart(2, "0");
+    const day = String(x.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function isoDaysAgo(n) {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return toISODateLocal(d);
+  }
+
+  function getSleepSeriesByDay() {
+    const entries = LifeOSDB.getCollection("metricEntries") || [];
+    const byDate = new Map(); // date -> {date, hours, quality}
+
+    for (const e of entries) {
+      if (!e || !e.metricId || !e.date) continue;
+
+      if (e.metricId === METRICS.sleepHours.id) {
+        const obj = byDate.get(e.date) || { date: e.date, hours: null, quality: null };
+        obj.hours = Number(e.value);
+        byDate.set(e.date, obj);
+      }
+
+      if (e.metricId === METRICS.sleepQuality.id) {
+        const obj = byDate.get(e.date) || { date: e.date, hours: null, quality: null };
+        obj.quality = Number(e.value);
+        byDate.set(e.date, obj);
+      }
+    }
+
+    const series = Array.from(byDate.values())
+      .filter(x => x.date)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+    return series;
+  }
+
+  function dayLogged(x) {
+    // count as logged if either value exists (practical + forgiving)
+    const h = Number(x.hours);
+    const q = Number(x.quality);
+    return Number.isFinite(h) || Number.isFinite(q);
+  }
+
+  function computeCurrentStreak(series) {
+    // streak ending at today or yesterday depending on latest entry
+    if (!series.length) return 0;
+
+    const loggedDates = series.filter(dayLogged).map(x => x.date);
+    if (loggedDates.length === 0) return 0;
+
+    const set = new Set(loggedDates);
+
+    // define "today" in local date, and allow streak to end on today or yesterday
+    const today = isoDaysAgo(0);
+    const yesterday = isoDaysAgo(1);
+
+    let end = set.has(today) ? today : (set.has(yesterday) ? yesterday : null);
+    if (!end) return 0;
+
+    let streak = 0;
+    let cursor = new Date(end + "T00:00:00");
+    while (true) {
+      const key = toISODateLocal(cursor);
+      if (!set.has(key)) break;
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  }
+
+  function computeLongestStreak(series) {
+    if (!series.length) return 0;
+    const loggedDates = series.filter(dayLogged).map(x => x.date).sort();
+    if (loggedDates.length === 0) return 0;
+
+    let longest = 1;
+    let current = 1;
+
+    for (let i = 1; i < loggedDates.length; i++) {
+      const prev = new Date(loggedDates[i - 1] + "T00:00:00");
+      const cur = new Date(loggedDates[i] + "T00:00:00");
+      const diffDays = Math.round((cur - prev) / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        current += 1;
+        if (current > longest) longest = current;
+      } else {
+        current = 1;
+      }
+    }
+    return longest;
+  }
+
+  function renderSleepLogSummary(series) {
+    const lastNightEl = document.getElementById("sleepLastNight");
+    const streakEl = document.getElementById("sleepCurrentStreak");
+    if (!lastNightEl && !streakEl) return;
+
+    const lastNightDate = isoDaysAgo(1);
+    const lastNight = series.find(x => x.date === lastNightDate);
+
+    if (lastNightEl) {
+      if (!lastNight || (!Number.isFinite(lastNight.hours) && !Number.isFinite(lastNight.quality))) {
+        lastNightEl.textContent = "No entry for last night";
+      } else {
+        const h = Number.isFinite(lastNight.hours) ? `${lastNight.hours.toFixed(1)}h` : "—";
+        const q = Number.isFinite(lastNight.quality) ? `${Math.round(lastNight.quality)}/100` : "—";
+        lastNightEl.textContent = `${h} • ${q}`;
+      }
+    }
+
+    if (streakEl) {
+      const s = computeCurrentStreak(series);
+      streakEl.textContent = s === 0 ? "—" : `${s} day${s === 1 ? "" : "s"}`;
+    }
+  }
+
+  function avg(nums) {
+    const xs = nums.filter(n => Number.isFinite(n));
+    if (xs.length === 0) return null;
+    return xs.reduce((a, b) => a + b, 0) / xs.length;
+  }
+
+  function drawSleepChart(filtered) {
+    const canvas = document.getElementById("sleepChart");
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+
+    const cssW = canvas.clientWidth || 300;
+    const cssH = 220;
+    canvas.width = Math.floor(cssW * dpr);
+    canvas.height = Math.floor(cssH * dpr);
+    ctx.scale(dpr, dpr);
+
+    // clear
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    // padding
+    const padL = 38, padR = 12, padT = 14, padB = 26;
+    const w = cssW - padL - padR;
+    const h = cssH - padT - padB;
+
+    // frame
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "rgba(255,255,255,.10)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(padL, padT, w, h);
+
+    if (!filtered || filtered.length < 2) {
+      ctx.fillStyle = "rgba(255,255,255,.55)";
+      ctx.font = "13px system-ui";
+      ctx.fillText("Not enough data to chart yet.", padL + 10, padT + 24);
+      return;
+    }
+
+    // scales
+    const hoursVals = filtered.map(x => x.hours).filter(n => Number.isFinite(n));
+    const maxHours = Math.max(8, Math.min(24, Math.ceil((hoursVals.length ? Math.max(...hoursVals) : 8) + 1)));
+
+    const xFor = (i) => padL + (i * (w / (filtered.length - 1)));
+    const yForHours = (v) => padT + (h - (v / maxHours) * h);
+    const yForQuality = (v) => padT + (h - (v / 100) * h);
+
+    // grid (light)
+    ctx.strokeStyle = "rgba(255,255,255,.06)";
+    for (let i = 1; i <= 3; i++) {
+      const y = padT + (i * (h / 4));
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + w, y);
+      ctx.stroke();
+    }
+
+    // Hours line
+    ctx.strokeStyle = "rgba(79,140,255,.85)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    let started = false;
+    filtered.forEach((p, i) => {
+      if (!Number.isFinite(p.hours)) return;
+      const x = xFor(i);
+      const y = yForHours(p.hours);
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Quality line
+    ctx.strokeStyle = "rgba(120,220,160,.75)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    started = false;
+    filtered.forEach((p, i) => {
+      if (!Number.isFinite(p.quality)) return;
+      const x = xFor(i);
+      const y = yForQuality(p.quality);
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Labels
+    ctx.fillStyle = "rgba(255,255,255,.65)";
+    ctx.font = "12px system-ui";
+    ctx.fillText(`Hours (0–${maxHours})`, padL + 8, padT + 14);
+    ctx.fillText("Quality (0–100)", padL + 110, padT + 14);
+
+    // x-axis dates (first/last)
+    ctx.fillStyle = "rgba(255,255,255,.45)";
+    ctx.fillText(filtered[0].date, padL, padT + h + 20);
+    const lastTxt = filtered[filtered.length - 1].date;
+    const tw = ctx.measureText(lastTxt).width;
+    ctx.fillText(lastTxt, padL + w - tw, padT + h + 20);
+  }
+
+  let sleepRangeDays = 7;
+
+  function renderSleepProgress(series) {
+    const start = isoDaysAgo(sleepRangeDays);
+    const filtered = series.filter(x => x.date >= start);
+
+    drawSleepChart(filtered);
+
+    const avgHours = avg(filtered.map(x => x.hours));
+    const avgQual = avg(filtered.map(x => x.quality));
+
+    const avgEl = document.getElementById("sleepAverages");
+    if (avgEl) {
+      const h = avgHours == null ? "—" : `${avgHours.toFixed(1)}h`;
+      const q = avgQual == null ? "—" : `${Math.round(avgQual)}/100`;
+      avgEl.textContent = `Avg (last ${sleepRangeDays} days): ${h} • ${q}`;
+    }
+
+    const longestEl = document.getElementById("sleepLongestStreak");
+    if (longestEl) {
+      const longest = computeLongestStreak(series);
+      longestEl.textContent = longest === 0 ? "Longest streak: —" : `Longest streak: ${longest} day${longest === 1 ? "" : "s"}`;
+    }
+  }
+
+  function wireSleepRangeButtons() {
+    const btns = document.querySelectorAll(".sleep-range-btn");
+    if (!btns.length) return;
+
+    btns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const n = Number(btn.dataset.range);
+        if (!Number.isFinite(n)) return;
+        sleepRangeDays = n;
+
+        btns.forEach(b => b.classList.toggle("active", b === btn));
+
+        const series = getSleepSeriesByDay();
+        renderSleepProgress(series);
+      });
+    });
+  }
+
+function renderSleepInsights() {
+  const series = getSleepSeriesByDay();
+
+  // Always safe to render these (no layout dependency)
+  renderSleepLogSummary(series);
+
+  // Only draw the chart when the canvas is actually measurable (visible)
+  const canvas = document.getElementById("sleepChart");
+  if (canvas && canvas.clientWidth >= 50) {
+    renderSleepProgress(series);
+  }
+}
+window.renderSleepInsights = renderSleepInsights;
 
   function wireSleepForm() {
     const form = document.getElementById("sleepForm");
     if (!form) return;
-
+    function setDefaultSleepDate() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  dateEl.value = `${y}-${m}-${day}`;
+}
     const dateEl = document.getElementById("sleepDate");
     const hoursEl = document.getElementById("sleepHours");
     const qualityEl = document.getElementById("sleepQuality");
 
     dateEl.value = isoToday();
+setDefaultSleepDate();
 
     form.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -222,14 +535,16 @@
 
       if (!date) return;
       if (!Number.isFinite(hours) || hours < 0 || hours > 24) return;
-      if (!Number.isFinite(quality) || quality < 1 || quality > 5) return;
+      if (!Number.isFinite(quality) || quality < 1 || quality > 100) return;
 
       upsertEntry(METRICS.sleepHours.id, date, hours);
       upsertEntry(METRICS.sleepQuality.id, date, quality);
 
       hoursEl.value = "";
       qualityEl.value = "";
+      setDefaultSleepDate();
       renderSleepList();
+            renderSleepInsights();
     });
   }
 
@@ -389,7 +704,10 @@
       const delButtons = [];
       const addDel = (label, entry) => {
         if (!entry) return;
-        delButtons.push(`<button type="button" data-del="${entry.id}">Del ${label}</button>`);
+        delButtons.push(
+  `<button type="button" data-del="${entry.id || ""}" data-metric="${entry.metricId}" data-date="${entry.date}">Del ${label}</button>`
+);
+
       };
 
       addDel("fat", row[METRICS.bodyFat.id]);
@@ -417,11 +735,26 @@
 
       li.querySelectorAll("[data-del]").forEach((btn) => {
         btn.addEventListener("click", () => {
-          const id = btn.getAttribute("data-del");
-          if (id) LifeOSDB.remove("metricEntries", id);
-          renderBodyCompList();
-          renderLeanMassHint();
-        });
+  const id = btn.getAttribute("data-del");
+  const metricId = btn.getAttribute("data-metric");
+  const date = btn.getAttribute("data-date");
+
+  if (id) {
+    LifeOSDB.remove("metricEntries", id);
+  } else if (metricId && date) {
+    // legacy fallback: remove first match
+    const all = LifeOSDB.getCollection("metricEntries");
+    const idx = all.findIndex((e) => e && !e.id && e.metricId === metricId && e.date === date);
+    if (idx >= 0) {
+      all.splice(idx, 1);
+      LifeOSDB.setCollection("metricEntries", all);
+      LifeOSDB.touchMeta();
+    }
+  }
+
+  renderBodyCompList();
+  renderLeanMassHint();
+});
       });
 
       list.appendChild(li);
@@ -507,18 +840,16 @@
       `;
 
       li.querySelector("[data-del-cal]").addEventListener("click", () => {
-        const id = li.querySelector("[data-del-cal]").getAttribute("data-del-cal");
-        if (id) LifeOSDB.remove("metricEntries", id);
-        renderDietList();
-        renderDietHint();
-      });
+  if (c) removeEntry(c);
+  renderDietList();
+  renderDietHint();
+});
 
-      li.querySelector("[data-del-pro]").addEventListener("click", () => {
-        const id = li.querySelector("[data-del-pro]").getAttribute("data-del-pro");
-        if (id) LifeOSDB.remove("metricEntries", id);
-        renderDietList();
-        renderDietHint();
-      });
+li.querySelector("[data-del-pro]").addEventListener("click", () => {
+  if (p) removeEntry(p);
+  renderDietList();
+  renderDietHint();
+});
 
       list.appendChild(li);
     });
@@ -561,6 +892,9 @@
 
     wireSleepForm();
     renderSleepList();
+    wireSleepRangeButtons();
+    sleepRangeDays = 7;
+    renderSleepInsights();
 
     wireBodyCompForm();
     wireMeasureForm();
@@ -578,7 +912,7 @@
     
 // If another module writes metricEntries (e.g., Meal Templates "Apply"),
 // re-render Diet UI and hints.
-window.addEventListener("lifeos:metrics-updated", () => {
+document.addEventListener("lifeos:metrics-updated", () => {
   renderDietList();
   renderDietHint();
 });

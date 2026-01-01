@@ -88,6 +88,59 @@ background-size: 100% 100%, 100% 100%, auto;
 
 .tab-content.active{ display:block; }
 
+/* Health sub-tabs (Workout / Sleep / Diet) */
+.health-tabs{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+  margin-bottom:10px;
+}
+
+.health-tab{
+  flex:1;
+  height: var(--tap);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: .15px;
+}
+
+.health-tab.active{
+  border-color: rgba(79,140,255,.55);
+  background: rgba(79,140,255,.14);
+}
+
+.health-pane{ display:none; }
+.health-pane.active{ display:block; }
+/* Sleep sub-tabs (Log / Progress) */
+.sleep-tabs{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+  margin-bottom:10px;
+}
+
+.sleep-tab{
+  flex:1;
+  height: var(--tap);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: .15px;
+}
+
+.sleep-tab.active{
+  border-color: rgba(79,140,255,.55);
+  background: rgba(79,140,255,.14);
+}
+
+.sleep-pane{ display:none; }
+.sleep-pane.active{ display:block; }
+
 h2, h3{
   margin: 14px 0 10px;
   letter-spacing: .2px;
@@ -561,4 +614,250 @@ html[data-theme="dark"] #progressTab option{
 
 .lifeos-view.active {
   display: block;
+}
+/* =========================
+   Form + typography baseline
+   ========================= */
+
+label{
+  display: block;
+  margin: 10px 0;
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: .15px;
+}
+
+label > input,
+label > select,
+label > textarea{
+  width: 100%;
+  margin-top: 6px;
+  height: var(--tap);
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+  outline: none;
+}
+
+label > textarea{
+  height: auto;
+  padding: 10px 12px;
+  min-height: 110px;
+  resize: vertical;
+}
+
+label > input:focus,
+label > select:focus,
+label > textarea:focus{
+  border-color: rgba(79,140,255,.55);
+  box-shadow: 0 0 0 4px rgba(79,140,255,.12);
+}
+
+ul{
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+li{
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+li:last-child{ border-bottom: none; }
+
+/* =========================
+   Panels + layout helpers
+   ========================= */
+
+.lifeos-main{
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 10px var(--pad) 28px;
+}
+
+.panel{
+  backdrop-filter: blur(8px);
+}
+
+/* Make nav feel like a premium “pill bar” */
+.lifeos-nav{
+  background: rgba(11,15,23,.72);
+  backdrop-filter: blur(10px);
+}
+
+.lifeos-nav a.active{
+  border-color: rgba(79,140,255,.55);
+  background: rgba(79,140,255,.14);
+}
+/* ===== Diet tabs (calm, mobile-first) ===== */
+.diet-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.diet-tab {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(128,128,128,0.25);
+  background: rgba(255,255,255,0.04);
+  color: inherit;
+  font-weight: 600;
+}
+
+.diet-tab.is-active {
+  border-color: rgba(128,128,128,0.55);
+  background: rgba(255,255,255,0.09);
+}
+
+.diet-tabpanel {
+  display: none;
+  margin-top: 12px;
+}
+
+.diet-tabpanel.is-active {
+  display: block;
+}
+
+/* Plan editor rows */
+.diet-slot-row {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(128,128,128,0.18);
+  border-radius: 14px;
+  margin-bottom: 10px;
+}
+
+.diet-slot-row .diet-slot-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.diet-slot-controls {
+  display: grid;
+  grid-template-columns: 1fr 110px 110px;
+  gap: 10px;
+}
+
+@media (max-width: 520px) {
+  .diet-slot-row {
+    grid-template-columns: 1fr;
+  }
+  .diet-slot-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Checklist rows */
+.diet-check-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid rgba(128,128,128,0.18);
+  border-radius: 14px;
+  margin-bottom: 10px;
+}
+
+.diet-check-row .meta {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+/* ===== Form controls (global) ===== */
+input, select, textarea {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+select {
+  appearance: none;
+}
+
+option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ===== Diet modal (clean, mobile-first) ===== */
+.diet-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 9999;
+}
+
+.diet-modal.is-open {
+  display: block;
+}
+
+.diet-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+}
+
+.diet-modal-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--surface);
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  border-top: 1px solid var(--border);
+  padding: 14px;
+  max-width: var(--maxw);
+  margin: 0 auto;
+}
+
+.diet-modal-title {
+  font-weight: 800;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.diet-modal-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.diet-stepper {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+}
+
+.diet-stepper button {
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.diet-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.diet-modal-actions button {
+  flex: 1;
 }

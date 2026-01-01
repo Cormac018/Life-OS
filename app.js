@@ -1541,6 +1541,61 @@ skipUpperCBtn.addEventListener("click", () => {
   localStorage.removeItem("activeSessionId");
   renderCurrentSession();
 });
+// =====================
+// Health tabs (Workout / Sleep / Diet)
+// =====================
+window.addEventListener("DOMContentLoaded", () => {
+  const buttons = document.querySelectorAll(".health-tab");
+  const panes = {
+    workout: document.getElementById("healthPaneWorkout"),
+    sleep: document.getElementById("healthPaneSleep"),
+    diet: document.getElementById("healthPaneDiet"),
+  };
+
+  function show(which) {
+    buttons.forEach((b) => b.classList.toggle("active", b.dataset.health === which));
+    Object.entries(panes).forEach(([key, el]) => {
+      if (!el) return;
+      el.classList.toggle("active", key === which);
+    });
+  }
+
+  buttons.forEach((b) => {
+    b.addEventListener("click", () => show(b.dataset.health));
+  });
+
+  // default
+  show("workout");
+});
+// =====================
+// Sleep tabs (Log / Progress)
+// =====================
+window.addEventListener("DOMContentLoaded", () => {
+  const btns = document.querySelectorAll(".sleep-tab");
+  const panes = {
+    log: document.getElementById("sleepPaneLog"),
+    progress: document.getElementById("sleepPaneProgress"),
+  };
+
+function show(which) {
+  btns.forEach(b => b.classList.toggle("active", b.dataset.sleep === which));
+
+  Object.entries(panes).forEach(([key, el]) => {
+    if (!el) return;
+    el.classList.toggle("active", key === which);
+  });
+
+  // If we just opened Progress, re-render AFTER layout updates
+  if (which === "progress" && window.renderSleepInsights) {
+    requestAnimationFrame(() => window.renderSleepInsights());
+  }
+}
+
+  btns.forEach(b => b.addEventListener("click", () => show(b.dataset.sleep)));
+
+  // default
+  show("log");
+});
 
 // =====================
 // Tabs (Train / Progress)

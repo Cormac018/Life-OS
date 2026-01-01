@@ -9,7 +9,7 @@
   const SCHEMA_VERSION = 1;
   const KEY_PREFIX = "lifeos.";
 
-  const COLLECTIONS = [
+  const COLLECTIONS = Object.freeze([
   "people",
   "goals",
   "metricDefinitions",
@@ -18,13 +18,14 @@
 
   "mealTemplates",
   "mealPlans",
+  "dietLogs",
 
   "notes",
   "moneyAccounts",
   "moneyTransactions",
   "categories",
   "appMeta",
-];
+]);
 
   function nowISO() {
     return new Date().toISOString();
@@ -58,8 +59,13 @@
       throw new Error(`Unknown collection: ${collectionName}`);
     }
     const raw = localStorage.getItem(getKey(collectionName));
-    const arr = safeParseJSON(raw, []);
-    return Array.isArray(arr) ? arr : [];
+   const arr = safeParseJSON(raw, []);
+if (Array.isArray(arr)) return arr;
+
+// Repair corrupted data shape
+console.warn(`Collection ${collectionName} was not an array; resetting.`);
+setCollection(collectionName, []);
+return [];
   }
 
   function setCollection(collectionName, arr) {
@@ -69,7 +75,22 @@
     if (!Array.isArray(arr)) {
       throw new Error(`setCollection expects an array for ${collectionName}`);
     }
-    localStorage.setItem(getKey(collectionName), JSON.stringify(arr));
+
+    const key = getKey(collectionName);
+    const json = JSON.stringify(arr);
+
+    try {
+      localStorage.setItem(key, json);
+    } catch (err) {
+      // Most common: QuotaExceededError
+      const msg =
+        `Failed to write ${collectionName} to storage. ` +
+        `Your browser storage may be full. ` +
+        `Export your data and consider clearing old data or migrating to IndexedDB.`;
+
+      console.error(msg, { collectionName, key, bytes: json.length, err });
+      throw new Error(msg);
+    }
   }
 
   function upsert(collectionName, entity) {
@@ -185,6 +206,20 @@
 
   // Initialize meta on load
   initAppMeta();
+  function getStorageUsage() {
+    // Estimate bytes used by LifeOS keys only
+    let total = 0;
+    const perCollection = {};
+
+    COLLECTIONS.forEach((name) => {
+      const raw = localStorage.getItem(getKey(name)) || "";
+      const bytes = raw.length; // rough but useful
+      perCollection[name] = bytes;
+      total += bytes;
+    });
+
+    return { totalBytes: total, perCollection };
+  }
 
   global.LifeOSDB = {
     SCHEMA_VERSION,
@@ -198,5 +233,6 @@
     exportAll,
     importAll,
     touchMeta,
+    getStorageUsage,
   };
 })(window);
