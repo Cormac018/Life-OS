@@ -68,10 +68,14 @@
     createdAt: now,
     updatedAt: now,
   });
+
+  // Dispatch event so other modules (e.g., goals) can react to metric updates
+  document.dispatchEvent(new CustomEvent("lifeos:metrics-updated", { detail: { metricId, date, value } }));
 }
 function removeEntry(entry) {
   if (entry && entry.id) {
     LifeOSDB.remove("metricEntries", entry.id);
+    document.dispatchEvent(new CustomEvent("lifeos:metrics-updated"));
     return;
   }
 
@@ -87,6 +91,7 @@ function removeEntry(entry) {
 
   LifeOSDB.setCollection("metricEntries", next);
   LifeOSDB.touchMeta();
+  document.dispatchEvent(new CustomEvent("lifeos:metrics-updated"));
 }
 
   function findEntryByDate(metricId, date) {
@@ -910,11 +915,16 @@ li.querySelector("[data-del-pro]").addEventListener("click", () => {
     const bcDate = document.getElementById("bcDate");
     if (bcDate) bcDate.addEventListener("change", renderLeanMassHint);
     
-// If another module writes metricEntries (e.g., Meal Templates "Apply"),
-// re-render Diet UI and hints.
+// If another module writes metricEntries (e.g., Meal Templates "Apply", Today inline forms),
+// re-render all metric UIs.
 document.addEventListener("lifeos:metrics-updated", () => {
   renderDietList();
   renderDietHint();
+  renderBodyweightList();
+  renderBodyCompList();
+  renderLeanMassHint();
+  renderSleepList();
+  renderSleepInsights();
 });
   });
 })();

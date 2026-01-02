@@ -15,6 +15,7 @@
   "metricDefinitions",
   "metricEntries",
   "planItems",
+  "workLogs",
 
   "mealTemplates",
   "mealPlans",
@@ -23,9 +24,16 @@
   "notes",
   "moneyAccounts",
   "moneyTransactions",
+  "moneySettings",
   "categories",
   "appMeta",
 ]);
+
+  // Performance cache for metric entries
+  let metricsCache = null;
+
+  // Undo/deletion history (keep last 10 deletions)
+  let deletionHistory = [];
 
   function nowISO() {
     return new Date().toISOString();
@@ -93,6 +101,61 @@ return [];
     }
   }
 
+  function invalidateMetricsCache() {
+    metricsCache = null;
+  }
+
+  function buildMetricsCache() {
+    const allEntries = getCollection("metricEntries");
+    const cache = {
+      byMetricId: {},
+      byDate: {},
+      all: allEntries
+    };
+
+    allEntries.forEach(entry => {
+      if (!entry) return;
+
+      // Index by metricId
+      if (!cache.byMetricId[entry.metricId]) {
+        cache.byMetricId[entry.metricId] = [];
+      }
+      cache.byMetricId[entry.metricId].push(entry);
+
+      // Index by date
+      if (!cache.byDate[entry.date]) {
+        cache.byDate[entry.date] = [];
+      }
+      cache.byDate[entry.date].push(entry);
+    });
+
+    // Sort each metricId array by date descending (for latest lookups)
+    Object.keys(cache.byMetricId).forEach(metricId => {
+      cache.byMetricId[metricId].sort((a, b) => b.date.localeCompare(a.date));
+    });
+
+    return cache;
+  }
+
+  function getMetricEntriesByMetricId(metricId) {
+    if (!metricsCache) {
+      metricsCache = buildMetricsCache();
+    }
+    return metricsCache.byMetricId[metricId] || [];
+  }
+
+  function getMetricEntriesByDate(date) {
+    if (!metricsCache) {
+      metricsCache = buildMetricsCache();
+    }
+    return metricsCache.byDate[date] || [];
+  }
+
+  function getLatestMetricEntry(metricId) {
+    const entries = getMetricEntriesByMetricId(metricId);
+    return entries[0] || null; // Already sorted descending
+  }
+
   function upsert(collectionName, entity) {
     if (!entity || typeof entity !== "object") {
       throw new Error("upsert expects an object entity");
@@ -110,14 +173,70 @@ return [];
     }
 
     setCollection(collectionName, arr);
+
+    // Invalidate metrics cache on metricEntries write
+    if (collectionName === "metricEntries") {
+      invalidateMetricsCache();
+    }
+
     return next;
   }
 
   function remove(collectionName, id) {
     const arr = getCollection(collectionName);
+    const entity = arr.find((x) => x && x.id === id);
+
+    // Save to deletion history for undo
+    if (entity) {
+      deletionHistory.push({
+        collectionName,
+        entity: JSON.parse(JSON.stringify(entity)), // Deep clone
+        timestamp: Date.now()
+      });
+
+      // Keep only last 10 deletions
+      if (deletionHistory.length > 10) {
+        deletionHistory.shift();
+      }
+    }
+
     const next = arr.filter((x) => x && x.id !== id);
     setCollection(collectionName, next);
+
+    // Invalidate metrics cache on metricEntries delete
+    if (collectionName === "metricEntries") {
+      invalidateMetricsCache();
+    }
+
     return next.length !== arr.length;
+  }
+
+  function undo() {
+    const last = deletionHistory.pop();
+    if (!last) {
+      return { success: false, message: "Nothing to undo" };
+    }
+
+    try {
+      upsert(last.collectionName, last.entity);
+      return {
+        success: true,
+        message: `Restored deleted item from ${last.collectionName}`,
+        entity: last.entity
+      };
+    } catch (err) {
+      // Put it back in history if restore failed
+      deletionHistory.push(last);
+      return { success: false, message: `Undo failed: ${err.message}` };
+    }
+  }
+
+  function getDeletionHistory() {
+    return deletionHistory.slice().reverse(); // Most recent first
+  }
+
+  function clearDeletionHistory() {
+    deletionHistory = [];
   }
 
   function initAppMeta() {
@@ -201,6 +320,10 @@ return [];
     });
 
     touchMeta();
+
+    // Invalidate metrics cache after import
+    invalidateMetricsCache();
+
     return true;
   }
 
@@ -234,5 +357,14 @@ return [];
     importAll,
     touchMeta,
     getStorageUsage,
+    // Performance cache helpers
+    getMetricEntriesByMetricId,
+    getMetricEntriesByDate,
+    getLatestMetricEntry,
+    invalidateMetricsCache,
+    // Undo helpers
+    undo,
+    getDeletionHistory,
+    clearDeletionHistory,
   };
 })(window);

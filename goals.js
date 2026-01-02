@@ -84,10 +84,20 @@
       const latestText = latestEntry ? `${latestEntry.value} on ${latestEntry.date}` : "No data";
 
       let deltaText = "—";
+      let progressPercent = 0;
       if (startEntry && latestEntry && Number.isFinite(startEntry.value) && Number.isFinite(latestEntry.value)) {
         const delta = latestEntry.value - startEntry.value;
         const sign = delta > 0 ? "+" : "";
         deltaText = `${sign}${delta.toFixed(1)}`;
+
+        // Calculate progress percentage if target value exists
+        if (g.targetValue !== undefined && Number.isFinite(g.targetValue)) {
+          const targetDelta = g.targetValue - startEntry.value;
+          const currentDelta = latestEntry.value - startEntry.value;
+          if (targetDelta !== 0) {
+            progressPercent = Math.min(100, Math.max(0, (currentDelta / targetDelta) * 100));
+          }
+        }
       }
 
       const card = document.createElement("div");
@@ -95,14 +105,24 @@
       card.style.padding = "14px";
       card.style.marginBottom = "12px";
 
+      const progressBarHTML = g.targetValue !== undefined
+        ? `
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${progressPercent.toFixed(1)}%;"></div>
+          </div>
+          <div class="progress-text">${progressPercent.toFixed(0)}% to target (${g.targetValue})</div>
+        `
+        : '';
+
       card.innerHTML = `
         <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
-          <div>
+          <div style="flex:1;">
             <h3 style="margin:0 0 6px 0;">${escapeHTML(g.title)}</h3>
             <div style="color:var(--muted); font-size:13px; margin-bottom:8px;">
               ${escapeHTML(metricName)}
             </div>
-            <div style="font-size:14px; line-height:1.4;">
+            ${progressBarHTML}
+            <div style="font-size:14px; line-height:1.4; margin-top:8px;">
               <div><strong>Start:</strong> ${escapeHTML(startText)}</div>
               <div><strong>Latest:</strong> ${escapeHTML(latestText)}</div>
               <div><strong>Change:</strong> ${escapeHTML(deltaText)}</div>
@@ -134,6 +154,7 @@
     const startEl = document.getElementById("goalStartDate");
     const targetEl = document.getElementById("goalTargetDate");
     const metricEl = document.getElementById("goalMetricSelect");
+    const targetValueEl = document.getElementById("goalTargetValue");
 
     // defaults
     startEl.value = isoToday();
@@ -145,19 +166,31 @@
       const startDate = startEl.value;
       const targetDate = targetEl.value;
       const metricId = metricEl.value;
+      const targetValueRaw = targetValueEl.value;
 
       if (!title || !startDate || !targetDate || !metricId) return;
 
-      LifeOSDB.upsert("goals", {
+      const goal = {
         title,
         startDate,
         targetDate,
         metricId,
         status: "active",
         createdAt: LifeOSDB.nowISO(),
-      });
+      };
+
+      // Add targetValue if provided
+      if (targetValueRaw && targetValueRaw.trim() !== "") {
+        const targetValue = Number(targetValueRaw);
+        if (Number.isFinite(targetValue)) {
+          goal.targetValue = targetValue;
+        }
+      }
+
+      LifeOSDB.upsert("goals", goal);
 
       titleEl.value = "";
+      if (targetValueEl) targetValueEl.value = "";
       // keep dates; user often adds multiple goals
       renderGoals();
     });
@@ -178,5 +211,10 @@
     populateMetricSelect();
     wireGoalForm();
     renderGoals();
+
+    // Re-render goals when metrics are updated
+    document.addEventListener("lifeos:metrics-updated", () => {
+      renderGoals();
+    });
   });
 })();

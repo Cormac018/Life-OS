@@ -861,3 +861,614 @@ option {
 .diet-modal-actions button {
   flex: 1;
 }
+.money-account-row {
+  padding: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.money-account-row:hover,
+.money-account-row:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.12);
+}
+
+.money-account-row:active {
+  transform: scale(0.99);
+}
+
+/* Progress bars for goals */
+.progress-bar {
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 0.3s ease;
+  border-radius: 999px;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* ========================================
+   REVOLUT-INSPIRED UX STYLES
+   ======================================== */
+
+/* Summary Cards - Top stats at a glance */
+.revolut-summary-card {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(79,140,255,0.08) 0%, rgba(122,167,255,0.05) 100%);
+  border: 1px solid rgba(79,140,255,0.15);
+  border-radius: var(--radius);
+}
+
+.summary-stat {
+  flex: 1;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+/* Revolut Card Style */
+.revolut-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.revolut-card:hover {
+  border-color: rgba(79,140,255,0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.revolut-card:active {
+  transform: translateY(0);
+}
+
+.revolut-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.revolut-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.revolut-card-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: right;
+}
+
+.revolut-card-value.positive {
+  color: #22c55e;
+}
+
+.revolut-card-value.negative {
+  color: var(--danger);
+}
+
+.revolut-card-subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.revolut-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.meta-separator {
+  color: var(--faint);
+}
+
+/* Revolut Progress Bar */
+.revolut-progress {
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 12px 0 8px 0;
+}
+
+.revolut-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4f8cff 0%, #7aa7ff 100%);
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* View All Link */
+.revolut-view-all {
+  display: block;
+  text-align: center;
+  padding: 14px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  background: rgba(79,140,255,0.05);
+  border: 1px solid rgba(79,140,255,0.12);
+  border-radius: var(--radius);
+  margin-top: 12px;
+  transition: all 0.2s ease;
+}
+
+.revolut-view-all:hover {
+  background: rgba(79,140,255,0.1);
+  border-color: rgba(79,140,255,0.25);
+}
+
+/* Section Headers */
+.revolut-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 0 2px;
+}
+
+.revolut-section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.revolut-section-action {
+  font-size: 14px;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* Collapsible Section */
+.revolut-collapsible {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.revolut-collapsible-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease;
+}
+
+.revolut-collapsible-header:hover {
+  background: rgba(255,255,255,0.02);
+}
+
+.revolut-collapsible-header:active {
+  background: rgba(255,255,255,0.04);
+}
+
+.revolut-collapsible-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.revolut-collapsible-summary {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.revolut-collapsible-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.revolut-collapsible-icon svg {
+  width: 20px;
+  height: 20px;
+  stroke: var(--muted);
+  stroke-width: 2;
+  fill: none;
+}
+
+.revolut-collapsible.expanded .revolut-collapsible-icon {
+  transform: rotate(180deg);
+}
+
+.revolut-collapsible-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.revolut-collapsible.expanded .revolut-collapsible-content {
+  max-height: 1000px;
+}
+
+.revolut-collapsible-inner {
+  padding: 0 16px 16px 16px;
+}
+
+/* Empty State */
+.revolut-empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--muted);
+}
+
+.revolut-empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.revolut-empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.revolut-empty-description {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+/* Quick Action Button */
+.revolut-quick-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, var(--accent) 0%, rgba(122,167,255,1) 100%);
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(79,140,255,0.3);
+}
+
+.revolut-quick-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(79,140,255,0.4);
+}
+
+.revolut-quick-action:active {
+  transform: translateY(0);
+}
+
+/* Animations */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.revolut-card,
+.revolut-collapsible {
+  animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+
+.revolut-card:nth-child(2) { animation-delay: 0.05s; }
+.revolut-card:nth-child(3) { animation-delay: 0.1s; }
+.revolut-card:nth-child(4) { animation-delay: 0.15s; }
+
+/* Swipeable Dashboard Cards */
+.dashboard-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.dashboard-card-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dashboard-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.dashboard-card-action {
+  font-size: 14px;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* Horizontal scroll tabs */
+.dashboard-tabs {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.dashboard-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.dashboard-tab {
+  flex-shrink: 0;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.dashboard-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.dashboard-tab:hover:not(.active) {
+  color: var(--text);
+  background: rgba(255,255,255,0.02);
+}
+
+/* Swipeable content */
+.dashboard-content-container {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  display: flex;
+}
+
+.dashboard-content-container::-webkit-scrollbar {
+  display: none;
+}
+
+.dashboard-content-panel {
+  flex-shrink: 0;
+  width: 100%;
+  scroll-snap-align: start;
+  padding: 16px;
+  min-height: 200px;
+}
+
+/* Inline metric form (appears when clicking goal) */
+.inline-metric-form {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(79,140,255,0.2);
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 300px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+}
+
+.inline-metric-form label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.inline-metric-form input {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.inline-metric-form .btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+.inline-metric-form button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.inline-metric-form button[type="submit"] {
+  background: linear-gradient(135deg, var(--accent) 0%, rgba(122,167,255,1) 100%);
+  color: white;
+  border: none;
+}
+
+.inline-metric-form button[type="button"] {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+/* Clickable goal card with expand state */
+.revolut-card.expandable {
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.revolut-card.expandable.expanded {
+  border-color: rgba(79,140,255,0.4);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+
+/* Quick meal action button */
+.quick-meal-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quick-meal-btn:hover {
+  background: rgba(79,140,255,0.08);
+  border-color: rgba(79,140,255,0.3);
+}
+
+.quick-meal-btn:active {
+  transform: scale(0.98);
+}
+
+.quick-meal-btn .meal-info {
+  flex: 1;
+}
+
+.quick-meal-btn .meal-name {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.quick-meal-btn .meal-macros {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.quick-meal-btn .checkmark {
+  font-size: 20px;
+  color: #22c55e;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.quick-meal-btn.logged .checkmark {
+  opacity: 1;
+}
+
+/* Mobile Optimization */
+@media (max-width: 480px) {
+  .revolut-summary-card {
+    gap: 8px;
+    padding: 14px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+  .revolut-card {
+    padding: 14px;
+  }
+
+  .revolut-card-title {
+    font-size: 15px;
+  }
+
+  .revolut-card-value {
+    font-size: 16px;
+  }
+
+  .dashboard-card-header {
+    padding: 14px;
+  }
+
+  .dashboard-tab {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .dashboard-content-panel {
+    padding: 14px;
+  }
+}

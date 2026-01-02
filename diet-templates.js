@@ -207,11 +207,59 @@ if (!next.dietPrepNotesV1) {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-del-template");
         if (!id) return;
-        if (!confirm("Delete this meal template?")) return;
+
+        // Check if template is used in any diet logs
+        const logs = db().getCollection("dietLogs") || [];
+        const usedInLogs = logs.some(log =>
+          log.items && log.items.some(item => item.templateId === id)
+        );
+
+        // Check if template is used in any diet plans
+        const meta = getMeta();
+        let usedInPlans = false;
+        if (meta.dietPlansV1) {
+          Object.values(meta.dietPlansV1).forEach(plan => {
+            if (plan.slots) {
+              Object.values(plan.slots).forEach(slot => {
+                if (slot.templateId === id) usedInPlans = true;
+              });
+            }
+          });
+        }
+
+        let confirmMsg = "Delete this meal template?";
+        if (usedInLogs && usedInPlans) {
+          confirmMsg = "This meal is used in your diet plans AND logged in past diet logs. Delete anyway? (Past logs will keep the meal name but lose template link)";
+        } else if (usedInPlans) {
+          confirmMsg = "This meal is used in your diet plans. Delete anyway? (It will be removed from your plans)";
+        } else if (usedInLogs) {
+          confirmMsg = "This meal is logged in past diet logs. Delete anyway? (Past logs will keep the meal name but lose template link)";
+        }
+
+        if (!confirm(confirmMsg)) return;
+
+        // Remove from plans
+        if (usedInPlans && meta.dietPlansV1) {
+          const nextMeta = JSON.parse(JSON.stringify(meta));
+          Object.values(nextMeta.dietPlansV1).forEach(plan => {
+            if (plan.slots) {
+              Object.keys(plan.slots).forEach(slotId => {
+                if (plan.slots[slotId].templateId === id) {
+                  plan.slots[slotId].templateId = "";
+                }
+              });
+            }
+          });
+          setMeta(nextMeta);
+        }
+
+        // Note: We keep diet log items intact but they'll show as "Unknown" if template is gone
+        // This preserves historical accuracy (what you ate) even if template was deleted
+
         removeTemplate(id);
         renderTemplateList();
         renderPlanEditor();
-        renderChecklist(); // in case any UI uses selects
+        renderChecklist();
       });
     });
   }
@@ -1304,7 +1352,9 @@ function wirePrepManualControls() {
       onOk: () => {
         const id = document.getElementById("dietPickTemplate")?.value;
         if (!id) return;
-        onConfirm(id);
+                // Defer so the current modal fully closes before opening the next one
+        // (otherwise the new modal's handlers get cleared by the closing logic).
+        setTimeout(() => onConfirm(id), 0);
       },
     });
   }

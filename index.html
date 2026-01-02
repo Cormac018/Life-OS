@@ -3,7 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gym Log</title>
+    <meta name="description" content="Personal life tracking and goal management system" />
+    <meta name="theme-color" content="#4f8cff" />
+    <title>Life OS</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- iOS Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Life OS" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -14,6 +26,7 @@
       <a href="#metrics" data-route="metrics">Metrics</a>
       <a href="#goals" data-route="goals">Goals</a>
       <a href="#plan" data-route="plan">Plan</a>
+      <a href="#work" data-route="work">Work</a>
       <a href="#finances" data-route="finances">Finances</a>
       <a href="#journal" data-route="journal">Journal</a>
       <a href="#people" data-route="people">People</a>
@@ -29,17 +42,9 @@
     <h2 style="margin:0 0 10px 0;">Active goals</h2>
     <div id="todayGoals"></div>
   </div>
-<!-- Diet summary -->
-<div class="panel" style="padding:14px; margin-top:12px;">
-  <h2 style="margin:0 0 10px 0;">Diet (today)</h2>
-
-  <div id="todayDietSummary" style="font-size:14px;"></div>
-  <div id="todayDietHint" style="margin-top:8px; color:var(--muted); font-size:13px;"></div>
-
-  <div class="btn-row" style="margin-top:10px;">
-    <button id="jumpToMetricsDietBtn" type="button">Log diet</button>
-    <button id="jumpToMetricsWeightBtn" type="button">Log weight</button>
-  </div>
+<!-- Diet summary (Swipeable Card) -->
+<div id="todayDietCard" class="dashboard-card" style="margin-top:12px;">
+  <!-- Content populated by today.js -->
 </div>
 
   <!-- Plan for today -->
@@ -79,6 +84,17 @@
       <ul id="todayPlanList"></ul>
     </div>
   </div>
+<div class="panel" style="padding:14px; margin-top:12px;">
+  <h2 style="margin:0 0 10px 0;">Work</h2>
+  <div id="todayWorkSummary" style="font-size:14px;"></div>
+
+  <div class="btn-row" style="margin-top:10px;">
+  <button id="workQuickSub30Btn" type="button">-0.5h</button>
+  <button id="workQuickAdd30Btn" type="button">+0.5h</button>
+  <button id="workQuickAdd60Btn" type="button">+1h</button>
+  <button id="jumpToWorkBtn" type="button">Log work</button>
+</div>
+</div>
 
   <!-- Life OS Data (export/import) -->
   <div class="panel" style="padding:14px; margin-top:12px;">
@@ -626,6 +642,11 @@
         <select id="goalMetricSelect" required></select>
       </label>
 
+      <label>
+        Target value (optional - enables progress bar)
+        <input type="number" id="goalTargetValue" placeholder="e.g. 75" step="0.1" />
+      </label>
+
       <button type="submit">Create goal</button>
     </form>
   </div>
@@ -671,10 +692,211 @@
   <div id="weekWrap" style="margin-top:12px;"></div>
 </section>
 
+<section id="view-work" class="lifeos-view">
+  <h1 class="app-title">Work</h1>
+
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h2 style="margin:0 0 10px 0;">Log work</h2>
+
+    <form id="workLogForm">
+      <label>
+        Date
+        <input type="date" id="workDate" required />
+      </label>
+
+      <label>
+        Hours worked
+        <input type="number" id="workHours" step="0.25" min="0" placeholder="e.g. 8" required />
+      </label>
+
+      <label>
+        Notes (optional)
+        <input type="text" id="workNote" placeholder="e.g. On-call / release / late finish" />
+      </label>
+
+      <button type="submit">Save work log</button>
+    </form>
+
+    <div class="meta" style="margin-top:10px;">
+      Tip: enter hours in 0.25 steps (e.g. 7.5).
+    </div>
+  </div>
+
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h2 style="margin:0 0 10px 0;">This week</h2>
+    <div id="workWeekSummary" style="font-size:14px;"></div>
+  </div>
+
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h2 style="margin:0 0 10px 0;">History</h2>
+    <ul id="workHistoryList"></ul>
+  </div>
+</section>
+
       <section id="view-finances" class="lifeos-view">
-        <h1 class="app-title">Finances</h1>
-        <p>Placeholder.</p>
-      </section>
+  <h1 class="app-title">Finances</h1>
+
+  <!-- Overview -->
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h2 style="margin:0 0 10px 0;">Overview</h2>
+    <div class="btn-row" style="margin-top:0; margin-bottom:10px;">
+  <button id="moneyPeriodWeekBtn" type="button">Week</button>
+  <button id="moneyPeriodMonthBtn" type="button">Month</button>
+  <button id="moneyPeriodYearBtn" type="button">Year</button>
+</div>
+    <div id="moneyOverview" style="font-size:14px;"></div>
+    <div id="moneyOverviewHint" style="margin-top:8px; color:var(--muted); font-size:13px;"></div>
+  </div>
+
+  <!-- Accounts -->
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h2 style="margin:0 0 10px 0;">
+  <span id="moneyAccountsTitle">Accounts</span>
+</h2>
+
+<div id="moneyAccountDetailHeader" style="display:none; margin-bottom:10px;">
+  <button id="moneyBackToAccountsBtn" type="button">← Back to all accounts</button>
+  <div style="margin-top:8px;">
+    <div id="moneyAccountDetailName" style="font-weight:600;"></div>
+    <div id="moneyAccountDetailBalance" class="meta"></div>
+  </div>
+</div>
+<div id="moneyAccountCreateWrap">
+    <form id="moneyAccountForm">
+      <label>
+        Account name
+        <input type="text" id="moneyAccountName" placeholder="e.g. Current account" required />
+      </label>
+
+      <label>
+        Bank / provider
+        <input type="text" id="moneyAccountBank" placeholder="e.g. Revolut / Monzo / Barclays" />
+      </label>
+
+      <label>
+        Type
+        <select id="moneyAccountType">
+          <option value="current">Current</option>
+          <option value="savings">Savings</option>
+          <option value="credit">Credit card</option>
+          <option value="loan">Loan</option>
+          <option value="cash">Cash</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+
+      <label>
+        Starting balance (can be negative)
+        <input type="number" id="moneyAccountBalance" step="0.01" placeholder="e.g. 1250 or -50" required />
+      </label>
+
+      <button type="submit">Add account</button>
+    </form>
+
+    <div style="margin-top:12px;">
+      <ul id="moneyAccountsList"></ul>
+    </div>
+  </div>
+  </div>
+
+  <!-- Salary settings -->
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h2 style="margin:0 0 10px 0;">Salary (optional)</h2>
+
+    <form id="moneySalaryForm">
+      <label>
+        Monthly salary (net)
+        <input type="number" id="moneySalaryNet" step="0.01" placeholder="e.g. 2800" />
+      </label>
+
+      <label>
+        Monthly deductions total (optional)
+        <input type="number" id="moneySalaryDeductions" step="0.01" placeholder="e.g. 250" />
+      </label>
+
+      <label>
+        Payday rule
+        <select id="moneyPaydayRule">
+          <option value="last_working_day">Last working day of month</option>
+          <option value="last_day">Last calendar day of month</option>
+        </select>
+      </label>
+
+      <button type="submit">Save salary settings</button>
+    </form>
+
+    <div class="btn-row" style="margin-top:10px;">
+      <button id="moneyAddPaydayBtn" type="button">Add this month’s payday income</button>
+    </div>
+
+    <div id="moneySalaryHint" style="margin-top:8px; color:var(--muted); font-size:13px;"></div>
+  </div>
+
+  <!-- Add transaction -->
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h2 style="margin:0 0 10px 0;">Add transaction</h2>
+
+    <form id="moneyTxForm">
+      <label>
+        Date
+        <input type="date" id="moneyTxDate" required />
+      </label>
+
+      <label>
+        Account
+        <select id="moneyTxAccount" required></select>
+      </label>
+
+      <label>
+        Amount (expenses are negative)
+        <input type="number" id="moneyTxAmount" step="0.01" placeholder="e.g. -12.50 or 200" required />
+      </label>
+
+      <label>
+        Category
+        <select id="moneyTxCategory" required></select>
+      </label>
+
+      <label>
+        Essential?
+        <select id="moneyTxEssential">
+          <option value="essential">Essential</option>
+          <option value="optional">Optional</option>
+        </select>
+      </label>
+
+      <label>
+        Merchant / label (optional)
+        <input type="text" id="moneyTxMerchant" placeholder="e.g. Tesco / Rent / Salary" />
+      </label>
+
+      <label>
+        Notes (optional)
+        <input type="text" id="moneyTxNote" placeholder="Any extra context" />
+      </label>
+
+      <button type="submit">Save transaction</button>
+    </form>
+  </div>
+
+  <!-- This month -->
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h2 id="moneyPeriodTitle" style="margin:0 0 10px 0;">This month</h2>
+
+    <div id="moneyMonthSummary" style="font-size:14px;"></div>
+
+    <div style="margin-top:10px;">
+      <h3 style="margin:0 0 8px 0;">By category</h3>
+      <ul id="moneyCategorySummary"></ul>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="panel" style="padding:14px; margin-top:12px;">
+    <h2 style="margin:0 0 10px 0;">History</h2>
+    <ul id="moneyTxList"></ul>
+  </div>
+</section>
 
       <section id="view-journal" class="lifeos-view">
         <h1 class="app-title">Journal</h1>
@@ -698,7 +920,24 @@
 <script src="metrics.js"></script>
 <script src="diet-templates.js"></script>
 <script src="goals.js"></script>
+<script src="work.js"></script>
+<script src="finance.js"></script>
 <script src="today.js"></script>
 <script src="plan.js"></script>
 <script src="shell.js"></script>
+
+<!-- Service Worker Registration -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('[App] Service Worker registered:', registration.scope);
+        })
+        .catch((error) => {
+          console.error('[App] Service Worker registration failed:', error);
+        });
+    });
+  }
+</script>
 </html>
