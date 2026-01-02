@@ -4,27 +4,27 @@
    - Static asset caching
    ========================= */
 
-const CACHE_NAME = 'lifeos-v11-with-icons';
+const CACHE_NAME = 'lifeos-v12-relative-paths';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/workouts.js',
-  '/app.js',
-  '/db.js',
-  '/lifeos-export.js',
-  '/lifeos.js',
-  '/metrics.js',
-  '/diet-templates.js',
-  '/goals.js',
-  '/work.js',
-  '/finance.js',
-  '/today.js',
-  '/plan.js',
-  '/shell.js',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/logo.svg'
+  './',
+  './index.html',
+  './style.css',
+  './workouts.js',
+  './app.js',
+  './db.js',
+  './lifeos-export.js',
+  './lifeos.js',
+  './metrics.js',
+  './diet-templates.js',
+  './goals.js',
+  './work.js',
+  './finance.js',
+  './today.js',
+  './plan.js',
+  './shell.js',
+  './icon-192.png',
+  './icon-512.png',
+  './logo.svg'
 ];
 
 // Install event - cache static assets
@@ -90,7 +90,7 @@ self.addEventListener('fetch', (event) => {
           })
           .catch(() => {
             // Network failed, return offline page if available
-            return caches.match('/index.html');
+            return caches.match('./index.html');
           });
       })
   );
