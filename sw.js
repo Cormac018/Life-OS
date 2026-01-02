@@ -4,7 +4,7 @@
    - Static asset caching
    ========================= */
 
-const CACHE_NAME = 'lifeos-v10-diet-progress-visuals';
+const CACHE_NAME = 'lifeos-v11-with-icons';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -21,7 +21,10 @@ const ASSETS_TO_CACHE = [
   '/finance.js',
   '/today.js',
   '/plan.js',
-  '/shell.js'
+  '/shell.js',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/logo.svg'
 ];
 
 // Install event - cache static assets
