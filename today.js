@@ -914,122 +914,284 @@ function wireTodayWorkButton() {
 }
 
   /* -------------------------
-     Today: Plan
+     Today: Plan (Swipeable Card)
      ------------------------- */
 
-  function populatePlanGoalLink() {
-    const sel = document.getElementById("planGoalLink");
-    if (!sel) return;
-
-    const goals = LifeOSDB.getCollection("goals")
-      .filter((g) => (g.status || "active") === "active")
-      .slice()
-      .sort((a, b) => (a.targetDate || "").localeCompare(b.targetDate || ""));
-
-    sel.innerHTML = `<option value="">No goal</option>`;
-
-    goals.forEach((g) => {
-      const opt = document.createElement("option");
-      opt.value = g.id;
-      opt.textContent = g.title;
-      sel.appendChild(opt);
-    });
-  }
-
   function renderTodayPlan() {
-    const list = document.getElementById("todayPlanList");
-    if (!list) return;
+    const container = document.getElementById("todayPlanCard");
+    if (!container) return;
 
     const today = isoToday();
+    const weekStart = startOfWeekMondayISO(today);
 
-    const items = LifeOSDB.getCollection("planItems")
+    // Get today's items
+    const todayItems = LifeOSDB.getCollection("planItems")
       .filter((p) => p.date === today)
       .slice()
-      .sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""));
+      .sort((a, b) => {
+        // Sort by time if available, otherwise by creation
+        const aTime = a.startTime || "";
+        const bTime = b.startTime || "";
+        if (aTime && bTime) return aTime.localeCompare(bTime);
+        if (aTime && !bTime) return -1;
+        if (!aTime && bTime) return 1;
+        return (a.createdAt || "").localeCompare(b.createdAt || "");
+      });
 
-    list.innerHTML = "";
-
-    if (items.length === 0) {
-      list.innerHTML = `<li style="color:var(--muted);">Nothing planned for today.</li>`;
-      return;
+    // Get week data for all 7 days
+    const weekData = [];
+    for (let i = 0; i < 7; i++) {
+      const date = addDaysISO(weekStart, i);
+      const items = LifeOSDB.getCollection("planItems").filter((p) => p.date === date);
+      const totalItems = items.length;
+      const doneItems = items.filter((p) => p.status === "done").length;
+      weekData.push({ date, totalItems, doneItems, isToday: date === today });
     }
 
     const goalsById = new Map(LifeOSDB.getCollection("goals").map((g) => [g.id, g]));
 
-    items.forEach((p) => {
-      const li = document.createElement("li");
-      li.style.display = "flex";
-      li.style.justifyContent = "space-between";
-      li.style.alignItems = "center";
-      li.style.gap = "10px";
+    // Category colors
+    const categoryColors = {
+      training: '#22c55e',
+      health: '#3b82f6',
+      work: '#f59e0b',
+      admin: '#8b5cf6',
+      social: '#ec4899',
+      finance: '#10b981',
+      rest: '#64748b'
+    };
 
-      const done = p.status === "done";
-      const goalTitle = p.goalId ? (goalsById.get(p.goalId)?.title || "Goal") : "";
-      const timeText = (p.startTime || p.endTime) ? formatTimeRange(p) : "";
+    container.innerHTML = `
+      <div class="dashboard-card-header">
+        <div class="dashboard-card-title">Plan</div>
+        <a href="#plan" class="dashboard-card-action">View all</a>
+      </div>
+      <div class="dashboard-tabs">
+        <button class="dashboard-tab active" data-tab="day">Day</button>
+        <button class="dashboard-tab" data-tab="week">Week</button>
+      </div>
+      <div class="dashboard-content-container">
+        <!-- DAY PANEL -->
+        <div class="dashboard-content-panel active" data-panel="day">
+          ${todayItems.length === 0 ? `
+            <div class="revolut-empty-state">
+              <div class="revolut-empty-icon">📅</div>
+              <div class="revolut-empty-title">No plans for today</div>
+              <div class="revolut-empty-description">Add items in the Plan tab</div>
+            </div>
+          ` : `
+            <div class="timeline-container">
+              ${todayItems.map((item) => {
+                const done = item.status === "done";
+                const goalTitle = item.goalId ? (goalsById.get(item.goalId)?.title || "") : "";
+                const timeText = formatTimeRange(item);
+                const color = categoryColors[item.category] || '#64748b';
+                const actualTime = item.actualStartTime && item.actualEndTime
+                  ? `${item.actualStartTime}–${item.actualEndTime}`
+                  : null;
+                const variance = item.actualStartTime && item.startTime
+                  ? calculateTimeVariance(item.startTime, item.actualStartTime)
+                  : null;
 
-      li.innerHTML = `
-        <div style="flex:1;">
-          <div style="${done ? "text-decoration:line-through; opacity:0.7;" : ""}">
-            <strong>${escapeHTML(p.title)}</strong>
-            <span style="color:var(--muted); font-size:13px;"> • ${escapeHTML(p.category || "")}</span>
-            ${timeText ? `<span style="color:var(--muted); font-size:13px;"> • ${escapeHTML(timeText)}</span>` : ""}
+                return `
+                  <div class="timeline-item ${done ? 'done' : ''}" data-item-id="${item.id}">
+                    <div class="timeline-marker" style="background:${done ? '#22c55e' : color};"></div>
+                    <div class="timeline-content">
+                      <div class="timeline-header">
+                        <div class="timeline-time">${timeText || 'Unscheduled'}</div>
+                        <div class="timeline-category" style="background:${color}20; color:${color};">
+                          ${escapeHTML(item.category)}
+                        </div>
+                      </div>
+                      <div class="timeline-title ${done ? 'done' : ''}">${escapeHTML(item.title)}</div>
+                      ${goalTitle ? `<div class="timeline-goal">🎯 ${escapeHTML(goalTitle)}</div>` : ''}
+                      ${actualTime ? `
+                        <div class="timeline-actual">
+                          Actual: ${escapeHTML(actualTime)}
+                          ${variance ? `<span style="color:${variance.late ? '#ef4444' : '#22c55e'}; margin-left:6px;">
+                            ${variance.late ? '⏰' : '✓'} ${variance.text}
+                          </span>` : ''}
+                        </div>
+                      ` : ''}
+                      <div class="timeline-actions">
+                        <button class="timeline-btn-small" onclick="togglePlanItem('${item.id}')">${done ? 'Undo' : '✓ Done'}</button>
+                        ${!done && !actualTime ? `<button class="timeline-btn-small" onclick="logActualTime('${item.id}')">⏱ Log time</button>` : ''}
+                        <button class="timeline-btn-small timeline-btn-danger" onclick="deletePlanItem('${item.id}')">Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            <div style="margin-top:16px; padding:12px; background:var(--surface-2); border-radius:var(--radius-sm); border:1px solid var(--border);">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-size:13px; color:var(--muted);">Progress</div>
+                <div style="font-size:14px; font-weight:600;">
+                  ${todayItems.filter(i => i.status === 'done').length} / ${todayItems.length} completed
+                </div>
+              </div>
+              <div class="revolut-progress" style="margin-top:8px;">
+                <div class="revolut-progress-fill" style="width:${todayItems.length > 0 ? (todayItems.filter(i => i.status === 'done').length / todayItems.length * 100) : 0}%;"></div>
+              </div>
+            </div>
+          `}
+        </div>
+
+        <!-- WEEK PANEL -->
+        <div class="dashboard-content-panel" data-panel="week">
+          <div class="week-grid">
+            ${weekData.map(day => {
+              const d = new Date(day.date + 'T00:00:00');
+              const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+              const dayName = dayNames[d.getDay()];
+              const dayNumber = d.getDate();
+              const completionRate = day.totalItems > 0 ? (day.doneItems / day.totalItems * 100) : 0;
+
+              return `
+                <div class="week-day-card ${day.isToday ? 'today' : ''}">
+                  <div class="week-day-header">
+                    <div class="week-day-name">${dayName}</div>
+                    <div class="week-day-number">${dayNumber}</div>
+                  </div>
+                  <div class="week-day-stats">
+                    ${day.totalItems === 0 ? `
+                      <div style="font-size:12px; color:var(--muted); text-align:center;">No plans</div>
+                    ` : `
+                      <div style="font-size:20px; font-weight:700; text-align:center;">${day.totalItems}</div>
+                      <div style="font-size:11px; color:var(--muted); text-align:center;">
+                        ${day.doneItems} done
+                      </div>
+                      <div style="height:4px; background:var(--surface-2); border-radius:2px; margin-top:6px;">
+                        <div style="height:100%; width:${completionRate}%; background:#22c55e; border-radius:2px; transition:width 0.3s ease;"></div>
+                      </div>
+                    `}
+                  </div>
+                </div>
+              `;
+            }).join('')}
           </div>
-          ${
-            goalTitle
-              ? `<div style="color:var(--muted); font-size:13px; margin-top:2px;">Linked: ${escapeHTML(goalTitle)}</div>`
-              : ""
+          <div style="margin-top:16px; padding:12px; background:var(--surface-2); border-radius:var(--radius-sm); border:1px solid var(--border); text-align:center;">
+            <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">Weekly Summary</div>
+            <div style="display:flex; justify-content:space-around; gap:16px;">
+              <div>
+                <div style="font-size:24px; font-weight:700;">${weekData.reduce((sum, d) => sum + d.totalItems, 0)}</div>
+                <div style="font-size:11px; color:var(--muted);">Total items</div>
+              </div>
+              <div>
+                <div style="font-size:24px; font-weight:700; color:#22c55e;">${weekData.reduce((sum, d) => sum + d.doneItems, 0)}</div>
+                <div style="font-size:11px; color:var(--muted);">Completed</div>
+              </div>
+              <div>
+                <div style="font-size:24px; font-weight:700; color:#f59e0b;">${weekData.reduce((sum, d) => sum + (d.totalItems - d.doneItems), 0)}</div>
+                <div style="font-size:11px; color:var(--muted);">Remaining</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Wire tab switching
+    const tabs = container.querySelectorAll(".dashboard-tab");
+    const panels = container.querySelectorAll(".dashboard-content-panel");
+    const contentContainer = container.querySelector(".dashboard-content-container");
+
+    tabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => {
+        tabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+
+        const panel = panels[index];
+        if (panel && contentContainer) {
+          contentContainer.scrollTo({
+            left: panel.offsetLeft,
+            behavior: "smooth"
+          });
+        }
+      });
+    });
+
+    // Scroll sync
+    let scrollTimeout;
+    contentContainer.addEventListener("scroll", () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const scrollLeft = contentContainer.scrollLeft;
+        const containerWidth = contentContainer.offsetWidth;
+        const activeIndex = Math.round(scrollLeft / containerWidth);
+
+        tabs.forEach((tab, index) => {
+          if (index === activeIndex) {
+            tab.classList.add("active");
+          } else {
+            tab.classList.remove("active");
           }
-        </div>
-        <div style="display:flex; gap:8px;">
-          <button type="button" data-toggle="${p.id}">${done ? "Undo" : "Done"}</button>
-          <button type="button" data-delete="${p.id}">Delete</button>
-        </div>
-      `;
-
-      li.querySelector("[data-toggle]").addEventListener("click", () => {
-        LifeOSDB.upsert("planItems", { ...p, status: done ? "planned" : "done" });
-        renderTodayPlan();
-      });
-
-      li.querySelector("[data-delete]").addEventListener("click", () => {
-        LifeOSDB.remove("planItems", p.id);
-        renderTodayPlan();
-      });
-
-      list.appendChild(li);
+        });
+      }, 50);
     });
   }
 
-  function wirePlanForm() {
-    const form = document.getElementById("planItemForm");
-    if (!form) return;
+  // Helper function to calculate time variance
+  function calculateTimeVariance(plannedTime, actualTime) {
+    const [pH, pM] = plannedTime.split(':').map(Number);
+    const [aH, aM] = actualTime.split(':').map(Number);
 
-    const titleEl = document.getElementById("planTitle");
-    const catEl = document.getElementById("planCategory");
-    const goalEl = document.getElementById("planGoalLink");
+    const plannedMinutes = pH * 60 + pM;
+    const actualMinutes = aH * 60 + aM;
+    const diff = actualMinutes - plannedMinutes;
 
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
+    if (diff === 0) return { late: false, text: 'On time' };
 
-      const title = (titleEl.value || "").trim();
-      const category = catEl.value || "admin";
-      const goalId = goalEl.value || "";
+    const absDiff = Math.abs(diff);
+    const hours = Math.floor(absDiff / 60);
+    const mins = absDiff % 60;
 
-      if (!title) return;
+    let text = '';
+    if (hours > 0) text += `${hours}h `;
+    if (mins > 0 || hours === 0) text += `${mins}m`;
+    text = text.trim() + (diff > 0 ? ' late' : ' early');
 
-      LifeOSDB.upsert("planItems", {
-        title,
-        category,
-        goalId: goalId || null,
-        date: isoToday(),
-        status: "planned",
-        createdAt: LifeOSDB.nowISO(),
-      });
-
-      titleEl.value = "";
-      renderTodayPlan();
-    });
+    return { late: diff > 0, text };
   }
+
+  // Global functions for button clicks
+  window.togglePlanItem = function(id) {
+    const item = LifeOSDB.getCollection("planItems").find(p => p.id === id);
+    if (!item) return;
+
+    const newStatus = item.status === "done" ? "planned" : "done";
+    LifeOSDB.upsert("planItems", { ...item, status: newStatus });
+    renderTodayPlan();
+  };
+
+  window.deletePlanItem = function(id) {
+    if (!confirm("Delete this plan item?")) return;
+    LifeOSDB.remove("planItems", id);
+    renderTodayPlan();
+  };
+
+  window.logActualTime = function(id) {
+    const item = LifeOSDB.getCollection("planItems").find(p => p.id === id);
+    if (!item) return;
+
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const actualStart = prompt(`Start time for "${item.title}"?`, item.actualStartTime || currentTime);
+    if (!actualStart) return;
+
+    const actualEnd = prompt(`End time for "${item.title}"?`, item.actualEndTime || currentTime);
+    if (!actualEnd) return;
+
+    LifeOSDB.upsert("planItems", {
+      ...item,
+      actualStartTime: actualStart,
+      actualEndTime: actualEnd,
+      status: "done"
+    });
+
+    renderTodayPlan();
+  };
 
   /* -------------------------
      Storage Health Check
@@ -1185,9 +1347,7 @@ function wireTodayWorkButton() {
     wireTodayDietButtons();
     wireTodayWorkButton();
 
-    populatePlanGoalLink();
     renderTodayPlan();
-    wirePlanForm();
 
     // Re-render when returning to Today (no re-wiring here)
     window.addEventListener("hashchange", () => {
@@ -1195,7 +1355,6 @@ function wireTodayWorkButton() {
         renderTodayGoals();
         renderTodayDiet();
         renderTodayWork();
-        populatePlanGoalLink();
         renderTodayPlan();
       }
     });

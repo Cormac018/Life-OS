@@ -52,42 +52,9 @@
   <!-- Content populated by today.js -->
 </div>
 
-  <!-- Plan for today -->
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 style="margin:0 0 10px 0;">Plan</h2>
-
-    <form id="planItemForm">
-      <label>
-        What are you doing?
-        <input type="text" id="planTitle" placeholder="e.g. Upper A workout" required />
-      </label>
-
-      <label>
-        Category
-        <select id="planCategory">
-          <option value="training">Training</option>
-          <option value="health">Health</option>
-          <option value="work">Work</option>
-          <option value="admin">Admin</option>
-          <option value="social">Social</option>
-          <option value="finance">Finance</option>
-          <option value="rest">Rest</option>
-        </select>
-      </label>
-
-      <label>
-        Link to goal (optional)
-        <select id="planGoalLink">
-          <option value="">No goal</option>
-        </select>
-      </label>
-
-      <button type="submit">Add to today</button>
-    </form>
-
-    <div style="margin-top:12px;">
-      <ul id="todayPlanList"></ul>
-    </div>
+  <!-- Plan for today (Swipeable Card) -->
+  <div id="todayPlanCard" class="dashboard-card" style="margin-top:12px;">
+    <!-- Content populated by today.js -->
   </div>
 <div class="panel" style="padding:14px; margin-top:12px;">
   <h2 style="margin:0 0 10px 0;">Work</h2>

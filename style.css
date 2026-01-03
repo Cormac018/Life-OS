@@ -1472,3 +1472,241 @@ option {
     padding: 14px;
   }
 }
+
+/* ========================================
+   PLAN TIMELINE STYLES
+   ======================================== */
+
+/* Timeline container */
+.timeline-container {
+  position: relative;
+}
+
+.timeline-item {
+  position: relative;
+  padding-left: 32px;
+  padding-bottom: 24px;
+  transition: all 0.2s ease;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-item.done {
+  opacity: 0.6;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 2px var(--border);
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 16px;
+  bottom: -8px;
+  width: 2px;
+  background: var(--border);
+}
+
+.timeline-item:last-child::before {
+  display: none;
+}
+
+.timeline-content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  transition: all 0.2s ease;
+}
+
+.timeline-content:hover {
+  border-color: rgba(79,140,255,0.3);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.timeline-time {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.timeline-category {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.timeline-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.timeline-title.done {
+  text-decoration: line-through;
+}
+
+.timeline-goal {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.timeline-actual {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.timeline-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.timeline-btn-small {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.timeline-btn-small:hover {
+  background: rgba(79,140,255,0.1);
+  border-color: rgba(79,140,255,0.3);
+}
+
+.timeline-btn-small:active {
+  transform: scale(0.97);
+}
+
+.timeline-btn-danger {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.timeline-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* ========================================
+   WEEK GRID STYLES
+   ======================================== */
+
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.week-day-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.week-day-card:hover {
+  border-color: rgba(79,140,255,0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.week-day-card.today {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(79,140,255,0.08) 0%, rgba(122,167,255,0.05) 100%);
+  box-shadow: 0 0 0 1px rgba(79,140,255,0.2);
+}
+
+.week-day-header {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.week-day-name {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.week-day-number {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.week-day-card.today .week-day-name {
+  color: var(--accent);
+}
+
+.week-day-card.today .week-day-number {
+  color: var(--accent);
+}
+
+.week-day-stats {
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Mobile optimization for week grid */
+@media (max-width: 768px) {
+  .week-grid {
+    grid-template-columns: repeat(7, minmax(60px, 1fr));
+    gap: 6px;
+  }
+
+  .week-day-card {
+    padding: 8px 4px;
+  }
+
+  .week-day-name {
+    font-size: 10px;
+  }
+
+  .week-day-number {
+    font-size: 16px;
+  }
+
+  .week-day-stats {
+    min-height: 50px;
+  }
+}
