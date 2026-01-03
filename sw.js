@@ -4,7 +4,7 @@
    - Static asset caching
    ========================= */
 
-const CACHE_NAME = 'lifeos-v12-relative-paths';
+const CACHE_NAME = 'lifeos-v13-work-month-chart';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
