@@ -1710,3 +1710,327 @@ option {
     min-height: 50px;
   }
 }
+
+/* =====================
+   WORK SECTION STYLES
+   ===================== */
+
+/* Work Timer Card */
+.work-timer-card {
+  background: linear-gradient(135deg, rgba(79,140,255,0.08) 0%, rgba(122,167,255,0.05) 100%);
+  border: 1px solid rgba(79,140,255,0.2);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.work-timer-display {
+  margin-bottom: 12px;
+}
+
+.work-timer-hours {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1;
+  background: linear-gradient(135deg, #4f8cff 0%, #7aa7ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 4px;
+}
+
+.work-timer-label {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.work-timer-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--muted);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.work-timer-status.active {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.work-timer-status.inactive {
+  background: rgba(100, 116, 139, 0.1);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.work-timer-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+/* Work Action Buttons */
+.work-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.work-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.work-btn-primary {
+  background: linear-gradient(135deg, #4f8cff 0%, #7aa7ff 100%);
+  color: white;
+}
+
+.work-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 140, 255, 0.3);
+}
+
+.work-btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+  color: white;
+}
+
+.work-btn-danger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.work-btn-secondary {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.work-btn-secondary:hover {
+  background: var(--surface);
+  border-color: rgba(79,140,255,0.3);
+}
+
+/* Quick Adjust Buttons */
+.work-quick-adjust {
+  padding: 12px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.work-btn-small {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text);
+}
+
+.work-btn-small:hover {
+  background: var(--bg);
+  border-color: rgba(79,140,255,0.3);
+  transform: translateY(-1px);
+}
+
+/* Work Bar Chart */
+.work-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  height: 200px;
+  padding: 16px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.work-bar-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.work-bar-wrapper {
+  width: 100%;
+  height: 140px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.work-bar {
+  width: 100%;
+  max-width: 40px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  position: relative;
+  transition: all 0.3s ease;
+  min-height: 4px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.work-bar:hover {
+  opacity: 0.8;
+  transform: translateY(-2px);
+}
+
+.work-bar-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.work-bar-day {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.work-bar-day.today {
+  color: #4f8cff;
+}
+
+.work-bar-date {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* Work Heatmap */
+.work-heatmap {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+}
+
+.work-heatmap-day {
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.work-heatmap-day:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 1;
+}
+
+.work-heatmap-day.today {
+  border: 2px solid #4f8cff;
+  box-shadow: 0 0 0 2px rgba(79,140,255,0.2);
+}
+
+.work-heatmap-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.work-heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 16px;
+}
+
+.work-heatmap-legend-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* Mobile Optimizations */
+@media (max-width: 600px) {
+  .work-timer-hours {
+    font-size: 40px;
+  }
+
+  .work-chart {
+    height: 180px;
+    gap: 4px;
+    padding: 12px 8px;
+  }
+
+  .work-bar-wrapper {
+    height: 120px;
+  }
+
+  .work-bar {
+    max-width: 32px;
+  }
+
+  .work-bar-label {
+    font-size: 10px;
+  }
+
+  .work-bar-day {
+    font-size: 10px;
+  }
+
+  .work-bar-date {
+    font-size: 9px;
+  }
+
+  .work-heatmap {
+    gap: 3px;
+    padding: 12px;
+  }
+
+  .work-heatmap-label {
+    font-size: 10px;
+  }
+}

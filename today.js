@@ -772,110 +772,342 @@ function fmtHoursFromMinutes(mins) {
 }
 
 function renderTodayWork() {
-  const out = document.getElementById("todayWorkSummary");
-  if (!out) return;
+  const container = document.getElementById("todayWorkCard");
+  if (!container) return;
 
-  const logs = (LifeOSDB.getCollection("workLogs") || []).filter(Boolean);
   const today = isoToday();
-
+  const logs = (LifeOSDB.getCollection("workLogs") || []).filter(Boolean);
   const todayLog = logs.find((l) => l && l.date === today) || null;
-  const todayMin = todayLog ? Number(todayLog.minutes) || 0 : 0;
 
+  // Calculate times
+  const todayMinutes = todayLog ? Number(todayLog.minutes) || 0 : 0;
+  const startTime = todayLog?.startTime || null;
+  const endTime = todayLog?.endTime || null;
+  const isActive = startTime && !endTime;
+
+  // Week data
   const weekStart = startOfWeekMondayISO(today);
-  let weekMin = 0;
+  const weekData = [];
+  let weekTotal = 0;
 
   for (let i = 0; i < 7; i++) {
-    const d = addDaysISO(weekStart, i);
-    const x = logs.find((l) => l && l.date === d);
-    weekMin += x ? Number(x.minutes) || 0 : 0;
+    const date = addDaysISO(weekStart, i);
+    const log = logs.find((l) => l && l.date === date);
+    const minutes = log ? Number(log.minutes) || 0 : 0;
+    weekTotal += minutes;
+    weekData.push({
+      date,
+      minutes,
+      hours: minutes / 60,
+      isToday: date === today
+    });
   }
 
-  const note = todayLog && todayLog.note
-    ? ` <span style="color:var(--muted);">(${escapeHTML(todayLog.note)})</span>`
-    : "";
+  // Month data
+  const monthStart = today.slice(0, 8) + '01';
+  const daysInMonth = new Date(today.slice(0, 4), today.slice(5, 7), 0).getDate();
 
-  out.innerHTML = `
-    <div>Today: <strong>${fmtHoursFromMinutes(todayMin)}</strong>${note}</div>
-    <div style="margin-top:6px; color:var(--muted); font-size:13px;">
-      This week (since ${weekStart}): <strong>${fmtHoursFromMinutes(weekMin)}</strong>
+  const monthData = [];
+  let monthTotal = 0;
+  for (let i = 0; i < daysInMonth; i++) {
+    const date = addDaysISO(monthStart, i);
+    const log = logs.find((l) => l && l.date === date);
+    const minutes = log ? Number(log.minutes) || 0 : 0;
+    monthTotal += minutes;
+    monthData.push({
+      date,
+      day: new Date(date + 'T00:00:00').getDate(),
+      minutes,
+      hours: minutes / 60,
+      isToday: date === today
+    });
+  }
+
+  const maxWeekHours = Math.max(...weekData.map(d => d.hours), 1);
+  const maxMonthHours = Math.max(...monthData.map(d => d.hours), 1);
+
+  container.innerHTML = `
+    <div class="dashboard-card-header">
+      <div class="dashboard-card-title">Work</div>
+      <a href="#work" class="dashboard-card-action">View all</a>
+    </div>
+    <div class="dashboard-tabs">
+      <button class="dashboard-tab active" data-tab="day">Day</button>
+      <button class="dashboard-tab" data-tab="week">Week</button>
+      <button class="dashboard-tab" data-tab="month">Month</button>
+    </div>
+    <div class="dashboard-content-container">
+      <!-- DAY PANEL -->
+      <div class="dashboard-content-panel active" data-panel="day">
+        <div class="work-timer-card">
+          <div class="work-timer-display">
+            <div class="work-timer-hours">${fmtHoursFromMinutes(todayMinutes)}</div>
+            <div class="work-timer-label">Today</div>
+          </div>
+          ${isActive ? `
+            <div class="work-timer-status active">
+              <div class="work-timer-pulse"></div>
+              <div>Active since ${startTime}</div>
+            </div>
+          ` : startTime && endTime ? `
+            <div class="work-timer-status">
+              <div>${startTime} – ${endTime}</div>
+            </div>
+          ` : `
+            <div class="work-timer-status inactive">
+              <div>Not started</div>
+            </div>
+          `}
+        </div>
+
+        <div class="work-actions">
+          ${!startTime ? `
+            <button class="work-btn work-btn-primary" onclick="clockIn()">
+              🕐 Clock In
+            </button>
+          ` : !endTime ? `
+            <button class="work-btn work-btn-danger" onclick="clockOut()">
+              ⏹ Clock Out
+            </button>
+          ` : `
+            <button class="work-btn work-btn-secondary" onclick="resetWorkDay()">
+              🔄 Reset
+            </button>
+          `}
+        </div>
+
+        <div class="work-quick-adjust">
+          <div style="font-size:13px; color:var(--muted); margin-bottom:8px; font-weight:600;">Quick Adjust</div>
+          <div style="display:flex; gap:8px;">
+            <button class="work-btn-small" onclick="adjustWorkTime(-30)">-30m</button>
+            <button class="work-btn-small" onclick="adjustWorkTime(30)">+30m</button>
+            <button class="work-btn-small" onclick="adjustWorkTime(60)">+1h</button>
+          </div>
+        </div>
+
+        <div style="margin-top:16px; padding:12px; background:var(--surface-2); border-radius:var(--radius-sm); border:1px solid var(--border);">
+          <div style="font-size:13px; color:var(--muted); margin-bottom:4px;">This Week</div>
+          <div style="font-size:20px; font-weight:700;">${fmtHoursFromMinutes(weekTotal)}</div>
+        </div>
+      </div>
+
+      <!-- WEEK PANEL -->
+      <div class="dashboard-content-panel" data-panel="week">
+        <div style="margin-bottom:16px;">
+          <div style="font-size:13px; color:var(--muted); margin-bottom:4px;">Week Total</div>
+          <div style="font-size:24px; font-weight:700;">${fmtHoursFromMinutes(weekTotal)}</div>
+          <div style="font-size:12px; color:var(--muted); margin-top:2px;">Average: ${fmtHoursFromMinutes(weekTotal / 7)} per day</div>
+        </div>
+
+        <div class="work-chart">
+          ${weekData.map(day => {
+            const d = new Date(day.date + 'T00:00:00');
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const dayName = dayNames[d.getDay()];
+            const height = (day.hours / maxWeekHours) * 100;
+            const color = day.isToday ? '#4f8cff' : day.hours > 0 ? '#22c55e' : '#64748b';
+
+            return `
+              <div class="work-bar-container">
+                <div class="work-bar-wrapper">
+                  <div class="work-bar" style="height:${height}%; background:${color};" title="${day.hours.toFixed(1)}h">
+                    ${day.hours > 0 ? `<div class="work-bar-label">${day.hours.toFixed(1)}</div>` : ''}
+                  </div>
+                </div>
+                <div class="work-bar-day ${day.isToday ? 'today' : ''}">${dayName}</div>
+                <div class="work-bar-date">${d.getDate()}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- MONTH PANEL -->
+      <div class="dashboard-content-panel" data-panel="month">
+        <div style="margin-bottom:16px;">
+          <div style="font-size:13px; color:var(--muted); margin-bottom:4px;">Month Total</div>
+          <div style="font-size:24px; font-weight:700;">${fmtHoursFromMinutes(monthTotal)}</div>
+          <div style="font-size:12px; color:var(--muted); margin-top:2px;">
+            ${monthStart.slice(0, 7)} • ${daysInMonth} days
+          </div>
+        </div>
+
+        <div class="work-heatmap">
+          ${monthData.map(day => {
+            const intensity = day.hours > 0 ? Math.min(Math.floor((day.hours / maxMonthHours) * 4) + 1, 5) : 0;
+            const color = intensity === 0 ? '#1e293b' :
+                         intensity === 1 ? '#0f766e' :
+                         intensity === 2 ? '#14b8a6' :
+                         intensity === 3 ? '#2dd4bf' :
+                         intensity === 4 ? '#5eead4' : '#99f6e4';
+
+            return `
+              <div class="work-heatmap-day ${day.isToday ? 'today' : ''}"
+                   style="background:${color};"
+                   title="${day.date}: ${day.hours.toFixed(1)}h">
+                <div class="work-heatmap-label">${day.day}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+
+        <div class="work-heatmap-legend">
+          <div style="font-size:11px; color:var(--muted);">Less</div>
+          ${[0, 1, 2, 3, 4, 5].map(i => {
+            const color = i === 0 ? '#1e293b' :
+                         i === 1 ? '#0f766e' :
+                         i === 2 ? '#14b8a6' :
+                         i === 3 ? '#2dd4bf' :
+                         i === 4 ? '#5eead4' : '#99f6e4';
+            return `<div class="work-heatmap-legend-box" style="background:${color};"></div>`;
+          }).join('')}
+          <div style="font-size:11px; color:var(--muted);">More</div>
+        </div>
+      </div>
     </div>
   `;
+
+  // Wire tab switching
+  const tabs = container.querySelectorAll(".dashboard-tab");
+  const panels = container.querySelectorAll(".dashboard-content-panel");
+  const contentContainer = container.querySelector(".dashboard-content-container");
+
+  tabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => {
+      tabs.forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+
+      const panel = panels[index];
+      if (panel && contentContainer) {
+        contentContainer.scrollTo({
+          left: panel.offsetLeft,
+          behavior: "smooth"
+        });
+      }
+    });
+  });
+
+  // Scroll sync
+  let scrollTimeout;
+  contentContainer.addEventListener("scroll", () => {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      const scrollLeft = contentContainer.scrollLeft;
+      const containerWidth = contentContainer.offsetWidth;
+      const activeIndex = Math.round(scrollLeft / containerWidth);
+
+      tabs.forEach((tab, index) => {
+        if (index === activeIndex) {
+          tab.classList.add("active");
+        } else {
+          tab.classList.remove("active");
+        }
+      });
+    }, 50);
+  });
 }
 
-function wireTodayWorkButton() {
-  const logBtn = document.getElementById("jumpToWorkBtn");
-  if (logBtn) {
-    logBtn.addEventListener("click", () => {
-      window.location.hash = "#work";
+// Global work functions
+window.clockIn = function() {
+  const now = new Date();
+  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-      // Focus hours input for speed (after route render)
-      setTimeout(() => {
-        const hours = document.getElementById("workHours");
-        if (hours) hours.focus();
-      }, 0);
-    });
-  }
+  const startTime = prompt("Clock in time?", currentTime);
+  if (!startTime) return;
 
-  function addMinutesToToday(deltaMinutes) {
-    const today = isoToday();
-    const id = `work_${today}`;
-    const logs = (LifeOSDB.getCollection("workLogs") || []).filter(Boolean);
-    const existing = logs.find((l) => l && l.id === id) || null;
+  const today = isoToday();
+  const logs = (LifeOSDB.getCollection("workLogs") || []).filter(Boolean);
+  const existing = logs.find((l) => l && l.date === today);
 
-    const prevMin = existing ? Number(existing.minutes) || 0 : 0;
-    const nextMin = Math.max(0, prevMin + deltaMinutes);
+  LifeOSDB.upsert("workLogs", {
+    id: `work_${today}`,
+    date: today,
+    startTime,
+    endTime: null,
+    minutes: existing ? existing.minutes : 0,
+    note: existing ? existing.note : "",
+    createdAt: existing ? existing.createdAt : LifeOSDB.nowISO(),
+    updatedAt: LifeOSDB.nowISO(),
+  });
 
+  renderTodayWork();
+  document.dispatchEvent(new CustomEvent("lifeos:work-updated"));
+};
+
+window.clockOut = function() {
+  const now = new Date();
+  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  const endTime = prompt("Clock out time?", currentTime);
+  if (!endTime) return;
+
+  const today = isoToday();
+  const logs = (LifeOSDB.getCollection("workLogs") || []).filter(Boolean);
+  const existing = logs.find((l) => l && l.date === today);
+
+  if (!existing || !existing.startTime) return;
+
+  // Calculate minutes
+  const [startH, startM] = existing.startTime.split(':').map(Number);
+  const [endH, endM] = endTime.split(':').map(Number);
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+  const totalMinutes = endMinutes - startMinutes;
+
+  LifeOSDB.upsert("workLogs", {
+    ...existing,
+    endTime,
+    minutes: totalMinutes > 0 ? totalMinutes : 0,
+    updatedAt: LifeOSDB.nowISO(),
+  });
+
+  renderTodayWork();
+  document.dispatchEvent(new CustomEvent("lifeos:work-updated"));
+};
+
+window.resetWorkDay = function() {
+  if (!confirm("Reset today's work log?")) return;
+
+  const today = isoToday();
+  const logs = (LifeOSDB.getCollection("workLogs") || []).filter(Boolean);
+  const existing = logs.find((l) => l && l.date === today);
+
+  if (existing) {
     LifeOSDB.upsert("workLogs", {
-      id,
-      date: today,
-      minutes: nextMin,
-      note: existing ? (existing.note || "") : "",
-      createdAt: existing ? (existing.createdAt || LifeOSDB.nowISO()) : LifeOSDB.nowISO(),
+      ...existing,
+      startTime: null,
+      endTime: null,
+      minutes: 0,
       updatedAt: LifeOSDB.nowISO(),
     });
-
-    // Update Today immediately + notify other views
-    renderTodayWork();
-    document.dispatchEvent(new CustomEvent("lifeos:work-updated"));
   }
 
-  const add30 = document.getElementById("workQuickAdd30Btn");
-  if (add30) {
-    add30.addEventListener("click", () => addMinutesToToday(30));
-  }
+  renderTodayWork();
+  document.dispatchEvent(new CustomEvent("lifeos:work-updated"));
+};
 
-  const add60 = document.getElementById("workQuickAdd60Btn");
-  if (add60) {
-    add60.addEventListener("click", () => addMinutesToToday(60));
-  }
-    const sub30 = document.getElementById("workQuickSub30Btn");
-  if (sub30) {
-    sub30.addEventListener("click", () => {
-      const today = isoToday();
-      const id = `work_${today}`;
+window.adjustWorkTime = function(deltaMinutes) {
+  const today = isoToday();
+  const logs = (LifeOSDB.getCollection("workLogs") || []).filter(Boolean);
+  const existing = logs.find((l) => l && l.date === today);
 
-      const logs = (LifeOSDB.getCollection("workLogs") || []).filter(Boolean);
-      const existing = logs.find((l) => l && l.id === id) || null;
+  const prevMin = existing ? Number(existing.minutes) || 0 : 0;
+  const nextMin = Math.max(0, prevMin + deltaMinutes);
 
-      const prevMin = existing ? Number(existing.minutes) || 0 : 0;
-      const nextMin = Math.max(0, prevMin - 30);
+  LifeOSDB.upsert("workLogs", {
+    id: `work_${today}`,
+    date: today,
+    minutes: nextMin,
+    startTime: existing ? existing.startTime : null,
+    endTime: existing ? existing.endTime : null,
+    note: existing ? existing.note : "",
+    createdAt: existing ? existing.createdAt : LifeOSDB.nowISO(),
+    updatedAt: LifeOSDB.nowISO(),
+  });
 
-      LifeOSDB.upsert("workLogs", {
-        id,
-        date: today,
-        minutes: nextMin,
-        note: existing ? (existing.note || "") : "",
-        createdAt: existing ? (existing.createdAt || LifeOSDB.nowISO()) : LifeOSDB.nowISO(),
-        updatedAt: LifeOSDB.nowISO(),
-      });
-
-      // Update Today immediately + notify Work tab
-      renderTodayWork();
-      document.dispatchEvent(new CustomEvent("lifeos:work-updated"));
-    });
-  }
-
-}
+  renderTodayWork();
+  document.dispatchEvent(new CustomEvent("lifeos:work-updated"));
+};
 
   function wireTodayDietButtons() {
   function openDietLog() {
@@ -1345,7 +1577,6 @@ function wireTodayWorkButton() {
     renderTodayWork();
 
     wireTodayDietButtons();
-    wireTodayWorkButton();
 
     renderTodayPlan();
 
