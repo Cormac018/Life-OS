@@ -1937,60 +1937,78 @@ option {
   color: var(--muted);
 }
 
-/* Work Heatmap */
-.work-heatmap {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  padding: 16px;
+/* Work Month Chart */
+.work-month-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 3px;
+  height: 200px;
+  padding: 16px 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  margin-bottom: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
-.work-heatmap-day {
-  aspect-ratio: 1;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid rgba(255,255,255,0.05);
+.work-month-chart::-webkit-scrollbar {
+  height: 6px;
 }
 
-.work-heatmap-day:hover {
-  transform: scale(1.1);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  z-index: 1;
-}
-
-.work-heatmap-day.today {
-  border: 2px solid #4f8cff;
-  box-shadow: 0 0 0 2px rgba(79,140,255,0.2);
-}
-
-.work-heatmap-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(255,255,255,0.9);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-}
-
-.work-heatmap-legend {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 8px 16px;
-}
-
-.work-heatmap-legend-box {
-  width: 16px;
-  height: 16px;
+.work-month-chart::-webkit-scrollbar-track {
+  background: var(--surface-2);
   border-radius: 3px;
-  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.work-month-chart::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.work-month-chart::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+.work-month-bar-container {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 18px;
+}
+
+.work-month-bar-wrapper {
+  width: 100%;
+  height: 140px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.work-month-bar {
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+  transition: all 0.2s ease;
+  min-height: 2px;
+}
+
+.work-month-bar:hover {
+  opacity: 0.8;
+}
+
+.work-month-day {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.work-month-day.today {
+  color: #4f8cff;
+  font-weight: 700;
 }
 
 /* Mobile Optimizations */
@@ -2025,12 +2043,21 @@ option {
     font-size: 9px;
   }
 
-  .work-heatmap {
-    gap: 3px;
-    padding: 12px;
+  .work-month-chart {
+    height: 180px;
+    gap: 2px;
+    padding: 12px 8px;
   }
 
-  .work-heatmap-label {
-    font-size: 10px;
+  .work-month-bar-container {
+    width: 16px;
+  }
+
+  .work-month-bar-wrapper {
+    height: 120px;
+  }
+
+  .work-month-day {
+    font-size: 8px;
   }
 }

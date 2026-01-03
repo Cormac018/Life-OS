@@ -928,40 +928,24 @@ function renderTodayWork() {
           <div style="font-size:13px; color:var(--muted); margin-bottom:4px;">Month Total</div>
           <div style="font-size:24px; font-weight:700;">${fmtHoursFromMinutes(monthTotal)}</div>
           <div style="font-size:12px; color:var(--muted); margin-top:2px;">
-            ${monthStart.slice(0, 7)} • ${daysInMonth} days
+            ${monthStart.slice(0, 7)} • ${daysInMonth} days • Average: ${fmtHoursFromMinutes(monthTotal / daysInMonth)} per day
           </div>
         </div>
 
-        <div class="work-heatmap">
+        <div class="work-month-chart">
           ${monthData.map(day => {
-            const intensity = day.hours > 0 ? Math.min(Math.floor((day.hours / maxMonthHours) * 4) + 1, 5) : 0;
-            const color = intensity === 0 ? '#1e293b' :
-                         intensity === 1 ? '#0f766e' :
-                         intensity === 2 ? '#14b8a6' :
-                         intensity === 3 ? '#2dd4bf' :
-                         intensity === 4 ? '#5eead4' : '#99f6e4';
+            const height = maxMonthHours > 0 ? (day.hours / maxMonthHours) * 100 : 0;
+            const color = day.isToday ? '#4f8cff' : day.hours > 0 ? '#22c55e' : '#64748b';
 
             return `
-              <div class="work-heatmap-day ${day.isToday ? 'today' : ''}"
-                   style="background:${color};"
-                   title="${day.date}: ${day.hours.toFixed(1)}h">
-                <div class="work-heatmap-label">${day.day}</div>
+              <div class="work-month-bar-container" title="${day.date}: ${day.hours.toFixed(1)}h">
+                <div class="work-month-bar-wrapper">
+                  <div class="work-month-bar" style="height:${height}%; background:${color};"></div>
+                </div>
+                <div class="work-month-day ${day.isToday ? 'today' : ''}">${day.day}</div>
               </div>
             `;
           }).join('')}
-        </div>
-
-        <div class="work-heatmap-legend">
-          <div style="font-size:11px; color:var(--muted);">Less</div>
-          ${[0, 1, 2, 3, 4, 5].map(i => {
-            const color = i === 0 ? '#1e293b' :
-                         i === 1 ? '#0f766e' :
-                         i === 2 ? '#14b8a6' :
-                         i === 3 ? '#2dd4bf' :
-                         i === 4 ? '#5eead4' : '#99f6e4';
-            return `<div class="work-heatmap-legend-box" style="background:${color};"></div>`;
-          }).join('')}
-          <div style="font-size:11px; color:var(--muted);">More</div>
         </div>
       </div>
     </div>
