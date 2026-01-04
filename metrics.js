@@ -204,33 +204,56 @@ function removeEntry(entry) {
       const quality = qualityByDate.get(date) || null;
 
       const hoursText = hours ? `${hours.value}h` : "—";
-      const qualityText = quality ? `${quality.value}/100` : "—";
+      const qualityText = quality ? `${quality.value}%` : "—";
+      const qualityValue = quality ? Number(quality.value) : 0;
+
+      // Quality color coding
+      let qualityColor = '#64748b'; // gray default
+      if (qualityValue >= 80) qualityColor = '#22c55e'; // green
+      else if (qualityValue >= 60) qualityColor = '#f59e0b'; // amber
+      else if (qualityValue > 0) qualityColor = '#ef4444'; // red
+
+      // Sleep duration indicator
+      const hoursValue = hours ? Number(hours.value) : 0;
+      let durationColor = '#64748b';
+      if (hoursValue >= 7 && hoursValue <= 9) durationColor = '#22c55e'; // ideal
+      else if (hoursValue >= 6 || hoursValue <= 10) durationColor = '#f59e0b'; // acceptable
+      else if (hoursValue > 0) durationColor = '#ef4444'; // not enough/too much
 
       const li = document.createElement("li");
+      li.className = "revolut-card";
+      li.style.padding = "16px";
+      li.style.marginBottom = "10px";
       li.style.display = "flex";
       li.style.justifyContent = "space-between";
       li.style.alignItems = "center";
-      li.style.gap = "10px";
+      li.style.gap = "12px";
 
       li.innerHTML = `
-        <span>${date}: <strong>${hoursText}</strong> • <strong>${qualityText}</strong></span>
-        <div style="display:flex; gap:8px;">
-          <button type="button" data-del-hours="${hours ? hours.id : ""}" ${hours ? "" : "disabled"}>Del hours</button>
-          <button type="button" data-del-quality="${quality ? quality.id : ""}" ${quality ? "" : "disabled"}>Del quality</button>
+        <div style="flex:1;">
+          <div style="font-size:14px; font-weight:600; margin-bottom:6px;">${date}</div>
+          <div style="display:flex; gap:16px; align-items:center;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:18px; font-weight:700; color:${durationColor};">${hoursText}</span>
+              <span style="font-size:12px; color:var(--muted);">duration</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:18px; font-weight:700; color:${qualityColor};">${qualityText}</span>
+              <span style="font-size:12px; color:var(--muted);">quality</span>
+            </div>
+          </div>
         </div>
+        <button type="button" data-del-entry="${date}" style="padding:8px 14px; font-size:13px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); cursor:pointer; white-space:nowrap;">Delete</button>
       `;
 
-      const delHoursBtn = li.querySelector("[data-del-hours]");
-      delHoursBtn.addEventListener("click", () => {
-  if (hours) removeEntry(hours);
-  renderSleepList();
-});
-
-      const delQualityBtn = li.querySelector("[data-del-quality]");
-      delQualityBtn.addEventListener("click", () => {
-  if (quality) removeEntry(quality);
-  renderSleepList();
-});
+      const delBtn = li.querySelector("[data-del-entry]");
+      delBtn.addEventListener("click", () => {
+        if (!confirm(`Delete sleep entry for ${date}?`)) return;
+        if (hours) removeEntry(hours);
+        if (quality) removeEntry(quality);
+        renderSleepList();
+        renderSleepInsights();
+      });
 
       list.appendChild(li);
     });

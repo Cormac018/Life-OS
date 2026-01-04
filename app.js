@@ -1977,6 +1977,48 @@ function show(which) {
     '\n  - sleepPaneLog:', panes.log?.className,
     '\n  - sleepPaneProgress:', panes.progress?.className);
   show("log");
+
+  // Wire Sleep Progress swipeable dashboard
+  const sleepProgressContainer = document.querySelector("#sleepPaneProgress .dashboard-card");
+  if (sleepProgressContainer) {
+    const sleepProgressTabs = sleepProgressContainer.querySelectorAll(".dashboard-tab");
+    const sleepProgressPanels = sleepProgressContainer.querySelectorAll(".dashboard-content-panel");
+    const sleepProgressContentContainer = document.getElementById("sleepProgressContentContainer");
+
+    sleepProgressTabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => {
+        sleepProgressTabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+
+        const panel = sleepProgressPanels[index];
+        if (panel && sleepProgressContentContainer) {
+          sleepProgressContentContainer.scrollTo({
+            left: panel.offsetLeft,
+            behavior: "smooth"
+          });
+        }
+      });
+    });
+
+    // Scroll sync for swipe gestures
+    let sleepProgressScrollTimeout;
+    sleepProgressContentContainer.addEventListener("scroll", () => {
+      clearTimeout(sleepProgressScrollTimeout);
+      sleepProgressScrollTimeout = setTimeout(() => {
+        const scrollLeft = sleepProgressContentContainer.scrollLeft;
+        const containerWidth = sleepProgressContentContainer.offsetWidth;
+        const activeIndex = Math.round(scrollLeft / containerWidth);
+
+        sleepProgressTabs.forEach((tab, index) => {
+          if (index === activeIndex) {
+            tab.classList.add("active");
+          } else {
+            tab.classList.remove("active");
+          }
+        });
+      }, 50);
+    });
+  }
 });
 
 // =====================

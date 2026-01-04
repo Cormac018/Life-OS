@@ -279,62 +279,95 @@
   </div>
 
   <div id="sleepPaneLog" class="sleep-pane active">
-    <div class="panel" style="padding:14px; margin-top:12px;">
-      <h2 style="margin-top:0;">Sleep</h2>
-<div style="display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 12px;">
-  <div class="panel" style="padding:12px; flex:1; min-width:160px;">
-    <div style="color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.18px;">Last night</div>
-    <div id="sleepLastNight" style="font-weight:800; margin-top:6px;">—</div>
-  </div>
+    <!-- Summary Cards -->
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin:12px 0;">
+      <div class="revolut-card" style="flex:1; min-width:160px; padding:16px;">
+        <div style="color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Last Night</div>
+        <div id="sleepLastNight" style="font-weight:700; font-size:20px; background:linear-gradient(135deg, #4f8cff 0%, #7aa7ff 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">—</div>
+      </div>
 
-  <div class="panel" style="padding:12px; flex:1; min-width:160px;">
-    <div style="color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.18px;">Current streak</div>
-    <div id="sleepCurrentStreak" style="font-weight:800; margin-top:6px;">—</div>
-  </div>
-</div>
+      <div class="revolut-card" style="flex:1; min-width:160px; padding:16px;">
+        <div style="color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Current Streak</div>
+        <div id="sleepCurrentStreak" style="font-weight:700; font-size:20px; color:#22c55e;">—</div>
+      </div>
+    </div>
 
-      <form id="sleepForm">
-        <label>
-          Date
-          <input type="date" id="sleepDate" required />
+    <!-- Log Sleep Form -->
+    <div class="revolut-card" style="margin:12px 0; padding:20px;">
+      <div style="font-size:16px; font-weight:700; margin-bottom:16px; color:var(--text);">Log Sleep</div>
+      <form id="sleepForm" style="display:flex; flex-direction:column; gap:14px;">
+        <label style="display:flex; flex-direction:column; gap:6px;">
+          <span style="font-size:13px; font-weight:600; color:var(--muted);">Date</span>
+          <input type="date" id="sleepDate" required style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
         </label>
 
-        <label>
-          Duration (hours)
-          <input type="number" id="sleepHours" step="0.1" min="0" max="24" required />
+        <label style="display:flex; flex-direction:column; gap:6px;">
+          <span style="font-size:13px; font-weight:600; color:var(--muted);">Duration (hours)</span>
+          <input type="number" id="sleepHours" step="0.1" min="0" max="24" required placeholder="e.g., 7.5" style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
         </label>
 
-        <label>
-          Quality (1-100)
-          <input type="number" id="sleepQuality" step="1" min="1" max="100" required />
+        <label style="display:flex; flex-direction:column; gap:6px;">
+          <span style="font-size:13px; font-weight:600; color:var(--muted);">Quality (1-100)</span>
+          <input type="number" id="sleepQuality" step="1" min="1" max="100" required placeholder="e.g., 85" style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
         </label>
 
-        <button type="submit">Add sleep entry</button>
+        <button type="submit" style="padding:14px; font-size:15px; font-weight:600; border-radius:8px; border:none; background:linear-gradient(135deg, var(--accent) 0%, rgba(122,167,255,1) 100%); color:white; cursor:pointer; margin-top:6px;">Add Sleep Entry</button>
       </form>
+    </div>
+
+    <!-- Sleep History List -->
+    <div style="margin:12px 0;">
+      <ul id="sleepList" style="list-style:none; padding:0; margin:0;"></ul>
     </div>
   </div>
 
   <div id="sleepPaneProgress" class="sleep-pane">
-    <div class="panel" style="padding:14px; margin-top:12px;">
-      <h3 style="margin-top:0;">Sleep progress</h3>
-      <div style="color:var(--muted); font-size:13px; margin-bottom:10px;">
-        History for now — we’ll add trends, averages, and consistency here later.
+    <!-- Time Range Selector -->
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin:12px 0;">
+      <button type="button" class="btn-ghost sleep-range-btn active" data-range="7">Week</button>
+      <button type="button" class="btn-ghost sleep-range-btn" data-range="30">Month</button>
+      <button type="button" class="btn-ghost sleep-range-btn" data-range="90">3M</button>
+      <button type="button" class="btn-ghost sleep-range-btn" data-range="180">6M</button>
+      <button type="button" class="btn-ghost sleep-range-btn" data-range="365">Year</button>
+    </div>
+
+    <!-- Swipeable Dashboard -->
+    <div class="dashboard-card" style="margin-top:12px;">
+      <div class="dashboard-tabs">
+        <button class="dashboard-tab active" data-sleep-progress-tab="summary">Summary</button>
+        <button class="dashboard-tab" data-sleep-progress-tab="chart">Chart</button>
+        <button class="dashboard-tab" data-sleep-progress-tab="insights">Insights</button>
       </div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 12px;">
-  <button type="button" class="btn-ghost sleep-range-btn active" data-range="7">Week</button>
-  <button type="button" class="btn-ghost sleep-range-btn" data-range="30">Month</button>
-  <button type="button" class="btn-ghost sleep-range-btn" data-range="90">3M</button>
-  <button type="button" class="btn-ghost sleep-range-btn" data-range="180">6M</button>
-  <button type="button" class="btn-ghost sleep-range-btn" data-range="365">Year</button>
-</div>
+      <div class="dashboard-content-container" id="sleepProgressContentContainer">
+        <!-- Summary Panel -->
+        <div class="dashboard-content-panel active" data-sleep-progress-panel="summary">
+          <div class="revolut-card" style="padding:20px; margin-bottom:12px;">
+            <div style="font-size:16px; font-weight:700; margin-bottom:16px;">Sleep Statistics</div>
+            <div id="sleepAverages" style="font-size:14px; line-height:1.6;">—</div>
+          </div>
+          <div class="revolut-card" style="padding:20px;">
+            <div style="font-size:16px; font-weight:700; margin-bottom:16px;">Streaks</div>
+            <div id="sleepLongestStreak" style="font-size:14px; line-height:1.6;">—</div>
+          </div>
+        </div>
 
-<canvas id="sleepChart" style="width:100%; height:220px; display:block; border:1px solid var(--border); border-radius:12px; background:rgba(255,255,255,.03);"></canvas>
+        <!-- Chart Panel -->
+        <div class="dashboard-content-panel" data-sleep-progress-panel="chart">
+          <div style="padding:14px;">
+            <canvas id="sleepChart" style="width:100%; height:260px; display:block; border-radius:12px;"></canvas>
+          </div>
+        </div>
 
-<div class="panel" style="padding:12px; margin-top:12px;">
-  <div id="sleepAverages" style="font-weight:700;">—</div>
-  <div style="color:var(--muted); font-size:13px; margin-top:6px;" id="sleepLongestStreak">—</div>
-</div>
-      <ul id="sleepList"></ul>
+        <!-- Insights Panel -->
+        <div class="dashboard-content-panel" data-sleep-progress-panel="insights">
+          <div class="revolut-card" style="padding:20px;">
+            <div style="font-size:16px; font-weight:700; margin-bottom:16px;">Sleep Insights</div>
+            <div id="sleepInsightsContent" style="font-size:14px; color:var(--muted); line-height:1.6;">
+              Track your sleep patterns over time to identify trends and improve your sleep quality.
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

@@ -4,7 +4,7 @@
    - Static asset caching
    ========================= */
 
-const CACHE_NAME = 'lifeos-v25-html-structure-fix';
+const CACHE_NAME = 'lifeos-v27-sleep-swipeable-dashboard';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
