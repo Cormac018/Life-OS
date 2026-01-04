@@ -11,13 +11,14 @@
   const METRICS = {
     // existing
     bodyweight: { id: "bodyweight", name: "Bodyweight", unit: "kg", type: "number", sourceModule: "health" },
+    leanMass: { id: "lean_mass_kg", name: "Lean mass", unit: "kg", type: "number", sourceModule: "health", calculated: true },
     sleepHours: { id: "sleep_hours", name: "Sleep duration", unit: "hours", type: "number", sourceModule: "health" },
    sleepQuality: { id: "sleep_quality", name: "Sleep quality", unit: "1–100", type: "number", sourceModule: "health" },
 
     // body composition
     bodyFat: { id: "body_fat_pct", name: "Body fat", unit: "%", type: "number", sourceModule: "health" },
     bodyWater: { id: "body_water_pct", name: "Body water", unit: "%", type: "number", sourceModule: "health" },
-    boneMetric: { id: "bone_metric", name: "Bone metric", unit: "?", type: "number", sourceModule: "health" },
+    boneMetric: { id: "bone_metric", name: "Bone metric", unit: "%", type: "number", sourceModule: "health" },
 
     // measurements (cm)
     waist: { id: "waist_cm", name: "Waist", unit: "cm", type: "number", sourceModule: "health" },
@@ -104,6 +105,27 @@ function removeEntry(entry) {
   }
 
   /* -------------------------
+     Auto-calculate lean mass
+     ------------------------- */
+  function calculateAndSaveLeanMass(date) {
+    const weight = findEntryByDate(METRICS.bodyweight.id, date);
+    const bodyFat = findEntryByDate(METRICS.bodyFat.id, date);
+
+    if (!weight || !bodyFat) return;
+
+    const w = Number(weight.value);
+    const bf = Number(bodyFat.value);
+
+    if (!Number.isFinite(w) || !Number.isFinite(bf)) return;
+
+    // Calculate lean mass: weight × (1 - bodyfat% / 100)
+    const leanMass = w * (1 - bf / 100);
+
+    // Save as metric entry
+    upsertEntry(METRICS.leanMass.id, date, Number(leanMass.toFixed(2)));
+  }
+
+  /* -------------------------
      Bodyweight UI
      ------------------------- */
 
@@ -159,11 +181,13 @@ function removeEntry(entry) {
       if (!date || !Number.isFinite(value)) return;
 
       upsertEntry(METRICS.bodyweight.id, date, value);
+      calculateAndSaveLeanMass(date); // Auto-calculate lean mass
 
       valueInput.value = "";
       renderBodyweightList();
       renderLeanMassHint();
       renderDietHint();
+      renderBodyCompProgress(); // Update progress charts
     });
   }
 
@@ -846,6 +870,111 @@ setDefaultSleepDate();
   }
 
   /* -------------------------
+     Morning Measurements Quick-Input
+     ------------------------- */
+  function wireMorningMeasurementsForm() {
+    const form = document.getElementById("morningMeasurementsForm");
+    if (!form) return;
+
+    const dateEl = document.getElementById("mmDate");
+    const weightEl = document.getElementById("mmWeight");
+    const fatEl = document.getElementById("mmBodyFat");
+    const waterEl = document.getElementById("mmBodyWater");
+    const boneEl = document.getElementById("mmBone");
+
+    dateEl.value = isoToday();
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const date = dateEl.value;
+      if (!date) return;
+
+      const weight = weightEl.value === "" ? null : Number(weightEl.value);
+      const fat = fatEl.value === "" ? null : Number(fatEl.value);
+      const water = waterEl.value === "" ? null : Number(waterEl.value);
+      const bone = boneEl.value === "" ? null : Number(boneEl.value);
+
+      // Save all 4 morning measurements
+      if (weight !== null && Number.isFinite(weight)) upsertEntry(METRICS.bodyweight.id, date, weight);
+      if (fat !== null && Number.isFinite(fat)) upsertEntry(METRICS.bodyFat.id, date, fat);
+      if (water !== null && Number.isFinite(water)) upsertEntry(METRICS.bodyWater.id, date, water);
+      if (bone !== null && Number.isFinite(bone)) upsertEntry(METRICS.boneMetric.id, date, bone);
+
+      // Auto-calculate lean mass
+      calculateAndSaveLeanMass(date);
+
+      // Clear inputs
+      weightEl.value = "";
+      fatEl.value = "";
+      waterEl.value = "";
+      boneEl.value = "";
+
+      // Refresh all displays
+      renderBodyweightList();
+      renderBodyCompList();
+      renderLeanMassHint();
+      renderDietHint();
+      renderBodyCompProgress();
+      renderMorningMeasurementsSummary();
+    });
+  }
+
+  function renderMorningMeasurementsSummary() {
+    const el = document.getElementById("morningMeasurementsSummary");
+    if (!el) return;
+
+    const today = isoToday();
+    const weight = findEntryByDate(METRICS.bodyweight.id, today);
+    const fat = findEntryByDate(METRICS.bodyFat.id, today);
+    const water = findEntryByDate(METRICS.bodyWater.id, today);
+    const bone = findEntryByDate(METRICS.boneMetric.id, today);
+    const leanMass = findEntryByDate(METRICS.leanMass.id, today);
+
+    if (!weight && !fat && !water && !bone) {
+      el.innerHTML = `<div style="color:var(--muted); text-align:center; padding:20px;">No measurements logged today.</div>`;
+      return;
+    }
+
+    const statsHTML = `
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px;">
+        ${weight ? `
+          <div class="stat-card">
+            <div class="stat-label">Weight</div>
+            <div class="stat-value">${Number(weight.value).toFixed(1)} kg</div>
+          </div>
+        ` : ''}
+        ${leanMass ? `
+          <div class="stat-card">
+            <div class="stat-label">Lean Mass</div>
+            <div class="stat-value" style="color:#22c55e;">${Number(leanMass.value).toFixed(1)} kg</div>
+          </div>
+        ` : ''}
+        ${fat ? `
+          <div class="stat-card">
+            <div class="stat-label">Body Fat</div>
+            <div class="stat-value">${Number(fat.value).toFixed(1)}%</div>
+          </div>
+        ` : ''}
+        ${water ? `
+          <div class="stat-card">
+            <div class="stat-label">Body Water</div>
+            <div class="stat-value">${Number(water.value).toFixed(1)}%</div>
+          </div>
+        ` : ''}
+        ${bone ? `
+          <div class="stat-card">
+            <div class="stat-label">Bone Density</div>
+            <div class="stat-value">${Number(bone.value).toFixed(1)}%</div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    el.innerHTML = statsHTML;
+  }
+
+  /* -------------------------
      Body comp + measurements
      ------------------------- */
 
@@ -874,12 +1003,15 @@ setDefaultSleepDate();
       if (water !== null && Number.isFinite(water)) upsertEntry(METRICS.bodyWater.id, date, water);
       if (bone !== null && Number.isFinite(bone)) upsertEntry(METRICS.boneMetric.id, date, bone);
 
+      calculateAndSaveLeanMass(date); // Auto-calculate lean mass
+
       fatEl.value = "";
       waterEl.value = "";
       boneEl.value = "";
 
       renderBodyCompList();
       renderLeanMassHint();
+      renderBodyCompProgress(); // Update progress charts
     });
   }
 
@@ -951,6 +1083,507 @@ setDefaultSleepDate();
     hint.textContent =
       `Estimate for ${date}: Lean mass ≈ ${leanMass.toFixed(1)} kg, Fat mass ≈ ${fatMass.toFixed(1)} kg ` +
       `(computed from Bodyweight × (1 − Body fat%/100)).`;
+  }
+
+  /* -------------------------
+     Body Composition Progress Charts
+     ------------------------- */
+  let bodyCompRangeDays = 30;
+
+  function getBodyCompSeriesByDay() {
+    const entries = LifeOSDB.getCollection("metricEntries") || [];
+    const byDate = new Map();
+
+    for (const e of entries) {
+      if (!e || !e.metricId || !e.date) continue;
+
+      const obj = byDate.get(e.date) || {
+        date: e.date,
+        weight: null,
+        leanMass: null,
+        bodyFat: null,
+        bodyWater: null,
+        bone: null
+      };
+
+      if (e.metricId === METRICS.bodyweight.id) obj.weight = Number(e.value);
+      if (e.metricId === METRICS.leanMass.id) obj.leanMass = Number(e.value);
+      if (e.metricId === METRICS.bodyFat.id) obj.bodyFat = Number(e.value);
+      if (e.metricId === METRICS.bodyWater.id) obj.bodyWater = Number(e.value);
+      if (e.metricId === METRICS.boneMetric.id) obj.bone = Number(e.value);
+
+      byDate.set(e.date, obj);
+    }
+
+    const series = Array.from(byDate.values())
+      .filter(x => x.date)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+    return series;
+  }
+
+  function drawBodyCompChart(filtered) {
+    const canvas = document.getElementById("bodyCompChart");
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+
+    const cssW = canvas.clientWidth || 300;
+    const cssH = 280;
+    canvas.width = Math.floor(cssW * dpr);
+    canvas.height = Math.floor(cssH * dpr);
+    ctx.scale(dpr, dpr);
+
+    const gridColor = isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)";
+    const textColor = isDark ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.8)";
+    const mutedColor = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)";
+
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    const padL = 50, padR = 50, padT = 20, padB = 60;
+    const w = cssW - padL - padR;
+    const h = cssH - padT - padB;
+
+    if (!filtered || filtered.length < 2) {
+      ctx.fillStyle = textColor;
+      ctx.font = "13px " + getComputedStyle(document.body).fontFamily;
+      ctx.fillText("Log at least 2 entries to see trends.", padL + 10, padT + 24);
+      return;
+    }
+
+    // Prepare data series
+    const weightVals = filtered.map(x => x.weight).filter(n => Number.isFinite(n));
+    const leanMassVals = filtered.map(x => x.leanMass).filter(n => Number.isFinite(n));
+    const bodyFatVals = filtered.map(x => x.bodyFat).filter(n => Number.isFinite(n));
+
+    // Calculate trends
+    const weightTrend = weightVals.length >= 2 ? (weightVals[weightVals.length - 1] - weightVals[0]) : 0;
+    const leanMassTrend = leanMassVals.length >= 2 ? (leanMassVals[leanMassVals.length - 1] - leanMassVals[0]) : 0;
+    const bodyFatTrend = bodyFatVals.length >= 2 ? (bodyFatVals[bodyFatVals.length - 1] - bodyFatVals[0]) : 0;
+
+    // Line colors
+    const weightColor = "#60a5fa"; // blue
+    const leanMassColor = "#22c55e"; // green
+    const bodyFatColor = "#a78bfa"; // light purple
+
+    // Scales - left axis for kg, right axis for %
+    const allKgValues = [...weightVals, ...leanMassVals];
+    const maxKg = allKgValues.length ? Math.ceil(Math.max(...allKgValues) + 2) : 100;
+    const minKg = allKgValues.length ? Math.floor(Math.min(...allKgValues) - 2) : 0;
+    const kgRange = maxKg - minKg;
+
+    const xFor = (i) => padL + (i * (w / (filtered.length - 1)));
+    const yForKg = (v) => padT + h - ((v - minKg) / kgRange) * h;
+    const yForPercent = (v) => padT + h - ((v / 100) * h);
+
+    // Draw axes
+    ctx.globalAlpha = 0.35;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT);
+    ctx.lineTo(padL, padT + h);
+    ctx.lineTo(padL + w, padT + h);
+    ctx.strokeStyle = gridColor;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Y-axis labels (left - kg)
+    ctx.font = "11px " + getComputedStyle(document.body).fontFamily;
+    ctx.fillStyle = mutedColor;
+    ctx.textAlign = "right";
+    ctx.fillText(`${maxKg}kg`, padL - 8, padT + 10);
+    ctx.fillText(`${Math.round((maxKg + minKg) / 2)}kg`, padL - 8, padT + h / 2 + 4);
+    ctx.fillText(`${minKg}kg`, padL - 8, padT + h + 4);
+
+    // Y-axis labels (right - %)
+    ctx.textAlign = "left";
+    ctx.fillText("100%", padL + w + 8, padT + 10);
+    ctx.fillText("50%", padL + w + 8, padT + h / 2 + 4);
+    ctx.fillText("0%", padL + w + 8, padT + h + 4);
+
+    // Draw Bodyweight line
+    const weightPoints = [];
+    filtered.forEach((p, i) => {
+      if (Number.isFinite(p.weight)) {
+        weightPoints.push({ x: xFor(i), y: yForKg(p.weight) });
+      }
+    });
+
+    if (weightPoints.length > 0) {
+      ctx.beginPath();
+      weightPoints.forEach((pt, i) => {
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      });
+      ctx.strokeStyle = weightColor;
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.stroke();
+
+      weightPoints.forEach(pt => {
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = weightColor;
+        ctx.fill();
+      });
+    }
+
+    // Draw Lean Mass line
+    const leanMassPoints = [];
+    filtered.forEach((p, i) => {
+      if (Number.isFinite(p.leanMass)) {
+        leanMassPoints.push({ x: xFor(i), y: yForKg(p.leanMass) });
+      }
+    });
+
+    if (leanMassPoints.length > 0) {
+      ctx.beginPath();
+      leanMassPoints.forEach((pt, i) => {
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      });
+      ctx.strokeStyle = leanMassColor;
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.stroke();
+
+      leanMassPoints.forEach(pt => {
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = leanMassColor;
+        ctx.fill();
+      });
+    }
+
+    // Draw Body Fat % line (secondary axis)
+    const bodyFatPoints = [];
+    filtered.forEach((p, i) => {
+      if (Number.isFinite(p.bodyFat)) {
+        bodyFatPoints.push({ x: xFor(i), y: yForPercent(p.bodyFat) });
+      }
+    });
+
+    if (bodyFatPoints.length > 0) {
+      ctx.beginPath();
+      bodyFatPoints.forEach((pt, i) => {
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      });
+      ctx.strokeStyle = bodyFatColor;
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.stroke();
+
+      bodyFatPoints.forEach(pt => {
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = bodyFatColor;
+        ctx.fill();
+      });
+    }
+
+    // X-axis date labels
+    ctx.fillStyle = mutedColor;
+    ctx.textAlign = "left";
+    ctx.font = "10px " + getComputedStyle(document.body).fontFamily;
+
+    const firstDate = filtered[0].date;
+    const lastDate = filtered[filtered.length - 1].date;
+
+    const formatDate = (dateStr) => {
+      const d = new Date(dateStr + "T00:00:00");
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${months[d.getMonth()]} ${d.getDate()}`;
+    };
+
+    ctx.fillText(formatDate(firstDate), padL, padT + h + 18);
+    ctx.textAlign = "right";
+    ctx.fillText(formatDate(lastDate), padL + w, padT + h + 18);
+
+    // Legend
+    ctx.textAlign = "center";
+    ctx.font = "11px " + getComputedStyle(document.body).fontFamily;
+
+    const legendY = padT + h + 38;
+    const legendCenterX = padL + w / 2;
+
+    // Weight legend
+    ctx.fillStyle = weightColor;
+    ctx.beginPath();
+    ctx.arc(legendCenterX - 100, legendY, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = textColor;
+    ctx.textAlign = "left";
+    ctx.fillText("Weight", legendCenterX - 94, legendY + 4);
+
+    // Lean Mass legend
+    ctx.fillStyle = leanMassColor;
+    ctx.beginPath();
+    ctx.arc(legendCenterX - 30, legendY, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = textColor;
+    ctx.fillText(`Lean Mass ${leanMassTrend >= 0 ? '↗' : '↘'}`, legendCenterX - 24, legendY + 4);
+
+    // Body Fat legend
+    ctx.fillStyle = bodyFatColor;
+    ctx.beginPath();
+    ctx.arc(legendCenterX + 60, legendY, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = textColor;
+    ctx.fillText(`Body Fat% ${bodyFatTrend <= 0 ? '↘' : '↗'}`, legendCenterX + 66, legendY + 4);
+  }
+
+  function renderBodyCompProgress() {
+    const series = getBodyCompSeriesByDay();
+    const start = isoDaysAgo(bodyCompRangeDays);
+    const filtered = series.filter(x => x.date >= start);
+
+    drawBodyCompChart(filtered);
+
+    // Update averages
+    const avgEl = document.getElementById("bodyCompAverages");
+    if (avgEl) {
+      const weightVals = filtered.map(x => x.weight).filter(n => Number.isFinite(n));
+      const leanMassVals = filtered.map(x => x.leanMass).filter(n => Number.isFinite(n));
+      const bodyFatVals = filtered.map(x => x.bodyFat).filter(n => Number.isFinite(n));
+
+      const avgWeight = avg(weightVals);
+      const avgLeanMass = avg(leanMassVals);
+      const avgBodyFat = avg(bodyFatVals);
+
+      const w = avgWeight != null ? `${avgWeight.toFixed(1)}kg` : "—";
+      const lm = avgLeanMass != null ? `${avgLeanMass.toFixed(1)}kg` : "—";
+      const bf = avgBodyFat != null ? `${avgBodyFat.toFixed(1)}%` : "—";
+
+      avgEl.textContent = `Avg (last ${bodyCompRangeDays} days): Weight ${w} • Lean Mass ${lm} • Body Fat ${bf}`;
+    }
+
+    // Update stats panel
+    renderBodyCompStats(filtered);
+  }
+
+  function renderBodyCompStats(filtered) {
+    const statsEl = document.getElementById("bodyCompStats");
+    if (!statsEl) return;
+
+    if (!filtered || filtered.length === 0) {
+      statsEl.innerHTML = `<div style="color:var(--muted); text-align:center; padding:40px;">No data for this period.</div>`;
+      return;
+    }
+
+    const weightVals = filtered.map(x => x.weight).filter(n => Number.isFinite(n));
+    const leanMassVals = filtered.map(x => x.leanMass).filter(n => Number.isFinite(n));
+    const bodyFatVals = filtered.map(x => x.bodyFat).filter(n => Number.isFinite(n));
+
+    // Latest values
+    const latestWeight = weightVals.length > 0 ? weightVals[weightVals.length - 1] : null;
+    const latestLeanMass = leanMassVals.length > 0 ? leanMassVals[leanMassVals.length - 1] : null;
+    const latestBodyFat = bodyFatVals.length > 0 ? bodyFatVals[bodyFatVals.length - 1] : null;
+
+    // Change from start
+    const startWeight = weightVals.length > 0 ? weightVals[0] : null;
+    const startLeanMass = leanMassVals.length > 0 ? leanMassVals[0] : null;
+    const startBodyFat = bodyFatVals.length > 0 ? bodyFatVals[0] : null;
+
+    const weightChange = (latestWeight && startWeight) ? latestWeight - startWeight : null;
+    const leanMassChange = (latestLeanMass && startLeanMass) ? latestLeanMass - startLeanMass : null;
+    const bodyFatChange = (latestBodyFat && startBodyFat) ? latestBodyFat - startBodyFat : null;
+
+    function formatChange(change, unit, reverseColor = false) {
+      if (change == null) return '';
+      const isPositive = change > 0;
+      const arrow = isPositive ? '↗' : change < 0 ? '↘' : '→';
+      const color = change === 0 ? 'var(--muted)' :
+                    (reverseColor ? (isPositive ? '#ef4444' : '#22c55e') : (isPositive ? '#22c55e' : '#ef4444'));
+      return `<span style="color:${color}; font-size:14px; font-weight:600; margin-left:8px;">${arrow} ${Math.abs(change).toFixed(1)}${unit}</span>`;
+    }
+
+    statsEl.innerHTML = `
+      <div style="display:grid; gap:16px; padding:16px;">
+        ${latestWeight != null ? `
+          <div class="stat-card" style="padding:20px;">
+            <div class="stat-label">Bodyweight</div>
+            <div style="display:flex; align-items:baseline; justify-content:center;">
+              <div class="stat-value" style="font-size:36px;">${latestWeight.toFixed(1)}</div>
+              <span style="font-size:18px; color:var(--muted); margin-left:6px;">kg</span>
+            </div>
+            <div style="margin-top:8px; text-align:center;">
+              ${formatChange(weightChange, 'kg')}
+            </div>
+          </div>
+        ` : ''}
+
+        ${latestLeanMass != null ? `
+          <div class="stat-card" style="padding:20px;">
+            <div class="stat-label">Lean Mass</div>
+            <div style="display:flex; align-items:baseline; justify-content:center;">
+              <div class="stat-value" style="font-size:36px; color:#22c55e;">${latestLeanMass.toFixed(1)}</div>
+              <span style="font-size:18px; color:var(--muted); margin-left:6px;">kg</span>
+            </div>
+            <div style="margin-top:8px; text-align:center;">
+              ${formatChange(leanMassChange, 'kg')}
+            </div>
+          </div>
+        ` : ''}
+
+        ${latestBodyFat != null ? `
+          <div class="stat-card" style="padding:20px;">
+            <div class="stat-label">Body Fat</div>
+            <div style="display:flex; align-items:baseline; justify-content:center;">
+              <div class="stat-value" style="font-size:36px; color:#a78bfa;">${latestBodyFat.toFixed(1)}</div>
+              <span style="font-size:18px; color:var(--muted); margin-left:6px;">%</span>
+            </div>
+            <div style="margin-top:8px; text-align:center;">
+              ${formatChange(bodyFatChange, '%', true)}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  function wireBodyCompRangeButtons() {
+    const btns = document.querySelectorAll(".bodycomp-range-btn");
+    if (!btns.length) return;
+
+    btns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const n = Number(btn.dataset.range);
+        if (!Number.isFinite(n)) return;
+        bodyCompRangeDays = n;
+
+        btns.forEach(b => b.classList.toggle("active", b === btn));
+
+        renderBodyCompProgress();
+      });
+    });
+  }
+
+  function wireBodyCompTabs() {
+    // Find the body comp card specifically by looking for the bodyCompChart canvas
+    const canvas = document.getElementById('bodyCompChart');
+    if (!canvas) return;
+
+    const card = canvas.closest('.dashboard-card');
+    if (!card) return;
+
+    const tabs = card.querySelectorAll('.dashboard-tab');
+    const panels = card.querySelectorAll('.dashboard-content-panel');
+    const container = card.querySelector('.dashboard-content-container');
+
+    if (!tabs.length || !panels.length || !container) return;
+
+    // Tab click handlers
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        const panel = panels[index];
+        if (panel && container) {
+          container.scrollTo({
+            left: panel.offsetLeft,
+            behavior: 'smooth'
+          });
+        }
+      });
+    });
+
+    // Scroll event handler to sync tabs with swipe
+    let scrollTimeout;
+    container.addEventListener('scroll', () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const scrollLeft = container.scrollLeft;
+        const containerWidth = container.offsetWidth;
+        const activeIndex = Math.round(scrollLeft / containerWidth);
+
+        tabs.forEach((tab, index) => {
+          if (index === activeIndex) {
+            tab.classList.add('active');
+          } else {
+            tab.classList.remove('active');
+          }
+        });
+      }, 50);
+    });
+  }
+
+  function renderBodyMeasurementsProgress() {
+    const el = document.getElementById("bodyMeasurementsProgress");
+    if (!el) return;
+
+    const today = isoToday();
+    const measurementIds = [
+      METRICS.waist.id,
+      METRICS.chest.id,
+      METRICS.shoulders.id,
+      METRICS.thigh.id,
+      METRICS.biceps.id,
+    ];
+
+    const labels = {
+      [METRICS.waist.id]: "Waist",
+      [METRICS.chest.id]: "Chest",
+      [METRICS.shoulders.id]: "Shoulders",
+      [METRICS.thigh.id]: "Thigh",
+      [METRICS.biceps.id]: "Biceps",
+    };
+
+    // Get latest measurements
+    const measurements = measurementIds.map(metricId => {
+      const latest = latestEntry(metricId);
+      if (!latest) return null;
+
+      // Get value from 30 days ago for comparison
+      const thirtyDaysAgo = isoDaysAgo(30);
+      const entries = getEntries(metricId).filter(e => e.date >= thirtyDaysAgo).sort((a, b) => a.date.localeCompare(b.date));
+      const oldest = entries[0];
+
+      const change = oldest ? Number(latest.value) - Number(oldest.value) : null;
+
+      return {
+        id: metricId,
+        label: labels[metricId],
+        value: Number(latest.value),
+        change,
+        date: latest.date
+      };
+    }).filter(Boolean);
+
+    if (measurements.length === 0) {
+      el.innerHTML = `<div style="color:var(--muted); text-align:center; padding:20px;">No measurements logged yet.</div>`;
+      return;
+    }
+
+    const html = measurements.map(m => {
+      const changeColor = m.change == null ? 'var(--muted)' :
+                          m.change > 0 ? '#22c55e' : m.change < 0 ? '#ef4444' : 'var(--muted)';
+      const arrow = m.change == null ? '' : m.change > 0 ? '↗' : m.change < 0 ? '↘' : '→';
+
+      return `
+        <div class="stat-card" style="padding:16px; margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div class="stat-label" style="margin-bottom:6px;">${m.label}</div>
+              <div style="font-size:28px; font-weight:700;">${m.value.toFixed(1)}<span style="font-size:16px; color:var(--muted); margin-left:4px;">cm</span></div>
+              ${m.change != null ? `
+                <div style="margin-top:6px; font-size:13px; color:${changeColor}; font-weight:600;">
+                  ${arrow} ${Math.abs(m.change).toFixed(1)}cm <span style="color:var(--muted); font-weight:400;">last 30d</span>
+                </div>
+              ` : ''}
+            </div>
+            <div style="font-size:11px; color:var(--muted);">${m.date}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    el.innerHTML = html;
   }
 
   function renderBodyCompList() {
@@ -1183,6 +1816,10 @@ li.querySelector("[data-del-pro]").addEventListener("click", () => {
     // Ensure all metric definitions exist
     Object.values(METRICS).forEach(ensureMetricDefinition);
 
+    // Wire Morning Measurements quick-input form
+    wireMorningMeasurementsForm();
+    renderMorningMeasurementsSummary();
+
     // Wire + render existing
     wireBodyweightForm();
     renderBodyweightList();
@@ -1198,6 +1835,19 @@ li.querySelector("[data-del-pro]").addEventListener("click", () => {
     renderBodyCompList();
     renderLeanMassHint();
 
+    // Wire body composition progress charts
+    wireBodyCompRangeButtons();
+    wireBodyCompTabs();
+    bodyCompRangeDays = 7;
+
+    // Delay initial render to ensure canvas is ready
+    setTimeout(() => {
+      renderBodyCompProgress();
+    }, 100);
+
+    // Render body measurements progress
+    renderBodyMeasurementsProgress();
+
     // Diet
     wireDietForm();
     renderDietList();
@@ -1206,7 +1856,7 @@ li.querySelector("[data-del-pro]").addEventListener("click", () => {
     // Update lean mass hint if date field changes
     const bcDate = document.getElementById("bcDate");
     if (bcDate) bcDate.addEventListener("change", renderLeanMassHint);
-    
+
 // If another module writes metricEntries (e.g., Meal Templates "Apply", Today inline forms),
 // re-render all metric UIs.
 document.addEventListener("lifeos:metrics-updated", () => {
@@ -1217,6 +1867,9 @@ document.addEventListener("lifeos:metrics-updated", () => {
   renderLeanMassHint();
   renderSleepList();
   renderSleepInsights();
+  renderBodyCompProgress();
+  renderMorningMeasurementsSummary();
+  renderBodyMeasurementsProgress();
 });
   });
 })();

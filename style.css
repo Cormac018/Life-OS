@@ -1265,6 +1265,62 @@ option {
   font-weight: 600;
 }
 
+/* Stat Cards */
+.stat-card {
+  padding: 14px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.stat-trend {
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.stat-trend.positive {
+  color: #22c55e;
+}
+
+.stat-trend.negative {
+  color: #ef4444;
+}
+
+.stat-trend.neutral {
+  color: var(--muted);
+}
+
+/* Range Button Active States */
+.bodycomp-range-btn.active,
+.sleep-range-btn.active {
+  background: var(--accent) !important;
+  color: white !important;
+  border-color: var(--accent) !important;
+  font-weight: 600;
+}
+
+.bodycomp-range-btn:hover,
+.sleep-range-btn:hover {
+  background: var(--surface) !important;
+}
+
 /* Horizontal scroll tabs */
 .dashboard-tabs {
   display: flex;

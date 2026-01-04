@@ -682,104 +682,147 @@
 <section id="view-metrics" class="lifeos-view">
   <h1 class="app-title">Metrics</h1>
 
-  <div class="panel" style="padding:14px;">
-    <h2 style="margin-top:0;">Bodyweight</h2>
+  <!-- Morning Measurements Quick Input -->
+  <div class="dashboard-card" style="margin-top:12px;">
+    <div class="dashboard-card-header">
+      <div class="dashboard-card-title">☀️ Morning Measurements</div>
+    </div>
+    <div style="padding:16px;">
+      <form id="morningMeasurementsForm" style="display:flex; flex-direction:column; gap:12px;">
+        <label style="width:100%;">
+          Date
+          <input type="date" id="mmDate" required style="width:100%;" />
+        </label>
 
-    <form id="bodyweightForm">
-      <label>
-        Date
-        <input type="date" id="bwDate" required />
-      </label>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px;">
+          <label>
+            Weight (kg)
+            <input type="number" id="mmWeight" step="0.1" placeholder="e.g. 75.5" style="width:100%;" />
+          </label>
 
-      <label>
-        Weight (kg)
-        <input type="number" id="bwValue" step="0.1" required />
-      </label>
+          <label>
+            Body Fat (%)
+            <input type="number" id="mmBodyFat" step="0.1" min="0" max="100" placeholder="e.g. 15.2" style="width:100%;" />
+          </label>
 
-      <button type="submit">Add entry</button>
-    </form>
+          <label>
+            Body Water (%)
+            <input type="number" id="mmBodyWater" step="0.1" min="0" max="100" placeholder="e.g. 62.5" style="width:100%;" />
+          </label>
+
+          <label>
+            Bone Density (%)
+            <input type="number" id="mmBone" step="0.1" min="0" placeholder="e.g. 3.2" style="width:100%;" />
+          </label>
+        </div>
+
+        <button type="submit" style="background:var(--accent); color:white; font-weight:600; padding:12px; border-radius:8px; font-size:15px;">
+          Log Measurements
+        </button>
+      </form>
+
+      <!-- Today's Summary -->
+      <div id="morningMeasurementsSummary" style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border);"></div>
+    </div>
   </div>
 
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h3 style="margin-top:0;">History</h3>
-    <ul id="bodyweightList"></ul>
+  <!-- Body Composition Progress -->
+  <div class="dashboard-card">
+    <div class="dashboard-card-header">
+      <div class="dashboard-card-title">📊 Body Composition Progress</div>
+    </div>
+
+    <!-- Time range selector -->
+    <div style="padding:16px 16px 0 16px;">
+      <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+        <button class="bodycomp-range-btn active" data-range="7" style="padding:8px 14px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); cursor:pointer; font-size:13px;">7d</button>
+        <button class="bodycomp-range-btn" data-range="30" style="padding:8px 14px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); cursor:pointer; font-size:13px;">30d</button>
+        <button class="bodycomp-range-btn" data-range="90" style="padding:8px 14px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); cursor:pointer; font-size:13px;">90d</button>
+        <button class="bodycomp-range-btn" data-range="180" style="padding:8px 14px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); cursor:pointer; font-size:13px;">180d</button>
+        <button class="bodycomp-range-btn" data-range="365" style="padding:8px 14px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); cursor:pointer; font-size:13px;">1y</button>
+      </div>
+    </div>
+
+    <!-- Swipeable tabs -->
+    <div class="dashboard-tabs">
+      <button class="dashboard-tab active" data-tab="chart">Chart</button>
+      <button class="dashboard-tab" data-tab="stats">Stats</button>
+    </div>
+
+    <!-- Swipeable content -->
+    <div class="dashboard-content-container">
+      <!-- Chart Panel -->
+      <div class="dashboard-content-panel active" data-panel="chart">
+        <div style="background:var(--surface); border-radius:8px; padding:16px; margin-bottom:12px;">
+          <canvas id="bodyCompChart" style="width:100%; height:280px; display:block;"></canvas>
+        </div>
+        <div id="bodyCompAverages" style="text-align:center; color:var(--muted); font-size:13px; margin-top:12px;"></div>
+      </div>
+
+      <!-- Stats Panel -->
+      <div class="dashboard-content-panel" data-panel="stats">
+        <div id="bodyCompStats"></div>
+      </div>
+    </div>
   </div>
-  <div class="panel" style="padding:14px; margin-top:12px;">
- 
-<!-- Body composition -->
-<div class="panel" style="padding:14px; margin-top:12px;">
-  <h2 style="margin-top:0;">Body composition</h2>
 
-  <form id="bodyCompForm">
-    <label>
-      Date
-      <input type="date" id="bcDate" required />
-    </label>
+  <!-- Body Measurements Progress -->
+  <div class="dashboard-card">
+    <div class="dashboard-card-header">
+      <div class="dashboard-card-title">📏 Body Measurements</div>
+    </div>
+    <div style="padding:16px;">
+      <div id="bodyMeasurementsProgress"></div>
+    </div>
+  </div>
 
-    <label>
-      Body fat %
-      <input type="number" id="bcBodyFat" step="0.1" min="0" max="100" />
-    </label>
+  <!-- Individual Metric Sections (Collapsible for advanced use) -->
+  <details style="margin-top:12px;">
+    <summary style="cursor:pointer; padding:14px; background:var(--surface-2); border-radius:8px; font-weight:600; user-select:none;">
+      Advanced: Individual Metric Entry
+    </summary>
 
-    <label>
-      Body water %
-      <input type="number" id="bcBodyWater" step="0.1" min="0" max="100" />
-    </label>
+    <div style="margin-top:12px; display:flex; flex-direction:column; gap:12px;">
 
-    <label>
-      Bone metric (unknown unit)
-      <input type="number" id="bcBoneMetric" step="0.1" min="0" />
-    </label>
+      <!-- Measurements -->
+      <div class="panel" style="padding:14px;">
+        <h3 style="margin-top:0;">Measurements (cm)</h3>
+        <form id="measureForm" style="display:flex; flex-direction:column; gap:10px;">
+          <label>
+            Date
+            <input type="date" id="mDate" required />
+          </label>
+          <label>
+            Waist (cm)
+            <input type="number" id="mWaist" step="0.1" min="0" />
+          </label>
+          <label>
+            Chest (cm)
+            <input type="number" id="mChest" step="0.1" min="0" />
+          </label>
+          <label>
+            Shoulders (cm)
+            <input type="number" id="mShoulders" step="0.1" min="0" />
+          </label>
+          <label>
+            Thigh (cm)
+            <input type="number" id="mThigh" step="0.1" min="0" />
+          </label>
+          <label>
+            Biceps (cm)
+            <input type="number" id="mBiceps" step="0.1" min="0" />
+          </label>
+          <button type="submit">Save measurements</button>
+        </form>
+      </div>
 
-    <button type="submit">Save body comp</button>
-  </form>
-
-  <div id="leanMassHint" style="margin-top:10px; color:var(--muted); font-size:13px;"></div>
-</div>
-
-<!-- Measurements -->
-<div class="panel" style="padding:14px; margin-top:12px;">
-  <h2 style="margin-top:0;">Measurements (cm)</h2>
-
-  <form id="measureForm">
-    <label>
-      Date
-      <input type="date" id="mDate" required />
-    </label>
-
-    <label>
-      Waist (cm)
-      <input type="number" id="mWaist" step="0.1" min="0" />
-    </label>
-
-    <label>
-      Chest (cm)
-      <input type="number" id="mChest" step="0.1" min="0" />
-    </label>
-
-    <label>
-      Shoulders (cm)
-      <input type="number" id="mShoulders" step="0.1" min="0" />
-    </label>
-
-    <label>
-      Thigh (cm)
-      <input type="number" id="mThigh" step="0.1" min="0" />
-    </label>
-
-    <label>
-      Biceps (cm)
-      <input type="number" id="mBiceps" step="0.1" min="0" />
-    </label>
-
-    <button type="submit">Save measurements</button>
-  </form>
-</div>
-
-<div class="panel" style="padding:14px; margin-top:12px;">
-  <h3 style="margin-top:0;">Body comp & measurements history</h3>
-  <ul id="bodyCompList"></ul>
-</div>
+      <!-- History -->
+      <div class="panel" style="padding:14px;">
+        <h3 style="margin-top:0;">Body Comp & Measurements History</h3>
+        <ul id="bodyCompList" style="list-style:none; padding:0;"></ul>
+      </div>
+    </div>
+  </details>
 
 </section>
 

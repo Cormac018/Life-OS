@@ -4,7 +4,7 @@
    - Static asset caching
    ========================= */
 
-const CACHE_NAME = 'lifeos-v37-diagnostic-fixes';
+const CACHE_NAME = 'lifeos-v39-bodycomp-swipe-fix';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
