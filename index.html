@@ -386,32 +386,46 @@
 
     <!-- PLAN TAB -->
     <div id="dietTab-plan" class="diet-tabpanel is-active" role="tabpanel">
-      <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
-        <label style="min-width:160px;">
-          Goal
-          <select id="dietPlanGoal">
-            <option value="bulk">Bulk</option>
-            <option value="cut">Cut</option>
-            <option value="maintain">Maintain</option>
-          </select>
-        </label>
+      <!-- Goal & Targets Card -->
+      <div class="dashboard-card" style="margin-top:12px;">
+        <div class="dashboard-card-header">
+          <div class="dashboard-card-title">🎯 Diet Goal & Targets</div>
+        </div>
+        <div style="padding:16px;">
+          <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+            <label style="flex:1; min-width:160px;">
+              Goal
+              <select id="dietPlanGoal" style="width:100%;">
+                <option value="bulk">Bulk</option>
+                <option value="cut">Cut</option>
+                <option value="maintain">Maintain</option>
+              </select>
+            </label>
 
-        <label style="min-width:160px;">
-          Calorie target (kcal)
-          <input type="number" id="dietTargetCalories" min="0" step="10" placeholder="e.g. 2600" />
-        </label>
+            <label style="flex:1; min-width:160px;">
+              Calorie target (kcal)
+              <input type="number" id="dietTargetCalories" min="0" step="10" placeholder="e.g. 2600" style="width:100%;" />
+            </label>
 
-        <label style="min-width:160px;">
-          Protein target (g)
-          <input type="number" id="dietTargetProtein" min="0" step="1" placeholder="e.g. 180" />
-        </label>
+            <label style="flex:1; min-width:160px;">
+              Protein target (g)
+              <input type="number" id="dietTargetProtein" min="0" step="1" placeholder="e.g. 180" style="width:100%;" />
+            </label>
 
-        <div class="btn-row" style="margin:0;">
-          <button id="dietSavePlanBtn" type="button">Save plan</button>
+            <div style="flex:1; min-width:160px;">
+              <button id="dietSavePlanBtn" type="button" style="width:100%; background:var(--accent); color:white; font-weight:600;">Save plan</button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div id="dietPlanEditor" style="margin-top:12px;"></div>
+      <!-- Meal Plan Card -->
+      <div class="dashboard-card">
+        <div class="dashboard-card-header">
+          <div class="dashboard-card-title">📋 Meal Plan</div>
+        </div>
+        <div id="dietPlanEditor" style="padding:12px;"></div>
+      </div>
 
       <hr style="margin:14px 0; border:none; border-top:1px solid rgba(128,128,128,0.25);" />
 
@@ -435,10 +449,30 @@
             </label>
           </div>
 
-          <label>
-            Ingredients (one per line, can include quantities like "Chicken 200g")
-            <textarea id="mealIngredients" rows="4" placeholder="Chicken breast 200g&#10;Rice 80g&#10;Broccoli 100g"></textarea>
-          </label>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <label style="flex:1; min-width:140px;">
+              Fat (g per serving) <span style="color:var(--muted); font-size:12px;">Optional</span>
+              <input type="number" id="mealFat" min="0" step="0.1" placeholder="Optional" />
+            </label>
+            <label style="flex:1; min-width:140px;">
+              Carbs (g per serving) <span style="color:var(--muted); font-size:12px;">Optional</span>
+              <input type="number" id="mealCarbs" min="0" step="0.1" placeholder="Optional" />
+            </label>
+          </div>
+
+          <div style="margin-top:15px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <label style="margin:0; font-weight:600;">Ingredients</label>
+              <button type="button" id="addIngredientBtn" style="padding:4px 12px; font-size:13px;">+ Add Ingredient</button>
+            </div>
+            <div id="ingredientsList" style="display:flex; flex-direction:column; gap:8px;">
+              <!-- Ingredient rows will be added here -->
+            </div>
+            <details style="margin-top:10px;">
+              <summary style="cursor:pointer; color:var(--muted); font-size:13px;">Or use simple text format</summary>
+              <textarea id="mealIngredientsText" rows="3" placeholder="Chicken breast 200g&#10;Rice 80g&#10;Broccoli 100g" style="margin-top:8px;"></textarea>
+            </details>
+          </div>
 
           <div class="btn-row">
             <button type="submit">Add meal template</button>
@@ -451,90 +485,181 @@
 
     <!-- LOG TAB -->
     <div id="dietTab-log" class="diet-tabpanel" role="tabpanel">
-      <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
-        <label style="min-width:160px;">
-          Date
-          <input type="date" id="dietLogDate" required />
-        </label>
+      <!-- Date & Goal Selector Card -->
+      <div class="dashboard-card" style="margin-top:12px;">
+        <div class="dashboard-card-header">
+          <div class="dashboard-card-title">📅 Daily Log</div>
+        </div>
+        <div style="padding:16px;">
+          <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:12px;">
+            <label style="flex:1; min-width:160px;">
+              Date
+              <input type="date" id="dietLogDate" required style="width:100%;" />
+            </label>
 
-        <label style="min-width:160px;">
-          Goal
-          <select id="dietLogGoal">
-            <option value="bulk">Bulk</option>
-            <option value="cut">Cut</option>
-            <option value="maintain">Maintain</option>
-          </select>
-        </label>
+            <label style="flex:1; min-width:160px;">
+              Goal
+              <select id="dietLogGoal" style="width:100%;">
+                <option value="bulk">Bulk</option>
+                <option value="cut">Cut</option>
+                <option value="maintain">Maintain</option>
+              </select>
+            </label>
+          </div>
 
-        <div class="btn-row" style="margin:0;">
-          <button id="dietAddExtraMealBtn" type="button">Add extra meal</button>
-          <button id="dietAddSnackBtn" type="button" data-action="add-snack">Add snack</button>
-          <button id="dietSubmitDayBtn" type="button">Submit totals</button>
+          <div id="dietLogHint" style="color:var(--muted); font-size:13px; margin-bottom:12px;"></div>
+
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px;">
+            <button id="dietAddExtraMealBtn" type="button" style="padding:10px; font-size:13px; font-weight:600;">+ Extra Meal</button>
+            <button id="dietAddSnackBtn" type="button" data-action="add-snack" style="padding:10px; font-size:13px; font-weight:600;">+ Snack</button>
+            <button id="dietAddCustomMealBtn" type="button" style="padding:10px; font-size:13px; font-weight:600;">+ Custom</button>
+            <button id="dietSubmitDayBtn" type="button" style="padding:10px; font-size:13px; font-weight:600; background:var(--accent); color:white;">Submit</button>
+          </div>
         </div>
       </div>
 
-      <div id="dietLogHint" style="margin-top:8px; color:var(--muted); font-size:13px;"></div>
-
+      <!-- Checklist -->
       <div id="dietChecklist" style="margin-top:12px;"></div>
 
-      <div id="dietTotalsBox" style="margin-top:12px; font-size:14px;"></div>
+      <!-- Totals Summary -->
+      <div id="dietTotalsBox" style="margin-top:12px;"></div>
     </div>
 
     <!-- PROGRESS TAB -->
     <div id="dietTab-progress" class="diet-tabpanel" role="tabpanel">
-      <div id="dietProgressSummary" style="margin-top:6px;"></div>
+      <!-- Progress Summary -->
+      <div id="dietProgressSummary" style="margin-top:12px;"></div>
 
-      <div class="panel" style="padding:12px; margin-top:12px;">
-        <h3 style="margin:0 0 8px 0;">Averages</h3>
-        <div class="btn-row" style="margin-top:0;">
-          <button type="button" class="diet-range-btn" data-range="7">Last week</button>
-          <button type="button" class="diet-range-btn" data-range="30">Last month</button>
-          <button type="button" class="diet-range-btn" data-range="90">Last 3 months</button>
-          <button type="button" class="diet-range-btn" data-range="180">Last 6 months</button>
-          <button type="button" class="diet-range-btn" data-range="365">Last year</button>
+      <!-- Averages Card -->
+      <div class="dashboard-card">
+        <div class="dashboard-card-header">
+          <div class="dashboard-card-title">📊 Averages</div>
         </div>
+        <div style="padding:16px;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
+            <button type="button" class="diet-range-btn" data-range="7" style="flex:1; min-width:100px; padding:8px; border-radius:6px; font-size:13px; font-weight:600;">Last week</button>
+            <button type="button" class="diet-range-btn" data-range="30" style="flex:1; min-width:100px; padding:8px; border-radius:6px; font-size:13px; font-weight:600;">Last month</button>
+            <button type="button" class="diet-range-btn" data-range="90" style="flex:1; min-width:100px; padding:8px; border-radius:6px; font-size:13px; font-weight:600;">3 months</button>
+          </div>
 
-        <div id="dietAveragesOut" style="margin-top:10px; font-size:14px;"></div>
+          <div id="dietAveragesOut"></div>
+        </div>
       </div>
     </div>
 
     <!-- PREP & SHOP TAB -->
 <div id="dietTab-prep" class="diet-tabpanel" role="tabpanel">
-  <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
-    <label style="min-width:160px;">
-      Goal
-      <select id="dietPrepGoal">
-        <option value="bulk">Bulk</option>
-        <option value="cut">Cut</option>
-        <option value="maintain">Maintain</option>
-      </select>
-    </label>
-  </div>
-
-  <div class="panel" style="padding:12px; margin-top:12px;">
-    <h3 style="margin:0 0 8px 0;">Monthly list (manual)</h3>
-    <div class="meta">Use this for supplements/protein powders + anything you buy monthly.</div>
-    <textarea id="dietMonthlyListText" rows="8" style="width:100%; margin-top:10px;" placeholder="- Creatine (1 tub)\n- Whey (2 bags)\n- Vitamins ..."></textarea>
-    <div class="btn-row" style="margin-top:10px;">
-      <button id="dietSaveMonthlyBtn" type="button">Save monthly list</button>
+  <!-- Goal Selector -->
+  <div class="dashboard-card" style="margin-top:12px;">
+    <div style="padding:16px;">
+      <label style="width:100%;">
+        <div style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Select Goal</div>
+        <select id="dietPrepGoal" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2);">
+          <option value="bulk">Bulk</option>
+          <option value="cut">Cut</option>
+          <option value="maintain">Maintain</option>
+        </select>
+      </label>
     </div>
   </div>
 
-  <div class="panel" style="padding:12px; margin-top:12px;">
-    <h3 style="margin:0 0 8px 0;">Sunday prep (manual)</h3>
-    <div class="meta">Write what to cook + how to portion it for Lunch/Dinner this week.</div>
-    <textarea id="dietSundayPrepText" rows="8" style="width:100%; margin-top:10px;" placeholder="- Cook 1.4kg chicken\n- Cook 700g rice\n- Portion: 200g chicken + 100g rice per lunch ..."></textarea>
-    <div class="btn-row" style="margin-top:10px;">
-      <button id="dietSaveSundayBtn" type="button">Save Sunday prep</button>
+  <!-- Shopping List Generator -->
+  <div class="dashboard-card">
+    <div class="dashboard-card-header">
+      <div class="dashboard-card-title">🛒 Shopping List Generator</div>
     </div>
-  </div>
+    <div style="padding:16px;">
+      <div class="meta" style="margin-bottom:12px;">Auto-calculate what to buy based on your meal plan and current inventory.</div>
 
-  <div id="dietPrepHint" style="margin-top:10px; color:var(--muted); font-size:13px;"></div>
-</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+        <button id="generateWeeklyShoppingBtn" type="button" style="flex:1; min-width:140px; padding:10px; border-radius:6px; font-weight:600;">Generate Weekly List</button>
+        <button id="generateMonthlyShoppingBtn" type="button" style="flex:1; min-width:140px; padding:10px; border-radius:6px; font-weight:600;">Generate Monthly List</button>
       </div>
 
-      <div id="dietPrepOut" style="margin-top:12px;"></div>
-      <div id="dietPrepHint" style="margin-top:10px; color:var(--muted); font-size:13px;"></div>
+      <div id="shoppingListOutput"></div>
+    </div>
+  </div>
+
+  <!-- Inventory Management -->
+  <details class="dashboard-card">
+    <summary style="cursor:pointer; padding:16px; font-weight:700; font-size:16px; display:flex; align-items:center; gap:8px;">
+      📦 Inventory Tracker
+      <span style="font-size:14px; color:var(--muted); font-weight:400; margin-left:auto;">▼</span>
+    </summary>
+
+    <div style="padding:0 16px 16px 16px; border-top:1px solid var(--border);">
+      <div style="font-weight:600; margin:16px 0 12px 0; font-size:14px;">Add/Update Ingredient Stock</div>
+      <form id="inventoryForm" style="display:grid; gap:10px;">
+        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr auto; gap:10px; align-items:end;">
+          <label style="margin:0;">
+            <div style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Ingredient</div>
+            <input type="text" id="invIngredientName" placeholder="e.g. Chicken breast" required style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2);" />
+          </label>
+          <label style="margin:0;">
+            <div style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Stock</div>
+            <input type="number" id="invStock" min="0" step="0.1" placeholder="Amount" required style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2);" />
+          </label>
+          <label style="margin:0;">
+            <div style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Unit</div>
+            <select id="invUnit" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2);">
+              <option value="g">g</option>
+              <option value="kg">kg</option>
+              <option value="ml">ml</option>
+              <option value="l">l</option>
+              <option value="whole">whole</option>
+            </select>
+          </label>
+          <button type="submit" style="padding:10px 16px; border-radius:6px; font-weight:600; background:var(--accent); color:white;">Update</button>
+        </div>
+      </form>
+
+      <div id="inventoryList" style="margin-top:16px;"></div>
+    </div>
+  </details>
+
+  <!-- Meal Prep Calculator -->
+  <div class="dashboard-card">
+    <div class="dashboard-card-header">
+      <div class="dashboard-card-title">🍳 Sunday Prep Calculator</div>
+    </div>
+    <div style="padding:16px;">
+      <div class="meta" style="margin-bottom:12px;">Calculate how much to cook for the week based on your plan.</div>
+
+      <div style="display:flex; gap:10px; margin-bottom:12px; align-items:flex-end;">
+        <label style="flex:1; max-width:200px; margin:0;">
+          <div style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Prep Days</div>
+          <input type="number" id="prepDays" min="1" max="7" value="7" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2);" />
+        </label>
+        <button id="calculatePrepBtn" type="button" style="padding:10px 16px; border-radius:6px; font-weight:600; background:var(--accent); color:white;">Calculate Prep Amounts</button>
+      </div>
+
+      <div id="prepCalculatorOutput"></div>
+    </div>
+  </div>
+
+  <!-- Manual Notes (Legacy) -->
+  <details class="panel" style="padding:12px; margin-bottom:12px;">
+    <summary style="cursor:pointer; font-weight:700; font-size:15px;">📝 Manual Notes</summary>
+
+    <div style="margin-top:12px;">
+      <h4 style="margin:0 0 8px 0;">Monthly list (supplements, etc.)</h4>
+      <div class="meta">Use this for supplements/protein powders + anything you buy monthly.</div>
+      <textarea id="dietMonthlyListText" rows="6" style="width:100%; margin-top:10px;" placeholder="- Creatine (1 tub)&#10;- Whey (2 bags)&#10;- Vitamins ..."></textarea>
+      <div class="btn-row" style="margin-top:10px;">
+        <button id="dietSaveMonthlyBtn" type="button">Save monthly list</button>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;">
+      <h4 style="margin:0 0 8px 0;">Sunday prep notes</h4>
+      <div class="meta">Additional notes for meal prep.</div>
+      <textarea id="dietSundayPrepText" rows="6" style="width:100%; margin-top:10px;" placeholder="- Portion: 200g chicken + 100g rice per lunch&#10;- Store in containers ..."></textarea>
+      <div class="btn-row" style="margin-top:10px;">
+        <button id="dietSaveSundayBtn" type="button">Save Sunday prep</button>
+      </div>
+    </div>
+  </details>
+</div>
     </div>
   </div>
   <!-- Diet modal (used for servings + meal selection) -->

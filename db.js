@@ -20,6 +20,7 @@
   "mealTemplates",
   "mealPlans",
   "dietLogs",
+  "dietInventory",
 
   "notes",
   "moneyAccounts",

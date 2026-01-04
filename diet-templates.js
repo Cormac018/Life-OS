@@ -1,11 +1,12 @@
 /* =========================
-   diet-templates.js — Diet v2 (Plan / Log / Progress / Prep)
+   diet-templates.js — Diet v3 (Plan / Log / Progress / Prep / Inventory)
    - Offline-first, user-owned
    - Uses:
-     - mealTemplates: { id, name, calories, protein, ingredientsText, createdAt }
-     - dietLogs: { id, date, goal, items[], totals, createdAt, updatedAt }
+     - mealTemplates: { id, name, calories, protein, fat?, carbs?, ingredients: [{name, amount, unit}], createdAt }
+     - dietLogs: { id, date, goal, items[], offPlanMeals[], totals, createdAt, updatedAt }
+     - dietInventory: { id, ingredientName, currentStock, unit, lastUpdated }
      - metricEntries: for diet_calories_kcal and diet_protein_g
-     - appMeta: stores diet plan + targets + active goal
+     - appMeta: stores diet plan + targets + active goal + prep notes
    ========================= */
 
 (function () {
@@ -18,11 +19,41 @@
     { id: "maintain", label: "Maintain" },
   ];
 
+  // Default slot configurations per goal
+  // Each goal can have different meal slots (e.g., Bulk has more meals, Cut has fewer)
+  const DEFAULT_SLOTS_BY_GOAL = {
+    bulk: [
+      { id: "breakfast", label: "Breakfast", defaultTime: "08:00" },
+      { id: "snack1", label: "Morning Snack", defaultTime: "10:30" },
+      { id: "lunch", label: "Lunch", defaultTime: "12:30" },
+      { id: "snack2", label: "Afternoon Snack", defaultTime: "15:30" },
+      { id: "dinner", label: "Dinner", defaultTime: "18:30" },
+      { id: "postworkout", label: "Post-workout", defaultTime: "20:30" },
+    ],
+    cut: [
+      { id: "breakfast", label: "Breakfast", defaultTime: "08:00" },
+      { id: "lunch", label: "Lunch", defaultTime: "12:30" },
+      { id: "dinner", label: "Dinner", defaultTime: "18:30" },
+      { id: "snack", label: "Snack", defaultTime: "15:30" },
+    ],
+    maintain: [
+      { id: "breakfast", label: "Breakfast", defaultTime: "08:00" },
+      { id: "lunch", label: "Lunch", defaultTime: "12:30" },
+      { id: "snack", label: "Snack", defaultTime: "15:30" },
+      { id: "dinner", label: "Dinner", defaultTime: "18:30" },
+      { id: "postworkout", label: "Post-workout", defaultTime: "20:30" },
+    ],
+  };
+
+  // Legacy: All possible slot definitions (for backward compatibility)
   const SLOT_DEFS = [
     { id: "breakfast", label: "Breakfast", defaultTime: "08:00" },
     { id: "lunch", label: "Lunch", defaultTime: "12:30" },
     { id: "dinner", label: "Dinner", defaultTime: "18:30" },
     { id: "snacks", label: "Snacks", defaultTime: "15:30" },
+    { id: "snack", label: "Snack", defaultTime: "15:30" },
+    { id: "snack1", label: "Morning Snack", defaultTime: "10:30" },
+    { id: "snack2", label: "Afternoon Snack", defaultTime: "15:30" },
     { id: "postworkout", label: "Post-workout", defaultTime: "20:30" },
     { id: "supplements_am", label: "Supplements (Morning)", defaultTime: "08:15" },
     { id: "supplements_pm", label: "Supplements (Evening)", defaultTime: "21:30" },
@@ -71,20 +102,38 @@
     }
 
     if (!next.dietPlansV1) {
-      const emptySlots = {};
-      SLOT_DEFS.forEach((s) => {
-        emptySlots[s.id] = {
-          templateId: "",
-          servings: 1,
-          time: s.defaultTime,
-        };
-      });
+      // Initialize each goal with its own slot configuration
+      next.dietPlansV1 = {};
 
-      next.dietPlansV1 = {
-        bulk: { slots: JSON.parse(JSON.stringify(emptySlots)) },
-        cut: { slots: JSON.parse(JSON.stringify(emptySlots)) },
-        maintain: { slots: JSON.parse(JSON.stringify(emptySlots)) },
-      };
+      Object.keys(DEFAULT_SLOTS_BY_GOAL).forEach((goalId) => {
+        const goalSlots = {};
+        DEFAULT_SLOTS_BY_GOAL[goalId].forEach((s) => {
+          goalSlots[s.id] = {
+            templateId: "",
+            servings: 1,
+            time: s.defaultTime,
+          };
+        });
+        next.dietPlansV1[goalId] = { slots: goalSlots };
+      });
+    } else {
+      // Migrate existing plans to ensure they have the correct slot structure
+      Object.keys(DEFAULT_SLOTS_BY_GOAL).forEach((goalId) => {
+        if (!next.dietPlansV1[goalId]) {
+          next.dietPlansV1[goalId] = { slots: {} };
+        }
+
+        // Ensure all default slots exist for this goal
+        DEFAULT_SLOTS_BY_GOAL[goalId].forEach((s) => {
+          if (!next.dietPlansV1[goalId].slots[s.id]) {
+            next.dietPlansV1[goalId].slots[s.id] = {
+              templateId: "",
+              servings: 1,
+              time: s.defaultTime,
+            };
+          }
+        });
+      });
     }
 if (!next.dietPrepNotesV1) {
   next.dietPrepNotesV1 = {
@@ -153,6 +202,59 @@ if (!next.dietPrepNotesV1) {
       .filter(Boolean);
   }
 
+  function formatIngredientsList(template) {
+    // Prefer structured ingredients if available
+    if (template.ingredients && template.ingredients.length > 0) {
+      return template.ingredients.map(ing =>
+        `${ing.name} ${ing.amount}${ing.unit}`
+      );
+    }
+
+    // Fallback to legacy text format
+    if (template.ingredientsText) {
+      return linesFromIngredients(template.ingredientsText);
+    }
+
+    return [];
+  }
+
+  // ---------- Inventory Helpers ----------
+  function getInventory() {
+    return db().getCollection("dietInventory") || [];
+  }
+
+  function getInventoryItem(ingredientName) {
+    const inv = getInventory();
+    const normalized = ingredientName.toLowerCase().trim();
+    return inv.find(item => item && item.ingredientName.toLowerCase() === normalized);
+  }
+
+  function upsertInventoryItem({ ingredientName, currentStock, unit }) {
+    const normalized = ingredientName.toLowerCase().trim();
+    const existing = getInventoryItem(normalized);
+    const now = db().nowISO();
+
+    db().upsert("dietInventory", {
+      id: existing?.id || db().makeId("inv_"),
+      ingredientName: normalized,
+      currentStock: Number(currentStock) || 0,
+      unit: unit || "",
+      lastUpdated: now,
+    });
+  }
+
+  function depleteInventory(ingredientName, amount) {
+    const item = getInventoryItem(ingredientName);
+    if (!item) return;
+
+    const newStock = Math.max(0, (Number(item.currentStock) || 0) - (Number(amount) || 0));
+    upsertInventoryItem({
+      ingredientName: item.ingredientName,
+      currentStock: newStock,
+      unit: item.unit,
+    });
+  }
+
   // ---------- Tabs ----------
   function wireDietTabs() {
     console.log('[Diet Tabs] Wiring diet tabs...');
@@ -191,13 +293,19 @@ if (!next.dietPrepNotesV1) {
 
     const html = templates
       .map((t) => {
-        const ingLines = linesFromIngredients(t.ingredientsText);
+        const ingLines = formatIngredientsList(t);
         const ingPreview = ingLines.slice(0, 3).join(", ") + (ingLines.length > 3 ? "…" : "");
+
+        // Build macro line
+        let macros = `${Number(t.calories)} kcal • ${Number(t.protein)}g protein`;
+        if (t.fat != null && Number.isFinite(Number(t.fat))) macros += ` • ${Number(t.fat)}g fat`;
+        if (t.carbs != null && Number.isFinite(Number(t.carbs))) macros += ` • ${Number(t.carbs)}g carbs`;
+
         return `
           <div class="diet-check-row" style="grid-template-columns: 1fr auto;">
             <div>
               <div style="font-weight:700;">${escapeHTML(t.name)}</div>
-              <div class="meta">${Number(t.calories)} kcal • ${Number(t.protein)}g protein</div>
+              <div class="meta">${macros}</div>
               ${ingPreview ? `<div class="meta">${escapeHTML(ingPreview)}</div>` : ``}
             </div>
             <div class="btn-row" style="margin:0;">
@@ -271,9 +379,125 @@ if (!next.dietPrepNotesV1) {
     });
   }
 
+  // ---------- Ingredient Builder ----------
+  function createIngredientRow() {
+    const row = document.createElement("div");
+    row.className = "ingredient-row";
+    row.style.cssText = "display:flex; gap:8px; align-items:center;";
+
+    row.innerHTML = `
+      <input type="text" class="ingredient-name" placeholder="Ingredient name" style="flex:2; min-width:120px;" />
+      <input type="number" class="ingredient-amount" placeholder="Amount" min="0" step="0.1" style="flex:1; min-width:70px;" />
+      <select class="ingredient-unit" style="flex:1; min-width:70px;">
+        <option value="g">g</option>
+        <option value="kg">kg</option>
+        <option value="ml">ml</option>
+        <option value="l">l</option>
+        <option value="tbsp">tbsp</option>
+        <option value="tsp">tsp</option>
+        <option value="cup">cup</option>
+        <option value="oz">oz</option>
+        <option value="lb">lb</option>
+        <option value="whole">whole</option>
+      </select>
+      <button type="button" class="remove-ingredient-btn" style="padding:4px 8px; background:var(--danger,#e74c3c); color:white; border:none; border-radius:4px; cursor:pointer;">×</button>
+    `;
+
+    row.querySelector(".remove-ingredient-btn").addEventListener("click", () => {
+      row.remove();
+    });
+
+    return row;
+  }
+
+  function getStructuredIngredients() {
+    const rows = document.querySelectorAll("#ingredientsList .ingredient-row");
+    const ingredients = [];
+
+    rows.forEach(row => {
+      const name = row.querySelector(".ingredient-name").value.trim();
+      const amount = row.querySelector(".ingredient-amount").value;
+      const unit = row.querySelector(".ingredient-unit").value;
+
+      if (name && amount) {
+        ingredients.push({
+          name,
+          amount: Number(amount),
+          unit
+        });
+      }
+    });
+
+    return ingredients;
+  }
+
+  function loadIngredientsIntoBuilder(ingredients) {
+    const container = document.getElementById("ingredientsList");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (ingredients && ingredients.length > 0) {
+      ingredients.forEach(ing => {
+        const row = createIngredientRow();
+        row.querySelector(".ingredient-name").value = ing.name || "";
+        row.querySelector(".ingredient-amount").value = ing.amount || "";
+        row.querySelector(".ingredient-unit").value = ing.unit || "g";
+        container.appendChild(row);
+      });
+    } else {
+      // Start with one empty row
+      container.appendChild(createIngredientRow());
+    }
+  }
+
+  function convertTextToStructured(text) {
+    // Convert legacy text format to structured ingredients
+    if (!text || !text.trim()) return [];
+
+    const lines = text.split("\n").filter(l => l.trim());
+    const ingredients = [];
+
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      // Try to extract amount and unit with simple regex
+      const match = trimmed.match(/^(.+?)\s+(\d+\.?\d*)\s*(\w+)$/);
+
+      if (match) {
+        ingredients.push({
+          name: match[1].trim(),
+          amount: Number(match[2]),
+          unit: match[3].toLowerCase()
+        });
+      } else {
+        // No match, just use the whole line as name
+        ingredients.push({
+          name: trimmed,
+          amount: 0,
+          unit: "g"
+        });
+      }
+    });
+
+    return ingredients;
+  }
+
   function wireTemplateForm() {
     const form = document.getElementById("mealTemplateForm");
     if (!form) return;
+
+    const addIngredientBtn = document.getElementById("addIngredientBtn");
+    const ingredientsList = document.getElementById("ingredientsList");
+
+    // Wire up "Add Ingredient" button
+    if (addIngredientBtn && ingredientsList) {
+      addIngredientBtn.addEventListener("click", () => {
+        ingredientsList.appendChild(createIngredientRow());
+      });
+
+      // Initialize with one empty row
+      loadIngredientsIntoBuilder([]);
+    }
 
     form.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -281,21 +505,47 @@ if (!next.dietPrepNotesV1) {
       const name = document.getElementById("mealName").value.trim();
       const calories = Number(document.getElementById("mealCalories").value);
       const protein = Number(document.getElementById("mealProtein").value);
-      const ingredientsText = document.getElementById("mealIngredients").value || "";
+      const fat = Number(document.getElementById("mealFat")?.value);
+      const carbs = Number(document.getElementById("mealCarbs")?.value);
+
+      // Get structured ingredients from builder
+      let ingredients = getStructuredIngredients();
+
+      // If no structured ingredients, check text fallback
+      const ingredientsText = document.getElementById("mealIngredientsText")?.value || "";
+      if (ingredients.length === 0 && ingredientsText) {
+        ingredients = convertTextToStructured(ingredientsText);
+      }
 
       if (!name) return;
 
       const now = db().nowISO();
-      upsertTemplate({
+      const template = {
         id: db().makeId("meal_"),
         name,
         calories: Number.isFinite(calories) ? calories : 0,
         protein: Number.isFinite(protein) ? protein : 0,
-        ingredientsText,
         createdAt: now,
-      });
+      };
+
+      // Add structured ingredients
+      if (ingredients.length > 0) {
+        template.ingredients = ingredients;
+      }
+
+      // Keep text format for backward compatibility (optional)
+      if (ingredientsText) {
+        template.ingredientsText = ingredientsText;
+      }
+
+      // Optional fat and carbs
+      if (Number.isFinite(fat) && fat > 0) template.fat = fat;
+      if (Number.isFinite(carbs) && carbs > 0) template.carbs = carbs;
+
+      upsertTemplate(template);
 
       form.reset();
+      loadIngredientsIntoBuilder([]); // Reset to one empty row
       renderTemplateList();
       renderPlanEditor();
       renderChecklist();
@@ -348,49 +598,169 @@ if (!next.dietPrepNotesV1) {
       const opts = [`<option value="">— Select meal —</option>`];
       templates.forEach((t) => {
         const sel = t.id === selectedId ? "selected" : "";
-        opts.push(`<option value="${t.id}" ${sel}>${escapeHTML(t.name)} (${t.calories} kcal, ${t.protein}g)</option>`);
+        let label = `${escapeHTML(t.name)} (${t.calories} kcal, ${t.protein}g P`;
+        if (t.fat != null) label += `, ${t.fat}g F`;
+        if (t.carbs != null) label += `, ${t.carbs}g C`;
+        label += `)`;
+        opts.push(`<option value="${t.id}" ${sel}>${label}</option>`);
       });
       return opts.join("");
     }
 
-    const html = SLOT_DEFS.map((slot) => {
+    // Get all slots for this goal (default + custom)
+    const allSlots = [];
+    const defaultSlots = DEFAULT_SLOTS_BY_GOAL[goal] || DEFAULT_SLOTS_BY_GOAL.maintain;
+    const existingSlotIds = new Set(defaultSlots.map(s => s.id));
+
+    // Add default slots
+    allSlots.push(...defaultSlots.map(s => ({ ...s, isCustom: false })));
+
+    // Add custom slots (slots that exist in the plan but not in defaults)
+    if (plan && plan.slots) {
+      Object.keys(plan.slots).forEach(slotId => {
+        if (!existingSlotIds.has(slotId)) {
+          const slot = plan.slots[slotId];
+          allSlots.push({
+            id: slotId,
+            label: slot.label || slotId,
+            defaultTime: slot.time || "12:00",
+            isCustom: true
+          });
+        }
+      });
+    }
+
+    const html = allSlots.map((slot, idx) => {
       const v = (plan && plan.slots && plan.slots[slot.id]) || { templateId: "", servings: 1, time: slot.defaultTime };
+      const deleteBtn = slot.isCustom
+        ? `<button type="button" class="remove-slot-btn" data-remove-slot="${slot.id}" style="padding:6px 12px; background:var(--danger,#e74c3c); color:white; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600;">Remove</button>`
+        : '';
+
+      const selectedTemplate = templates.find(t => t.id === v.templateId);
+      const mealPreview = selectedTemplate
+        ? `<div class="meta" style="margin-top:4px; font-size:13px;">${selectedTemplate.calories} kcal, ${selectedTemplate.protein}g P</div>`
+        : '';
+
       return `
-        <div class="diet-slot-row" data-slot="${slot.id}">
-          <div>
-            <div class="diet-slot-title">${escapeHTML(slot.label)}</div>
-            <div class="diet-slot-controls">
-              <label>
-                Meal
-                <select data-field="templateId">
-                  ${templateOptions(v.templateId)}
-                </select>
+        <div class="revolut-card" data-slot="${slot.id}" style="animation-delay: ${idx * 0.05}s; cursor:default;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+            <div>
+              <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:4px;">
+                ${slot.isCustom ? '⭐ ' : ''}${escapeHTML(slot.label)}
+              </div>
+              <div class="meta" style="font-size:13px;">${escapeHTML(v.time || slot.defaultTime)}</div>
+            </div>
+            ${deleteBtn}
+          </div>
+
+          <div class="diet-slot-controls" style="display:grid; gap:10px;">
+            <label style="margin:0;">
+              <div style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Meal Template</div>
+              <select data-field="templateId" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2);">
+                ${templateOptions(v.templateId)}
+              </select>
+            </label>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+              <label style="margin:0;">
+                <div style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Time</div>
+                <input type="time" data-field="time" value="${escapeHTML(v.time || slot.defaultTime)}" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2);" />
               </label>
 
-              <label>
-                Time
-                <input type="time" data-field="time" value="${escapeHTML(v.time || slot.defaultTime)}" />
-              </label>
-
-              <label>
-                Servings
-                <input type="number" data-field="servings" min="0" step="0.5" value="${Number(v.servings ?? 1)}" />
+              <label style="margin:0;">
+                <div style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Servings</div>
+                <input type="number" data-field="servings" min="0" step="0.5" value="${Number(v.servings ?? 1)}" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2);" />
               </label>
             </div>
-            <div class="meta">This is your default plan for ${escapeHTML(fmtGoal(goal))}.</div>
           </div>
+          ${mealPreview}
         </div>
       `;
     }).join("");
 
-    wrap.innerHTML = html;
+    const addSlotBtn = `
+      <div style="margin-top:12px;">
+        <button type="button" id="addCustomSlotBtn" style="background:var(--accent,#3b82f6); color:white; padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:600;">+ Add Custom Meal Slot</button>
+      </div>
+    `;
 
-    // live-edit in memory (saved on Save button)
-    wrap.querySelectorAll("[data-slot]").forEach((row) => {
-      row.addEventListener("change", () => {
-        // no-op here; values read on save
+    wrap.innerHTML = html + addSlotBtn;
+
+    // Wire remove slot buttons
+    wrap.querySelectorAll("[data-remove-slot]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const slotId = btn.getAttribute("data-remove-slot");
+        if (confirm(`Remove this meal slot?`)) {
+          removeCustomSlot(goal, slotId);
+        }
       });
     });
+
+    // Wire add custom slot button
+    const addBtn = document.getElementById("addCustomSlotBtn");
+    addBtn?.addEventListener("click", () => {
+      addCustomSlot(goal);
+    });
+  }
+
+  function addCustomSlot(goalId) {
+    openDietModal({
+      title: "Add Custom Meal Slot",
+      bodyHTML: `
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <label style="width:100%;">
+            Slot Name
+            <input type="text" id="customSlotName" placeholder="e.g. Evening Snack, Pre-bed meal" required style="width:100%;" />
+          </label>
+
+          <label style="width:100%;">
+            Default Time
+            <input type="time" id="customSlotTime" value="16:00" style="width:100%;" />
+          </label>
+        </div>
+      `,
+      onOk: () => {
+        const name = document.getElementById("customSlotName")?.value.trim();
+        const time = document.getElementById("customSlotTime")?.value || "16:00";
+
+        if (!name) {
+          alert("Please enter a slot name");
+          return false;
+        }
+
+        const meta = ensureDietMeta(getMeta());
+        const next = JSON.parse(JSON.stringify(meta));
+
+        if (!next.dietPlansV1[goalId]) next.dietPlansV1[goalId] = { slots: {} };
+
+        // Generate unique slot ID
+        const slotId = `custom_${name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}`;
+
+        next.dietPlansV1[goalId].slots[slotId] = {
+          label: name,
+          templateId: "",
+          servings: 1,
+          time: time,
+        };
+
+        setMeta(next);
+        renderPlanEditor();
+
+        return true;
+      },
+    });
+  }
+
+  function removeCustomSlot(goalId, slotId) {
+    const meta = ensureDietMeta(getMeta());
+    const next = JSON.parse(JSON.stringify(meta));
+
+    if (next.dietPlansV1[goalId]?.slots?.[slotId]) {
+      delete next.dietPlansV1[goalId].slots[slotId];
+      setMeta(next);
+      renderPlanEditor();
+      toast("Custom slot removed");
+    }
   }
 
   function savePlanFromUI() {
@@ -416,11 +786,21 @@ if (!next.dietPrepNotesV1) {
       const time = row.querySelector('[data-field="time"]')?.value || "";
       const servingsRaw = row.querySelector('[data-field="servings"]')?.value;
       const servings = clampNumber(servingsRaw, 0, 50);
-      next.dietPlansV1[goal].slots[slotId] = {
+
+      // Preserve existing label for custom slots
+      const existingSlot = meta0.dietPlansV1[goal]?.slots?.[slotId];
+      const slotData = {
         templateId,
         time,
         servings: servings == null ? 1 : servings,
       };
+
+      // Keep label if it exists (for custom slots)
+      if (existingSlot?.label) {
+        slotData.label = existingSlot.label;
+      }
+
+      next.dietPlansV1[goal].slots[slotId] = slotData;
     });
 
     // keep a concept of active goal (used by Log)
@@ -496,16 +876,36 @@ function initDayDraft(force = false) {
 
     let cal = 0;
     let pro = 0;
+    let fat = 0;
+    let carbs = 0;
 
     (dayDraft?.items || []).forEach((it) => {
+      // Handle custom meals (have customMeal property)
+      if (it.customMeal) {
+        const m = it.customMeal;
+        cal += Number(m.calories || 0);
+        pro += Number(m.protein || 0);
+        fat += Number(m.fat || 0);
+        carbs += Number(m.carbs || 0);
+        return;
+      }
+
+      // Handle template-based meals
       const t = byId[it.templateId];
       if (!t) return;
       const servings = Number(it.servings) || 0;
       cal += Number(t.calories || 0) * servings;
       pro += Number(t.protein || 0) * servings;
+      fat += Number(t.fat || 0) * servings;
+      carbs += Number(t.carbs || 0) * servings;
     });
 
-    return { calories: Math.round(cal), protein: Math.round(pro) };
+    return {
+      calories: Math.round(cal),
+      protein: Math.round(pro),
+      fat: Math.round(fat),
+      carbs: Math.round(carbs)
+    };
   }
 
   function renderChecklist() {
@@ -547,7 +947,13 @@ function initDayDraft(force = false) {
       const loggedServings = loggedItems.reduce((sum, x) => sum + (Number(x.servings) || 0), 0);
 
       const title = `${slot.label}${s.time ? ` • ${s.time}` : ""}`;
-      const subtitle = t ? `${t.name} (${t.calories} kcal, ${t.protein}g)` : "No meal selected";
+      let subtitle = "No meal selected";
+      if (t) {
+        subtitle = `${t.name} (${t.calories} kcal, ${t.protein}g P`;
+        if (t.fat != null) subtitle += `, ${t.fat}g F`;
+        if (t.carbs != null) subtitle += `, ${t.carbs}g C`;
+        subtitle += `)`;
+      }
       const status = loggedServings > 0 ? `Logged: ${loggedServings} serving(s)` : "Not logged";
 
       const disabled = t ? "" : "disabled";
@@ -569,20 +975,47 @@ function initDayDraft(force = false) {
       `;
     }).join("");
 
-    // Extras list
+    // Extras list (including custom meals)
     const extras = (dayDraft.items || []).filter(
-  (x) => x.source === "extra" || x.source === "swap" || x.source === "snack"
+  (x) => x.source === "extra" || x.source === "swap" || x.source === "snack" || x.source === "custom"
 );
     const extrasHtml =
       extras.length === 0
         ? `<div style="color:var(--muted); font-size:13px; margin-top:10px;">No extras/substitutions yet.</div>`
         : `
-          <div style="margin-top:12px; font-weight:700;">Extras & swaps</div>
+          <div style="margin-top:12px; font-weight:700;">Extras, swaps & custom meals</div>
           ${extras
             .map((it, idx) => {
+              // Handle custom meals
+              if (it.customMeal) {
+                const m = it.customMeal;
+                let metaLine = `${m.calories} kcal, ${m.protein}g P`;
+                if (m.fat) metaLine += `, ${m.fat}g F`;
+                if (m.carbs) metaLine += `, ${m.carbs}g C`;
+                metaLine += ` <span style="color:var(--accent);">(custom)</span>`;
+
+                return `
+                  <div class="diet-check-row">
+                    <div>
+                      <div style="font-weight:700;">${escapeHTML(m.name)}</div>
+                      <div class="meta">${metaLine}</div>
+                    </div>
+                    <div class="btn-row" style="margin:0;">
+                      <button type="button" data-action="remove-extra" data-idx="${idx}">Remove</button>
+                    </div>
+                  </div>
+                `;
+              }
+
+              // Handle template-based meals
               const t = byId[it.templateId];
               const name = t ? t.name : "Unknown";
-              const metaLine = t ? `${t.calories} kcal, ${t.protein}g` : "";
+              let metaLine = "";
+              if (t) {
+                metaLine = `${t.calories} kcal, ${t.protein}g P`;
+                if (t.fat != null) metaLine += `, ${t.fat}g F`;
+                if (t.carbs != null) metaLine += `, ${t.carbs}g C`;
+              }
               return `
                 <div class="diet-check-row">
                   <div>
@@ -825,6 +1258,86 @@ function handleAddSnack() {
   });
 }
 
+  // ---------- Custom Off-Plan Meals ----------
+  function handleAddCustomMeal() {
+    openDietModal({
+      title: "Add Custom Meal",
+      bodyHTML: `
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <label style="width:100%;">
+            Meal Name
+            <input type="text" id="customMealName" placeholder="e.g. Restaurant meal, Takeout" required style="width:100%;" />
+          </label>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <label>
+              Calories (kcal)
+              <input type="number" id="customMealCal" min="0" step="1" required />
+            </label>
+            <label>
+              Protein (g)
+              <input type="number" id="customMealPro" min="0" step="0.1" required />
+            </label>
+          </div>
+
+          <details style="margin-top:8px;">
+            <summary style="cursor:pointer; color:var(--muted); font-size:13px;">Add fat & carbs (optional)</summary>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px;">
+              <label>
+                Fat (g)
+                <input type="number" id="customMealFat" min="0" step="0.1" placeholder="Optional" />
+              </label>
+              <label>
+                Carbs (g)
+                <input type="number" id="customMealCarbs" min="0" step="0.1" placeholder="Optional" />
+              </label>
+            </div>
+          </details>
+        </div>
+      `,
+      onOk: () => {
+        const name = document.getElementById("customMealName")?.value.trim();
+        const cal = Number(document.getElementById("customMealCal")?.value);
+        const pro = Number(document.getElementById("customMealPro")?.value);
+        const fat = Number(document.getElementById("customMealFat")?.value) || 0;
+        const carbs = Number(document.getElementById("customMealCarbs")?.value) || 0;
+
+        if (!name || !Number.isFinite(cal) || !Number.isFinite(pro)) {
+          alert("Please enter meal name, calories, and protein");
+          return false; // Don't close modal
+        }
+
+        // Ensure draft is live
+        initDayDraft();
+        if (!dayDraft) initDayDraft(true);
+        if (!dayDraft.items) dayDraft.items = [];
+
+        // Add as off-plan meal (stored differently than template-based meals)
+        const customMeal = {
+          id: db().makeId("custom_"),
+          name,
+          calories: cal,
+          protein: pro,
+          fat: fat > 0 ? fat : undefined,
+          carbs: carbs > 0 ? carbs : undefined,
+          source: "custom",
+          createdAt: db().nowISO(),
+        };
+
+        dayDraft.items.push({
+          slotId: "off-plan",
+          customMeal,  // Store meal data directly
+          servings: 1,  // Always 1 for custom meals since macros are already entered
+          source: "custom",
+          createdAt: db().nowISO(),
+        });
+
+        renderChecklist();
+        return true; // Close modal
+      },
+    });
+  }
+
   function renderTotalsBox() {
     const box = document.getElementById("dietTotalsBox");
     if (!box) return;
@@ -849,11 +1362,21 @@ function handleAddSnack() {
         ? `${totals.protein}g protein (target ${targets.protein}, ${proDelta >= 0 ? "+" : ""}${proDelta})`
         : `${totals.protein}g protein`;
 
+    let macrosLine = "";
+    if (totals.fat > 0 || totals.carbs > 0) {
+      macrosLine = `<div class="meta">`;
+      if (totals.fat > 0) macrosLine += `${totals.fat}g fat`;
+      if (totals.fat > 0 && totals.carbs > 0) macrosLine += ` • `;
+      if (totals.carbs > 0) macrosLine += `${totals.carbs}g carbs`;
+      macrosLine += `</div>`;
+    }
+
     box.innerHTML = `
       <div style="font-weight:700;">Totals for ${escapeHTML(date)}</div>
       <div class="meta">${escapeHTML(calLine)}</div>
       <div class="meta">${escapeHTML(proLine)}</div>
-      <div class="meta">Submitting saves your totals (and your log) — it’s fine if today is partial.</div>
+      ${macrosLine}
+      <div class="meta">Submitting saves your totals (and your log) — it's fine if today is partial.</div>
     `;
   }
 
@@ -973,6 +1496,10 @@ if (action === "log-adjust" && slotId) {
 
     addBtn?.addEventListener("click", handleAddExtraMeal);
     subBtn?.addEventListener("click", handleSubmitDay);
+
+    // Wire custom meal button
+    const customMealBtn = document.getElementById("dietAddCustomMealBtn");
+    customMealBtn?.addEventListener("click", handleAddCustomMeal);
   }
 
   // ---------- Progress ----------
@@ -1155,6 +1682,345 @@ function wirePrepManualControls() {
   });
 }
 
+  // ---------- Shopping List Generator ----------
+  function aggregateAllPlanIngredients(goalId, multiplier) {
+    // Aggregate ALL meal slots (not just lunch/dinner)
+    const meta = ensureDietMeta(getMeta());
+    const plan = meta.dietPlansV1[goalId] || { slots: {} };
+    const templates = getTemplates();
+    const byId = Object.fromEntries(templates.map((t) => [t.id, t]));
+
+    const counts = new Map();
+
+    Object.keys(plan.slots || {}).forEach((slotId) => {
+      const s = plan.slots[slotId];
+      if (!s || !s.templateId) return;
+
+      const t = byId[s.templateId];
+      if (!t) return;
+
+      const factor = (Number(s.servings) || 1) * (multiplier || 1);
+
+      // Use structured ingredients if available
+      if (t.ingredients && t.ingredients.length > 0) {
+        t.ingredients.forEach((ing) => {
+          const key = ing.name.toLowerCase();
+          const prev = counts.get(key) || {
+            name: ing.name,
+            amount: 0,
+            unit: ing.unit
+          };
+          prev.amount += ing.amount * factor;
+          counts.set(key, prev);
+        });
+      } else {
+        // Fallback to legacy text format
+        const lines = linesFromIngredients(t.ingredientsText);
+        lines.forEach((line) => {
+          const key = line.toLowerCase();
+          const prev = counts.get(key) || { text: line, count: 0 };
+          prev.count += factor;
+          counts.set(key, prev);
+        });
+      }
+    });
+
+    return Array.from(counts.values()).sort((a, b) => {
+      const aName = a.name || a.text || "";
+      const bName = b.name || b.text || "";
+      return aName.localeCompare(bName);
+    });
+  }
+
+  function generateShoppingList(multiplier, label) {
+    const meta = ensureDietMeta(getMeta());
+    const goalSel = document.getElementById("dietPrepGoal");
+    const goal = (goalSel && goalSel.value) || (meta.dietActiveGoal || "maintain");
+
+    const needed = aggregateAllPlanIngredients(goal, multiplier);
+    const inventory = getInventory();
+
+    // Calculate what needs to be bought (needed - inventory)
+    const toBuy = [];
+
+    needed.forEach(item => {
+      if (item.name) {
+        // Structured ingredient
+        const invItem = getInventoryItem(item.name);
+        const inStock = invItem ? Number(invItem.currentStock) || 0 : 0;
+        const netNeed = item.amount - inStock;
+
+        if (netNeed > 0) {
+          toBuy.push({
+            name: item.name,
+            amount: Math.round(netNeed * 10) / 10,
+            unit: item.unit,
+            inStock,
+            type: 'structured'
+          });
+        }
+      } else {
+        // Legacy text format - just add it
+        toBuy.push({
+          text: item.text,
+          count: item.count,
+          type: 'legacy'
+        });
+      }
+    });
+
+    return { toBuy, label, goal };
+  }
+
+  function renderShoppingList({ toBuy, label, goal }) {
+    const out = document.getElementById("shoppingListOutput");
+    if (!out) return;
+
+    if (toBuy.length === 0) {
+      out.innerHTML = `<div class="meta">✅ You have everything you need! (Or no meals with ingredients in your ${escapeHTML(fmtGoal(goal))} plan yet.)</div>`;
+      return;
+    }
+
+    // Group by category (simple categorization)
+    const categories = {
+      protein: [],
+      carbs: [],
+      vegetables: [],
+      dairy: [],
+      other: []
+    };
+
+    // Simple keyword-based categorization
+    const categorizeIngredient = (name) => {
+      const lower = name.toLowerCase();
+      if (/chicken|beef|pork|fish|salmon|tuna|turkey|protein|egg/.test(lower)) return 'protein';
+      if (/rice|pasta|bread|oat|quinoa|potato|sweet potato/.test(lower)) return 'carbs';
+      if (/broccoli|spinach|kale|carrot|pepper|tomato|lettuce|cucumber|vegetable/.test(lower)) return 'vegetables';
+      if (/milk|cheese|yogurt|butter|cream/.test(lower)) return 'dairy';
+      return 'other';
+    };
+
+    toBuy.forEach(item => {
+      if (item.type === 'structured') {
+        const category = categorizeIngredient(item.name);
+        categories[category].push(item);
+      } else {
+        categories.other.push(item);
+      }
+    });
+
+    const categoryLabels = {
+      protein: '🥩 Protein',
+      carbs: '🍚 Carbs',
+      vegetables: '🥦 Vegetables',
+      dairy: '🥛 Dairy',
+      other: '📦 Other'
+    };
+
+    let html = `<div style="font-weight:700; margin-bottom:12px;">🛒 Shopping List — ${escapeHTML(label)}</div>`;
+
+    Object.keys(categories).forEach(cat => {
+      const items = categories[cat];
+      if (items.length === 0) return;
+
+      html += `<div style="margin-bottom:16px;">`;
+      html += `<div style="font-weight:600; font-size:14px; margin-bottom:8px;">${categoryLabels[cat]}</div>`;
+      html += `<ul style="margin:0; padding-left:20px;">`;
+
+      items.forEach(item => {
+        if (item.type === 'structured') {
+          html += `<li>
+            <strong>${escapeHTML(item.name)}</strong>
+            <span class="meta">${item.amount}${item.unit}</span>
+            ${item.inStock > 0 ? `<span class="meta"> (have: ${item.inStock}${item.unit})</span>` : ''}
+          </li>`;
+        } else {
+          html += `<li>${escapeHTML(item.text)} <span class="meta">× ${item.count}</span></li>`;
+        }
+      });
+
+      html += `</ul></div>`;
+    });
+
+    out.innerHTML = html;
+  }
+
+  function wireShoppingList() {
+    const weeklyBtn = document.getElementById("generateWeeklyShoppingBtn");
+    const monthlyBtn = document.getElementById("generateMonthlyShoppingBtn");
+
+    weeklyBtn?.addEventListener("click", () => {
+      const result = generateShoppingList(7, "Weekly (7 days)");
+      renderShoppingList(result);
+    });
+
+    monthlyBtn?.addEventListener("click", () => {
+      const result = generateShoppingList(30, "Monthly (30 days)");
+      renderShoppingList(result);
+    });
+  }
+
+  // ---------- Inventory Management ----------
+  function renderInventoryList() {
+    const out = document.getElementById("inventoryList");
+    if (!out) return;
+
+    const inventory = getInventory().sort((a, b) =>
+      (a.ingredientName || "").localeCompare(b.ingredientName || "")
+    );
+
+    if (inventory.length === 0) {
+      out.innerHTML = `<div class="meta">No inventory tracked yet. Add ingredients above.</div>`;
+      return;
+    }
+
+    const html = inventory.map(item => {
+      const stockLevel = Number(item.currentStock) || 0;
+      const lowStock = stockLevel < 100 && item.unit === 'g' ? true :
+                       stockLevel < 1 && item.unit === 'kg' ? true :
+                       stockLevel < 500 && item.unit === 'ml' ? true :
+                       stockLevel < 1 && item.unit === 'l' ? true :
+                       stockLevel < 3 && item.unit === 'whole' ? true : false;
+
+      return `
+        <div class="diet-check-row" style="grid-template-columns: 1fr auto;">
+          <div>
+            <div style="font-weight:600;">${escapeHTML(item.ingredientName)}</div>
+            <div class="meta" style="color:${lowStock ? '#ef4444' : 'var(--muted)'};">
+              ${lowStock ? '⚠️ ' : ''}Stock: ${stockLevel}${item.unit}
+            </div>
+            <div style="margin-top:4px; width:100%; height:4px; background:var(--surface-2); border-radius:2px; overflow:hidden;">
+              <div style="width:${Math.min((stockLevel / 500) * 100, 100)}%; height:100%; background:${lowStock ? '#ef4444' : '#22c55e'}; transition:width 0.3s;"></div>
+            </div>
+          </div>
+          <div class="btn-row" style="margin:0;">
+            <button type="button" data-delete-inv="${item.id}">Delete</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    out.innerHTML = html;
+
+    // Wire delete buttons
+    out.querySelectorAll("[data-delete-inv]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-delete-inv");
+        if (!confirm("Delete this inventory item?")) return;
+        db().remove("dietInventory", id);
+        renderInventoryList();
+      });
+    });
+  }
+
+  function wireInventoryForm() {
+    const form = document.getElementById("inventoryForm");
+    if (!form) return;
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const nameInput = document.getElementById("invIngredientName");
+      const stockInput = document.getElementById("invStock");
+      const unitInput = document.getElementById("invUnit");
+
+      const name = nameInput?.value.trim();
+      const stock = Number(stockInput?.value);
+      const unit = unitInput?.value;
+
+      if (!name || !Number.isFinite(stock)) return;
+
+      upsertInventoryItem({
+        ingredientName: name,
+        currentStock: stock,
+        unit
+      });
+
+      form.reset();
+      renderInventoryList();
+      toast("Inventory updated");
+    });
+  }
+
+  // ---------- Prep Calculator ----------
+  function calculatePrepAmounts() {
+    const meta = ensureDietMeta(getMeta());
+    const goalSel = document.getElementById("dietPrepGoal");
+    const prepDaysInput = document.getElementById("prepDays");
+
+    const goal = (goalSel && goalSel.value) || (meta.dietActiveGoal || "maintain");
+    const prepDays = Number(prepDaysInput?.value) || 7;
+
+    // Get ingredients for lunch and dinner only
+    const plan = meta.dietPlansV1[goal] || { slots: {} };
+    const templates = getTemplates();
+    const byId = Object.fromEntries(templates.map((t) => [t.id, t]));
+
+    const PREP_SLOTS = ["lunch", "dinner"];
+    const counts = new Map();
+
+    PREP_SLOTS.forEach((slotId) => {
+      const s = plan.slots?.[slotId];
+      if (!s || !s.templateId) return;
+
+      const t = byId[s.templateId];
+      if (!t) return;
+
+      const factor = (Number(s.servings) || 1) * prepDays;
+
+      if (t.ingredients && t.ingredients.length > 0) {
+        t.ingredients.forEach((ing) => {
+          const key = ing.name.toLowerCase();
+          const prev = counts.get(key) || {
+            name: ing.name,
+            amount: 0,
+            unit: ing.unit
+          };
+          prev.amount += ing.amount * factor;
+          counts.set(key, prev);
+        });
+      }
+    });
+
+    const ingredients = Array.from(counts.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+
+    return { ingredients, prepDays, goal };
+  }
+
+  function renderPrepCalculator({ ingredients, prepDays, goal }) {
+    const out = document.getElementById("prepCalculatorOutput");
+    if (!out) return;
+
+    if (ingredients.length === 0) {
+      out.innerHTML = `<div class="meta">No structured ingredients in lunch/dinner meals for ${escapeHTML(fmtGoal(goal))}. Add meals with ingredients to your plan.</div>`;
+      return;
+    }
+
+    let html = `
+      <div style="font-weight:700; margin-bottom:12px;">🍳 Cook for ${prepDays} days</div>
+      <ul style="margin:0; padding-left:20px;">
+    `;
+
+    ingredients.forEach(ing => {
+      html += `<li><strong>${escapeHTML(ing.name)}</strong>: ${Math.round(ing.amount * 10) / 10}${ing.unit}</li>`;
+    });
+
+    html += `</ul>`;
+    html += `<div class="meta" style="margin-top:12px;">💡 Tip: Portion into ${prepDays} containers after cooking.</div>`;
+
+    out.innerHTML = html;
+  }
+
+  function wirePrepCalculator() {
+    const btn = document.getElementById("calculatePrepBtn");
+    btn?.addEventListener("click", () => {
+      const result = calculatePrepAmounts();
+      renderPrepCalculator(result);
+    });
+  }
+
   function renderPrepHint() {
     const hint = document.getElementById("dietPrepHint");
     if (!hint) return;
@@ -1184,16 +2050,35 @@ function wirePrepManualControls() {
       // weekly: 7 days × planned servings (in plan editor)
       const weeklyFactor = (Number(s.servings) || 1) * 7 * (multiplier || 1);
 
-      const lines = linesFromIngredients(t.ingredientsText);
-      lines.forEach((line) => {
-        const key = line.toLowerCase();
-        const prev = counts.get(key) || { text: line, count: 0 };
-        prev.count += weeklyFactor;
-        counts.set(key, prev);
-      });
+      // Use structured ingredients if available
+      if (t.ingredients && t.ingredients.length > 0) {
+        t.ingredients.forEach((ing) => {
+          const key = ing.name.toLowerCase();
+          const prev = counts.get(key) || {
+            name: ing.name,
+            amount: 0,
+            unit: ing.unit
+          };
+          prev.amount += ing.amount * weeklyFactor;
+          counts.set(key, prev);
+        });
+      } else {
+        // Fallback to legacy text format
+        const lines = linesFromIngredients(t.ingredientsText);
+        lines.forEach((line) => {
+          const key = line.toLowerCase();
+          const prev = counts.get(key) || { text: line, count: 0 };
+          prev.count += weeklyFactor;
+          counts.set(key, prev);
+        });
+      }
     });
 
-    return Array.from(counts.values()).sort((a, b) => a.text.localeCompare(b.text));
+    return Array.from(counts.values()).sort((a, b) => {
+      const aName = a.name || a.text || "";
+      const bName = b.name || b.text || "";
+      return aName.localeCompare(bName);
+    });
   }
 
   function renderPrepList(multiplierLabel, multiplier) {
@@ -1209,7 +2094,14 @@ function wirePrepManualControls() {
     }
 
     const list = items
-      .map((x) => `<li>${escapeHTML(x.text)} <span class="meta">× ${x.count} (${escapeHTML(multiplierLabel)})</span></li>`)
+      .map((x) => {
+        // Structured format: has name, amount, unit
+        if (x.name) {
+          return `<li>${escapeHTML(x.name)} <span class="meta">${x.amount}${x.unit} (${escapeHTML(multiplierLabel)})</span></li>`;
+        }
+        // Legacy format: has text and count
+        return `<li>${escapeHTML(x.text)} <span class="meta">× ${x.count} (${escapeHTML(multiplierLabel)})</span></li>`;
+      })
       .join("");
 
     out.innerHTML = `
@@ -1343,7 +2235,13 @@ function wirePrepManualControls() {
 
   function chooseTemplateModal({ title, templates, onConfirm }) {
     const opts = templates
-      .map((t) => `<option value="${t.id}">${escapeHTML(t.name)} (${t.calories} kcal, ${t.protein}g)</option>`)
+      .map((t) => {
+        let label = `${escapeHTML(t.name)} (${t.calories} kcal, ${t.protein}g P`;
+        if (t.fat != null) label += `, ${t.fat}g F`;
+        if (t.carbs != null) label += `, ${t.carbs}g C`;
+        label += `)`;
+        return `<option value="${t.id}">${label}</option>`;
+      })
       .join("");
 
     openDietModal({
@@ -1419,6 +2317,12 @@ function wirePrepManualControls() {
     // prep
 wirePrepManualControls();
 renderPrepManual();
+
+    // shopping list & inventory
+    wireShoppingList();
+    wireInventoryForm();
+    renderInventoryList();
+    wirePrepCalculator();
 
     // Expose render functions globally for re-rendering when tab becomes visible
     window.renderDietPlanEditor = renderPlanEditor;

@@ -215,10 +215,11 @@ function removeEntry(entry) {
 
       // Sleep duration indicator
       const hoursValue = hours ? Number(hours.value) : 0;
-      let durationColor = '#64748b';
-      if (hoursValue >= 7 && hoursValue <= 9) durationColor = '#22c55e'; // ideal
-      else if (hoursValue >= 6 || hoursValue <= 10) durationColor = '#f59e0b'; // acceptable
-      else if (hoursValue > 0) durationColor = '#ef4444'; // not enough/too much
+      let durationColor = '#64748b'; // gray default
+      if (hoursValue < 5 && hoursValue > 0) durationColor = '#ef4444'; // severe lack of sleep - RED
+      else if (hoursValue >= 7 && hoursValue <= 9) durationColor = '#22c55e'; // ideal - GREEN
+      else if ((hoursValue >= 5 && hoursValue < 7) || (hoursValue > 9 && hoursValue <= 10)) durationColor = '#f59e0b'; // acceptable but not ideal - AMBER
+      else if (hoursValue > 10) durationColor = '#ef4444'; // too much sleep - RED
 
       const li = document.createElement("li");
       li.className = "revolut-card";
@@ -396,92 +397,205 @@ function removeEntry(entry) {
 
     const ctx = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
+    const isDark = document.documentElement.getAttribute("data-theme") !== "light";
 
     const cssW = canvas.clientWidth || 300;
-    const cssH = 220;
+    const cssH = 260;
     canvas.width = Math.floor(cssW * dpr);
     canvas.height = Math.floor(cssH * dpr);
     ctx.scale(dpr, dpr);
 
+    const gridColor = isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)";
+    const textColor = isDark ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.8)";
+    const mutedColor = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)";
+
     // clear
     ctx.clearRect(0, 0, cssW, cssH);
 
-    // padding
-    const padL = 38, padR = 12, padT = 14, padB = 26;
+    // padding - more space at bottom for legend and dates
+    const padL = 50, padR = 50, padT = 20, padB = 50;
     const w = cssW - padL - padR;
     const h = cssH - padT - padB;
 
-    // frame
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = "rgba(255,255,255,.10)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(padL, padT, w, h);
-
     if (!filtered || filtered.length < 2) {
-      ctx.fillStyle = "rgba(255,255,255,.55)";
-      ctx.font = "13px system-ui";
-      ctx.fillText("Not enough data to chart yet.", padL + 10, padT + 24);
+      ctx.fillStyle = textColor;
+      ctx.font = "13px " + getComputedStyle(document.body).fontFamily;
+      ctx.fillText("Log at least 2 sleep entries to see a trend.", padL + 10, padT + 24);
       return;
     }
 
-    // scales
+    // Calculate trend for hours
     const hoursVals = filtered.map(x => x.hours).filter(n => Number.isFinite(n));
+    const firstHours = hoursVals[0];
+    const lastHours = hoursVals[hoursVals.length - 1];
+    const hoursTrendPositive = lastHours >= firstHours;
+
+    // Line colors based on trend
+    const hoursLineColor = hoursTrendPositive ? "#22c55e" : "#ef4444"; // green : red
+    const hoursShadowColor = hoursTrendPositive ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)";
+    const qualityLineColor = "#78dca0";
+
+    // scales
     const maxHours = Math.max(8, Math.min(24, Math.ceil((hoursVals.length ? Math.max(...hoursVals) : 8) + 1)));
+    const minHours = 0;
+    const hoursRange = maxHours - minHours;
 
     const xFor = (i) => padL + (i * (w / (filtered.length - 1)));
-    const yForHours = (v) => padT + (h - (v / maxHours) * h);
-    const yForQuality = (v) => padT + (h - (v / 100) * h);
+    const yForHours = (v) => padT + h - ((v - minHours) / hoursRange) * h;
+    const yForQuality = (v) => padT + h - ((v / 100) * h);
 
-    // grid (light)
-    ctx.strokeStyle = "rgba(255,255,255,.06)";
-    for (let i = 1; i <= 3; i++) {
-      const y = padT + (i * (h / 4));
+    // Axis + grid
+    ctx.globalAlpha = 0.35;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT);
+    ctx.lineTo(padL, padT + h);
+    ctx.lineTo(padL + w, padT + h);
+    ctx.strokeStyle = gridColor;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Y-axis labels (left side - hours)
+    ctx.font = "11px " + getComputedStyle(document.body).fontFamily;
+    ctx.fillStyle = mutedColor;
+    ctx.textAlign = "right";
+    ctx.fillText(`${maxHours}h`, padL - 8, padT + 10);
+    ctx.fillText(`${Math.round(maxHours / 2)}h`, padL - 8, padT + h / 2 + 4);
+    ctx.fillText("0h", padL - 8, padT + h + 4);
+
+    // Y-axis labels (right side - quality %)
+    ctx.textAlign = "left";
+    ctx.fillText("100%", padL + w + 8, padT + 10);
+    ctx.fillText("50%", padL + w + 8, padT + h / 2 + 4);
+    ctx.fillText("0%", padL + w + 8, padT + h + 4);
+
+    // Draw shadow/fill area under hours line
+    const hoursPoints = [];
+    filtered.forEach((p, i) => {
+      if (Number.isFinite(p.hours)) {
+        hoursPoints.push({ x: xFor(i), y: yForHours(p.hours), value: p.hours });
+      }
+    });
+
+    if (hoursPoints.length > 0) {
       ctx.beginPath();
-      ctx.moveTo(padL, y);
-      ctx.lineTo(padL + w, y);
+      ctx.moveTo(hoursPoints[0].x, hoursPoints[0].y);
+
+      hoursPoints.forEach(pt => {
+        ctx.lineTo(pt.x, pt.y);
+      });
+
+      // Close the path to baseline
+      ctx.lineTo(hoursPoints[hoursPoints.length - 1].x, padT + h);
+      ctx.lineTo(hoursPoints[0].x, padT + h);
+      ctx.closePath();
+
+      // Fill with gradient shadow
+      const gradient = ctx.createLinearGradient(0, padT, 0, padT + h);
+      gradient.addColorStop(0, hoursShadowColor);
+      gradient.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      // Draw main hours line
+      ctx.beginPath();
+      hoursPoints.forEach((pt, i) => {
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      });
+      ctx.strokeStyle = hoursLineColor;
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
       ctx.stroke();
+
+      // Draw points
+      hoursPoints.forEach(pt => {
+        // Outer circle (shadow)
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = isDark ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.4)";
+        ctx.fill();
+
+        // Inner circle
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = hoursLineColor;
+        ctx.fill();
+      });
     }
 
-    // Hours line
-    ctx.strokeStyle = "rgba(79,140,255,.85)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    let started = false;
+    // Quality line (lighter, secondary)
+    const qualityPoints = [];
     filtered.forEach((p, i) => {
-      if (!Number.isFinite(p.hours)) return;
-      const x = xFor(i);
-      const y = yForHours(p.hours);
-      if (!started) { ctx.moveTo(x, y); started = true; }
-      else ctx.lineTo(x, y);
+      if (Number.isFinite(p.quality)) {
+        qualityPoints.push({ x: xFor(i), y: yForQuality(p.quality) });
+      }
     });
-    ctx.stroke();
 
-    // Quality line
-    ctx.strokeStyle = "rgba(120,220,160,.75)";
-    ctx.lineWidth = 2;
+    if (qualityPoints.length > 0) {
+      ctx.beginPath();
+      qualityPoints.forEach((pt, i) => {
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      });
+      ctx.strokeStyle = qualityLineColor;
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.stroke();
+
+      // Draw smaller points for quality
+      qualityPoints.forEach(pt => {
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = qualityLineColor;
+        ctx.fill();
+      });
+    }
+
+    // X-axis date labels
+    ctx.fillStyle = mutedColor;
+    ctx.textAlign = "left";
+    ctx.font = "10px " + getComputedStyle(document.body).fontFamily;
+
+    // Show first and last dates
+    const firstDate = filtered[0].date;
+    const lastDate = filtered[filtered.length - 1].date;
+
+    // Format dates to be more readable (e.g., "Jan 3" instead of "2025-01-03")
+    const formatDate = (dateStr) => {
+      const d = new Date(dateStr + "T00:00:00");
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${months[d.getMonth()]} ${d.getDate()}`;
+    };
+
+    ctx.fillText(formatDate(firstDate), padL, padT + h + 18);
+    ctx.textAlign = "right";
+    ctx.fillText(formatDate(lastDate), padL + w, padT + h + 18);
+
+    // Legend at bottom center
+    ctx.textAlign = "center";
+    ctx.font = "11px " + getComputedStyle(document.body).fontFamily;
+
+    const legendY = padT + h + 35;
+    const legendCenterX = padL + w / 2;
+
+    // Hours legend item
+    ctx.fillStyle = hoursLineColor;
     ctx.beginPath();
-    started = false;
-    filtered.forEach((p, i) => {
-      if (!Number.isFinite(p.quality)) return;
-      const x = xFor(i);
-      const y = yForQuality(p.quality);
-      if (!started) { ctx.moveTo(x, y); started = true; }
-      else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
+    ctx.arc(legendCenterX - 60, legendY, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = textColor;
+    ctx.textAlign = "left";
+    ctx.fillText(`Sleep Hours ${hoursTrendPositive ? '↗' : '↘'}`, legendCenterX - 54, legendY + 4);
 
-    // Labels
-    ctx.fillStyle = "rgba(255,255,255,.65)";
-    ctx.font = "12px system-ui";
-    ctx.fillText(`Hours (0–${maxHours})`, padL + 8, padT + 14);
-    ctx.fillText("Quality (0–100)", padL + 110, padT + 14);
-
-    // x-axis dates (first/last)
-    ctx.fillStyle = "rgba(255,255,255,.45)";
-    ctx.fillText(filtered[0].date, padL, padT + h + 20);
-    const lastTxt = filtered[filtered.length - 1].date;
-    const tw = ctx.measureText(lastTxt).width;
-    ctx.fillText(lastTxt, padL + w - tw, padT + h + 20);
+    // Quality legend item
+    ctx.fillStyle = qualityLineColor;
+    ctx.beginPath();
+    ctx.arc(legendCenterX + 30, legendY, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = textColor;
+    ctx.fillText("Quality %", legendCenterX + 36, legendY + 4);
   }
 
   let sleepRangeDays = 7;
@@ -527,6 +641,150 @@ function removeEntry(entry) {
     });
   }
 
+function renderSleepInsightsPanel(series) {
+  const insightsEl = document.getElementById("sleepInsightsContent");
+  if (!insightsEl) return;
+
+  const logged = series.filter(dayLogged);
+
+  if (logged.length < 3) {
+    insightsEl.innerHTML = `
+      <div style="color:var(--muted); text-align:center; padding:20px;">
+        <div style="font-size:48px; margin-bottom:12px;">😴</div>
+        <div>Log at least 3 nights of sleep to unlock insights.</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Calculate insights
+  const hoursData = logged.map(x => x.hours).filter(h => Number.isFinite(h));
+  const qualityData = logged.map(x => x.quality).filter(q => Number.isFinite(q));
+
+  // Best and worst nights
+  let bestNight = null, worstNight = null;
+  logged.forEach(x => {
+    if (!Number.isFinite(x.hours) || !Number.isFinite(x.quality)) return;
+    const score = x.hours * (x.quality / 100); // Weighted score
+    if (!bestNight || score > bestNight.score) {
+      bestNight = { ...x, score };
+    }
+    if (!worstNight || score < worstNight.score) {
+      worstNight = { ...x, score };
+    }
+  });
+
+  // Consistency score (lower std dev = more consistent)
+  const avgHours = hoursData.reduce((a, b) => a + b, 0) / hoursData.length;
+  const variance = hoursData.reduce((sum, h) => sum + Math.pow(h - avgHours, 2), 0) / hoursData.length;
+  const stdDev = Math.sqrt(variance);
+  const consistencyScore = Math.max(0, Math.min(100, 100 - (stdDev * 15))); // 15 is scaling factor
+
+  // Sleep quality distribution
+  const highQuality = qualityData.filter(q => q >= 80).length;
+  const medQuality = qualityData.filter(q => q >= 60 && q < 80).length;
+  const lowQuality = qualityData.filter(q => q < 60).length;
+
+  // Ideal range adherence (7-9h)
+  const idealSleep = hoursData.filter(h => h >= 7 && h <= 9).length;
+  const idealPercentage = Math.round((idealSleep / hoursData.length) * 100);
+
+  // Generate recommendations
+  const recommendations = [];
+  if (avgHours < 7) {
+    recommendations.push("Try going to bed 30 minutes earlier to reach the recommended 7-9 hours.");
+  } else if (avgHours > 9) {
+    recommendations.push("You might be oversleeping. Consider maintaining 7-9 hours for optimal rest.");
+  }
+
+  if (stdDev > 1.5) {
+    recommendations.push("Your sleep schedule varies significantly. Try keeping a consistent bedtime.");
+  }
+
+  if (qualityData.length > 0) {
+    const avgQuality = qualityData.reduce((a, b) => a + b, 0) / qualityData.length;
+    if (avgQuality < 70) {
+      recommendations.push("Consider factors affecting sleep quality: room temperature, screen time, caffeine.");
+    }
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push("Great work! Your sleep patterns look healthy and consistent.");
+  }
+
+  insightsEl.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <!-- Consistency Score -->
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:13px; font-weight:600; color:var(--muted);">Consistency Score</span>
+          <span style="font-size:18px; font-weight:700; color:${consistencyScore >= 75 ? '#22c55e' : consistencyScore >= 50 ? '#f59e0b' : '#ef4444'};">${Math.round(consistencyScore)}%</span>
+        </div>
+        <div style="height:8px; background:var(--surface-2); border-radius:4px; overflow:hidden;">
+          <div style="height:100%; width:${consistencyScore}%; background:linear-gradient(90deg, ${consistencyScore >= 75 ? '#22c55e' : consistencyScore >= 50 ? '#f59e0b' : '#ef4444'}, ${consistencyScore >= 75 ? '#16a34a' : consistencyScore >= 50 ? '#d97706' : '#dc2626'}); border-radius:4px;"></div>
+        </div>
+      </div>
+
+      <!-- Ideal Range Adherence -->
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:13px; font-weight:600; color:var(--muted);">Nights in Ideal Range (7-9h)</span>
+          <span style="font-size:18px; font-weight:700; color:${idealPercentage >= 75 ? '#22c55e' : idealPercentage >= 50 ? '#f59e0b' : '#ef4444'};">${idealPercentage}%</span>
+        </div>
+        <div style="font-size:12px; color:var(--muted);">${idealSleep} out of ${hoursData.length} nights</div>
+      </div>
+
+      <!-- Quality Distribution -->
+      ${qualityData.length > 0 ? `
+      <div>
+        <div style="font-size:13px; font-weight:600; color:var(--muted); margin-bottom:8px;">Quality Distribution</div>
+        <div style="display:flex; gap:8px; font-size:12px;">
+          <div style="flex:1; text-align:center; padding:8px; background:var(--surface-2); border-radius:6px;">
+            <div style="font-size:20px; font-weight:700; color:#22c55e;">${highQuality}</div>
+            <div style="color:var(--muted);">High (≥80%)</div>
+          </div>
+          <div style="flex:1; text-align:center; padding:8px; background:var(--surface-2); border-radius:6px;">
+            <div style="font-size:20px; font-weight:700; color:#f59e0b;">${medQuality}</div>
+            <div style="color:var(--muted);">Medium (60-79%)</div>
+          </div>
+          <div style="flex:1; text-align:center; padding:8px; background:var(--surface-2); border-radius:6px;">
+            <div style="font-size:20px; font-weight:700; color:#ef4444;">${lowQuality}</div>
+            <div style="color:var(--muted);">Low (<60%)</div>
+          </div>
+        </div>
+      </div>
+      ` : ''}
+
+      <!-- Best/Worst Nights -->
+      ${bestNight && worstNight ? `
+      <div>
+        <div style="font-size:13px; font-weight:600; color:var(--muted); margin-bottom:8px;">Notable Nights</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="padding:10px; background:rgba(34,197,94,0.1); border-left:3px solid #22c55e; border-radius:6px;">
+            <div style="font-size:12px; color:var(--muted);">Best Night</div>
+            <div style="font-size:14px; font-weight:600; margin-top:4px;">${bestNight.date}</div>
+            <div style="font-size:13px; color:var(--text); opacity:0.85;">${bestNight.hours.toFixed(1)}h • ${Math.round(bestNight.quality)}% quality</div>
+          </div>
+          <div style="padding:10px; background:rgba(239,68,68,0.1); border-left:3px solid #ef4444; border-radius:6px;">
+            <div style="font-size:12px; color:var(--muted);">Worst Night</div>
+            <div style="font-size:14px; font-weight:600; margin-top:4px;">${worstNight.date}</div>
+            <div style="font-size:13px; color:var(--text); opacity:0.85;">${worstNight.hours.toFixed(1)}h • ${Math.round(worstNight.quality)}% quality</div>
+          </div>
+        </div>
+      </div>
+      ` : ''}
+
+      <!-- Recommendations -->
+      <div>
+        <div style="font-size:13px; font-weight:600; color:var(--muted); margin-bottom:8px;">Recommendations</div>
+        <ul style="margin:0; padding-left:20px; font-size:13px; line-height:1.6; color:var(--text);">
+          ${recommendations.map(r => `<li style="margin-bottom:6px;">${r}</li>`).join('')}
+        </ul>
+      </div>
+    </div>
+  `;
+}
+
 function renderSleepInsights() {
   console.log('[Sleep] Rendering sleep insights...');
   const series = getSleepSeriesByDay();
@@ -534,6 +792,7 @@ function renderSleepInsights() {
 
   // Always safe to render these (no layout dependency)
   renderSleepLogSummary(series);
+  renderSleepInsightsPanel(series);
 
   // Only draw the chart when the canvas is actually measurable (visible)
   const canvas = document.getElementById("sleepChart");

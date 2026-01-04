@@ -752,6 +752,11 @@ li:last-child{ border-bottom: none; }
   .diet-slot-controls {
     grid-template-columns: 1fr 1fr;
   }
+
+  /* Make inventory form stack vertically on mobile */
+  #inventoryForm > div[style*="grid-template-columns: 2fr 1fr 1fr auto"] {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* Checklist rows */
