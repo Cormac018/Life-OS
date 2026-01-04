@@ -195,40 +195,84 @@
         <div id="progressTab" class="tab-content">
           <h2>Progress</h2>
 
-          <label>
-            Exercise slot
-            <select id="progressExerciseSelect"></select>
-          </label>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 12px;">
+              <span style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--muted);">Tracking Mode</span>
+              <select id="progressTrackingMode" style="width: 100%; padding: 10px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px;">
+                <option value="by-slot">By Workout Day (e.g., Upper A - Incline Press)</option>
+                <option value="by-pattern">By Lift Type (e.g., All Incline Press)</option>
+              </select>
+            </label>
 
-          <label>
-            Variant filter
-            <select id="progressVariantSelect" disabled>
-              <option value="">All variants</option>
-            </select>
-          </label>
+            <div id="progressBySlotControls">
+              <label style="display: block; margin-bottom: 12px;">
+                <span style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--muted);">Exercise Slot</span>
+                <select id="progressExerciseSelect" style="width: 100%; padding: 10px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px;"></select>
+              </label>
 
-          <div id="progressSummary"></div>
+              <label style="display: block; margin-bottom: 12px;">
+                <span style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--muted);">Variant Filter</span>
+                <select id="progressVariantSelect" disabled style="width: 100%; padding: 10px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px;">
+                  <option value="">All variants</option>
+                </select>
+              </label>
+            </div>
 
-          <h3>Trend</h3>
-          <div id="progressChartWrap" class="panel" style="padding: 14px">
-            <canvas
-              id="progressChart"
-              width="700"
-              height="260"
-              style="width: 100%; height: 260px; display: block"
-            ></canvas>
-            <div
-              id="progressChartHint"
-              style="margin-top: 10px; color: var(--muted); font-size: 13px"
-            ></div>
+            <div id="progressByPatternControls" style="display: none;">
+              <label style="display: block; margin-bottom: 12px;">
+                <span style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--muted);">Lift Type</span>
+                <select id="progressPatternSelect" style="width: 100%; padding: 10px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px;"></select>
+              </label>
+
+              <label style="display: block; margin-bottom: 12px;">
+                <span style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--muted);">Variant Filter</span>
+                <select id="progressPatternVariantSelect" style="width: 100%; padding: 10px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px;">
+                  <option value="">All variants</option>
+                </select>
+              </label>
+            </div>
           </div>
 
-          <h3>Best set per workout</h3>
-          <div id="progressTable"></div>
+          <!-- Swipeable Progress Tabs -->
+          <div class="dashboard-card" style="margin-top: 16px;">
+            <div class="dashboard-tabs">
+              <button class="dashboard-tab active" data-progress-tab="summary">Summary</button>
+              <button class="dashboard-tab" data-progress-tab="chart">Chart</button>
+              <button class="dashboard-tab" data-progress-tab="history">History</button>
+            </div>
+            <div class="dashboard-content-container" id="progressContentContainer">
+              <!-- Summary Panel -->
+              <div class="dashboard-content-panel active" data-progress-panel="summary">
+                <div id="progressSummary"></div>
+              </div>
+
+              <!-- Chart Panel -->
+              <div class="dashboard-content-panel" data-progress-panel="chart">
+                <div id="progressChartWrap" style="padding: 14px">
+                  <canvas
+                    id="progressChart"
+                    width="700"
+                    height="260"
+                    style="width: 100%; height: 260px; display: block"
+                  ></canvas>
+                  <div
+                    id="progressChartHint"
+                    style="margin-top: 10px; color: var(--muted); font-size: 13px"
+                  ></div>
+                </div>
+              </div>
+
+              <!-- History Panel -->
+              <div class="dashboard-content-panel" data-progress-panel="history">
+                <div id="progressTable"></div>
+              </div>
+            </div>
+          </div>
         </div>
-        </div>
-          <h2 style="margin-top:0;">Sleep</h2>
-<div id="healthPaneSleep" class="health-pane">
+      </div>
+
+      <div id="healthPaneSleep" class="health-pane">
+  <h2 style="margin-top:0;">Sleep</h2>
   <div class="sleep-tabs" aria-label="Sleep navigation">
     <button type="button" class="sleep-tab active" data-sleep="log">Log</button>
     <button type="button" class="sleep-tab" data-sleep="progress">Progress</button>

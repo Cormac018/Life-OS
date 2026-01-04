@@ -4,7 +4,7 @@
    - Static asset caching
    ========================= */
 
-const CACHE_NAME = 'lifeos-v24-sleep-diet-visibility-fix';
+const CACHE_NAME = 'lifeos-v25-html-structure-fix';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
