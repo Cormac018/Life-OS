@@ -4,7 +4,7 @@
    - Static asset caching
    ========================= */
 
-const CACHE_NAME = 'lifeos-v13-work-month-chart';
+const CACHE_NAME = 'lifeos-v24-sleep-diet-visibility-fix';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

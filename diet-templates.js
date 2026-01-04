@@ -155,12 +155,19 @@ if (!next.dietPrepNotesV1) {
 
   // ---------- Tabs ----------
   function wireDietTabs() {
+    console.log('[Diet Tabs] Wiring diet tabs...');
     const tabs = Array.from(document.querySelectorAll(".diet-tab"));
     const panels = Array.from(document.querySelectorAll(".diet-tabpanel"));
+    console.log('[Diet Tabs] Found', tabs.length, 'tabs and', panels.length, 'panels');
 
     function activate(tabId) {
+      console.log('[Diet Tabs] Activating tab:', tabId);
       tabs.forEach((b) => b.classList.toggle("is-active", b.dataset.dietTab === tabId));
-      panels.forEach((p) => p.classList.toggle("is-active", p.id === `dietTab-${tabId}`));
+      panels.forEach((p) => {
+        const isActive = p.id === `dietTab-${tabId}`;
+        p.classList.toggle("is-active", isActive);
+        console.log('[Diet Tabs] Panel', p.id, isActive ? 'visible' : 'hidden');
+      });
     }
 
     tabs.forEach((btn) => {
@@ -1412,6 +1419,11 @@ function wirePrepManualControls() {
     // prep
 wirePrepManualControls();
 renderPrepManual();
+
+    // Expose render functions globally for re-rendering when tab becomes visible
+    window.renderDietPlanEditor = renderPlanEditor;
+    window.renderDietChecklist = renderChecklist;
+    window.renderDietProgressSummary = renderProgressSummary;
   });
 })();
 

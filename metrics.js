@@ -172,11 +172,16 @@ function removeEntry(entry) {
      ------------------------- */
 
   function renderSleepList() {
+    console.log('[Sleep] Rendering sleep list...');
     const list = document.getElementById("sleepList");
-    if (!list) return;
+    if (!list) {
+      console.warn('[Sleep] sleepList element not found');
+      return;
+    }
 
     const hoursEntries = getEntries(METRICS.sleepHours.id).sort((a, b) => b.date.localeCompare(a.date));
     const qualityEntries = getEntries(METRICS.sleepQuality.id).sort((a, b) => b.date.localeCompare(a.date));
+    console.log('[Sleep] Found', hoursEntries.length, 'hour entries and', qualityEntries.length, 'quality entries');
 
     const qualityByDate = new Map();
     qualityEntries.forEach((e) => qualityByDate.set(e.date, e));
@@ -500,18 +505,23 @@ function removeEntry(entry) {
   }
 
 function renderSleepInsights() {
+  console.log('[Sleep] Rendering sleep insights...');
   const series = getSleepSeriesByDay();
+  console.log('[Sleep] Sleep series data:', series.length, 'entries');
 
   // Always safe to render these (no layout dependency)
   renderSleepLogSummary(series);
 
   // Only draw the chart when the canvas is actually measurable (visible)
   const canvas = document.getElementById("sleepChart");
+  console.log('[Sleep] Canvas element found:', !!canvas, 'clientWidth:', canvas?.clientWidth);
   if (canvas && canvas.clientWidth >= 50) {
     renderSleepProgress(series);
   }
+  console.log('[Sleep] Sleep insights rendered');
 }
 window.renderSleepInsights = renderSleepInsights;
+window.renderSleepList = renderSleepList;
 
   function wireSleepForm() {
     const form = document.getElementById("sleepForm");

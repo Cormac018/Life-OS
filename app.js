@@ -985,15 +985,207 @@ function renderProgressVariantOptions(exerciseId) {
   progressVariantSelect.disabled = false;
 }
 
+function populateProgressPatternSelect() {
+  if (!progressPatternSelect) return;
+
+  progressPatternSelect.innerHTML = '<option value="">Select a lift type...</option>';
+
+  const patterns = WORKOUT_CONFIG.patterns || [];
+  console.log('[populateProgressPatternSelect] Available patterns:', patterns);
+
+  patterns.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.textContent = p.name;
+    progressPatternSelect.appendChild(opt);
+  });
+}
+
+function getLogsForPatternId(patternId) {
+  if (!patternId) return [];
+
+  const all = getLogs(); // Use the existing getLogs() function instead of LifeOSDB
+  console.log('[getLogsForPatternId] Looking for patternId:', patternId);
+  console.log('[getLogsForPatternId] Total logs in DB:', all.length);
+
+  // Sample first 3 logs to see structure
+  if (all.length > 0) {
+    console.log('[getLogsForPatternId] Sample logs:', all.slice(0, 3).map(l => ({ exerciseId: l.exerciseId, variant: l.variant, weight: l.weight, reps: l.reps })));
+  }
+
+  // Show all unique exerciseIds in the logs
+  const uniqueExerciseIds = [...new Set(all.map(l => l.exerciseId))];
+  console.log('[getLogsForPatternId] Unique exerciseIds in logs:', uniqueExerciseIds);
+
+  // Show what templates we're checking against
+  console.log('[getLogsForPatternId] Available templates:', Object.keys(WORKOUT_CONFIG.templates));
+
+  const matched = all.filter(log => {
+    if (!log || !log.exerciseId) return false;
+
+    // Find the exercise slot config to get its patternId
+    for (const templateKey in WORKOUT_CONFIG.templates) {
+      const template = WORKOUT_CONFIG.templates[templateKey];
+      const item = template.items?.find(it => it.exerciseId === log.exerciseId);
+      if (item && item.patternId === patternId) {
+        console.log('[getLogsForPatternId] MATCH found! Log exerciseId:', log.exerciseId, '-> item patternId:', item.patternId);
+        return true;
+      }
+    }
+    return false;
+  });
+
+  console.log('[getLogsForPatternId] Matched logs:', matched.length);
+  return matched;
+}
+
+function getLoggedVariantsForPattern(patternId) {
+  const logs = getLogsForPatternId(patternId);
+  const set = new Set();
+
+  logs.forEach(l => {
+    const v = (l.variant || "").trim();
+    if (v) set.add(v);
+  });
+
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
+}
+
+function renderProgressForPattern(patternId, variantFilter = "") {
+  console.log('[Progress] renderProgressForPattern called with:', { patternId, variantFilter });
+
+  if (!patternId) {
+    progressSummaryEl.innerHTML = `<p style="opacity:0.8;">Select a lift type to view progress.</p>`;
+    progressTableEl.innerHTML = "";
+    if (progressChartHint) progressChartHint.textContent = "";
+    drawProgressChart([]);
+    if (progressPatternVariantSelect) {
+      progressPatternVariantSelect.disabled = true;
+      progressPatternVariantSelect.innerHTML = `<option value="">All variants</option>`;
+    }
+    return;
+  }
+
+  // Get logs for this pattern FIRST
+  let logs = getLogsForPatternId(patternId);
+  console.log('[Progress] Found logs for pattern:', logs.length, logs);
+
+  // Populate variant filter for this pattern
+  const variants = getLoggedVariantsForPattern(patternId);
+  console.log('[Progress] Found variants:', variants);
+
+  if (progressPatternVariantSelect) {
+    progressPatternVariantSelect.innerHTML = '<option value="">All variants</option>';
+    if (variants.length > 0) {
+      variants.forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = v;
+        progressPatternVariantSelect.appendChild(opt);
+      });
+      progressPatternVariantSelect.disabled = false;
+    } else {
+      progressPatternVariantSelect.disabled = true;
+    }
+  }
+
+  const vf = (variantFilter || "").trim();
+  if (vf) {
+    logs = logs.filter(l => String(l.variant || "").trim() === vf);
+  }
+
+  if (logs.length === 0) {
+    progressSummaryEl.innerHTML = `<p style="opacity:0.8;">No data logged for this lift type yet${vf ? " (for this variant)." : "."}</p>`;
+    progressTableEl.innerHTML = "";
+    if (progressChartHint) progressChartHint.textContent = "";
+    drawProgressChart([]);
+    return;
+  }
+
+  const best = getBestSet(logs);
+  const bestV = best.variant ? ` (${best.variant})` : "";
+  const bestDate = best.date ? new Date(best.date).toLocaleString() : "Unknown";
+
+  const workouts = groupLogsIntoWorkouts(logs);
+  const totalWorkouts = workouts.length;
+
+  const lastWorkoutDate =
+    workouts.length > 0
+      ? new Date(workouts[0][1][0].date).toLocaleDateString()
+      : "—";
+
+  // Best set per workout (by estimated 1RM)
+  const rows = workouts.map(([key, arr]) => {
+    const bestInWorkout = getBestSet(arr);
+    const when = arr[0]?.date ? new Date(arr[0].date).toLocaleDateString() : "—";
+    const v = bestInWorkout.variant ? ` (${bestInWorkout.variant})` : "";
+    return {
+      when,
+      weight: bestInWorkout.weight,
+      reps: bestInWorkout.reps,
+      variant: v,
+      e1rm: estimate1RM(bestInWorkout.weight, bestInWorkout.reps),
+      key,
+    };
+  });
+
+  // PB e1RM
+  const pbE1RM = rows.reduce((m, r) => (r.e1rm > m ? r.e1rm : m), rows[0].e1rm);
+
+  const patternName = WORKOUT_CONFIG.patterns.find(p => p.id === patternId)?.name || patternId;
+  const vfLabel = vf ? ` • Variant: <strong>${vf}</strong>` : "";
+
+  progressSummaryEl.innerHTML = `
+    <div style="padding:14px; margin-bottom:12px;">
+      <div style="font-weight:700; margin-bottom:6px;">Personal bests (${patternName})</div>
+      <div style="opacity:0.85; margin-bottom:6px;">
+        Last trained: <strong>${lastWorkoutDate}</strong> •
+        Total workouts: <strong>${totalWorkouts}</strong>${vfLabel}
+      </div>
+      <div><strong>Best set:</strong> ${best.weight}kg × ${best.reps}${bestV}</div>
+      <div style="opacity:0.85;">When: ${bestDate}</div>
+      <div style="margin-top:8px;"><strong>Best estimated 1RM:</strong> ${pbE1RM.toFixed(1)}kg</div>
+    </div>
+  `;
+
+  // Chart
+  drawProgressChart(rows);
+
+  const tableRowsHtml = rows
+    .map(r => {
+      return `
+        <tr>
+          <td>${r.when}</td>
+          <td>${r.weight} × ${r.reps}${r.variant}</td>
+          <td>${r.e1rm.toFixed(1)}kg</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  progressTableEl.innerHTML = `
+    <div style="overflow:hidden;">
+      <table>
+        <thead>
+          <tr>
+            <th>Workout date</th>
+            <th>Best set</th>
+            <th>Est. 1RM</th>
+          </tr>
+        </thead>
+        <tbody>${tableRowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 function drawProgressChart(rows) {
   if (!progressChart) return;
 
   const ctx = progressChart.getContext("2d");
-    const isDark =
-    document.documentElement.getAttribute("data-theme") !== "light";
+  const isDark = document.documentElement.getAttribute("data-theme") !== "light";
 
-  const lineColor = isDark ? "#e5e7eb" : "#111827";
-  const gridColor = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)";
+  const gridColor = isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)";
   const textColor = isDark ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.8)";
 
   const w = progressChart.width;
@@ -1007,10 +1199,23 @@ function drawProgressChart(rows) {
     return;
   }
 
-  if (progressChartHint) progressChartHint.textContent = "Best estimated 1RM per workout (filtered).";
-
   // Rows are newest-first in your table; chart should be oldest->newest
   const points = rows.slice().reverse().map(r => Number(r.e1rm));
+
+  // Calculate trend: positive if last > first, negative if last < first
+  const firstValue = points[0];
+  const lastValue = points[points.length - 1];
+  const trendPositive = lastValue >= firstValue;
+
+  // Line colors based on trend
+  const lineColor = trendPositive ? "#22c55e" : "#ef4444"; // green : red
+  const shadowColor = trendPositive ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)";
+
+  if (progressChartHint) {
+    const direction = trendPositive ? "↗ Improving" : "↘ Declining";
+    const change = ((lastValue - firstValue) / firstValue * 100).toFixed(1);
+    progressChartHint.textContent = `Trend: ${direction} (${change > 0 ? '+' : ''}${change}%)`;
+  }
 
   const padL = 44;
   const padR = 14;
@@ -1021,17 +1226,17 @@ function drawProgressChart(rows) {
   const maxV = Math.max(...points);
   const range = Math.max(1e-6, maxV - minV);
 
-  // Axis + grid (no fancy colors; keep it neutral)
+  // Axis + grid
   ctx.globalAlpha = 0.35;
   ctx.beginPath();
   ctx.moveTo(padL, padT);
   ctx.lineTo(padL, h - padB);
   ctx.lineTo(w - padR, h - padB);
   ctx.strokeStyle = gridColor;
-ctx.stroke();
+  ctx.stroke();
   ctx.globalAlpha = 1;
 
-  // Labels (simple)
+  // Labels
   ctx.font = "12px " + getComputedStyle(document.body).fontFamily;
   ctx.globalAlpha = 0.75;
   ctx.fillStyle = textColor;
@@ -1046,7 +1251,31 @@ ctx.stroke();
     return (h - padB) - t * (h - padT - padB);
   }
 
-  // Line
+  // Draw shadow/fill area under line
+  ctx.beginPath();
+  const firstX = padL;
+  const firstY = yFor(points[0]);
+  ctx.moveTo(firstX, firstY);
+
+  points.forEach((v, i) => {
+    const x = padL + i * xStep;
+    const y = yFor(v);
+    ctx.lineTo(x, y);
+  });
+
+  // Close the path to baseline
+  ctx.lineTo(padL + (points.length - 1) * xStep, h - padB);
+  ctx.lineTo(firstX, h - padB);
+  ctx.closePath();
+
+  // Fill with gradient shadow
+  const gradient = ctx.createLinearGradient(0, padT, 0, h - padB);
+  gradient.addColorStop(0, shadowColor);
+  gradient.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = gradient;
+  ctx.fill();
+
+  // Draw main line
   ctx.beginPath();
   points.forEach((v, i) => {
     const x = padL + i * xStep;
@@ -1055,13 +1284,23 @@ ctx.stroke();
     else ctx.lineTo(x, y);
   });
   ctx.strokeStyle = lineColor;
-ctx.lineWidth = 2;
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
   ctx.stroke();
 
-  // Points
+  // Draw points
   points.forEach((v, i) => {
     const x = padL + i * xStep;
     const y = yFor(v);
+
+    // Outer circle (shadow)
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = shadowColor;
+    ctx.fill();
+
+    // Inner circle
     ctx.beginPath();
     ctx.arc(x, y, 3, 0, Math.PI * 2);
     ctx.fillStyle = lineColor;
@@ -1200,6 +1439,40 @@ patternSelect.addEventListener("change", () => {
   renderWorkoutPlan();
 });
 
+// Progress tracking mode switcher
+const progressTrackingMode = document.getElementById("progressTrackingMode");
+const progressBySlotControls = document.getElementById("progressBySlotControls");
+const progressByPatternControls = document.getElementById("progressByPatternControls");
+const progressPatternSelect = document.getElementById("progressPatternSelect");
+const progressPatternVariantSelect = document.getElementById("progressPatternVariantSelect");
+
+if (progressTrackingMode) {
+  progressTrackingMode.addEventListener("change", () => {
+    const mode = progressTrackingMode.value;
+
+    if (mode === "by-slot") {
+      progressBySlotControls.style.display = "block";
+      progressByPatternControls.style.display = "none";
+
+      // Render based on current slot selection
+      const exId = progressExerciseSelect.value;
+      renderProgressForExercise(exId, progressVariantSelect?.value || "");
+    } else {
+      progressBySlotControls.style.display = "none";
+      progressByPatternControls.style.display = "block";
+
+      // Populate pattern selector if not done yet
+      if (progressPatternSelect && progressPatternSelect.options.length === 0) {
+        populateProgressPatternSelect();
+      }
+
+      // Render based on current pattern selection
+      const patternId = progressPatternSelect?.value || "";
+      renderProgressForPattern(patternId, progressPatternVariantSelect?.value || "");
+    }
+  });
+}
+
 progressExerciseSelect.addEventListener("change", () => {
   const exId = progressExerciseSelect.value;
   if (progressVariantSelect) progressVariantSelect.value = "";
@@ -1210,6 +1483,64 @@ if (progressVariantSelect) {
   progressVariantSelect.addEventListener("change", () => {
     const exId = progressExerciseSelect.value;
     renderProgressForExercise(exId, progressVariantSelect.value);
+  });
+}
+
+if (progressPatternSelect) {
+  progressPatternSelect.addEventListener("change", () => {
+    const patternId = progressPatternSelect.value;
+    console.log('[Progress] Pattern select changed to:', patternId);
+    if (progressPatternVariantSelect) progressPatternVariantSelect.value = "";
+    renderProgressForPattern(patternId, "");
+  });
+}
+
+if (progressPatternVariantSelect) {
+  progressPatternVariantSelect.addEventListener("change", () => {
+    const patternId = progressPatternSelect.value;
+    renderProgressForPattern(patternId, progressPatternVariantSelect.value);
+  });
+}
+
+// Wire Progress section swipeable tabs
+const progressTabsContainer = document.querySelector("#progressTab .dashboard-card");
+if (progressTabsContainer) {
+  const progressTabs = progressTabsContainer.querySelectorAll(".dashboard-tab");
+  const progressPanels = progressTabsContainer.querySelectorAll(".dashboard-content-panel");
+  const progressContentContainer = document.getElementById("progressContentContainer");
+
+  progressTabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => {
+      progressTabs.forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+
+      const panel = progressPanels[index];
+      if (panel && progressContentContainer) {
+        progressContentContainer.scrollTo({
+          left: panel.offsetLeft,
+          behavior: "smooth"
+        });
+      }
+    });
+  });
+
+  // Scroll sync for swipe gestures
+  let progressScrollTimeout;
+  progressContentContainer.addEventListener("scroll", () => {
+    clearTimeout(progressScrollTimeout);
+    progressScrollTimeout = setTimeout(() => {
+      const scrollLeft = progressContentContainer.scrollLeft;
+      const containerWidth = progressContentContainer.offsetWidth;
+      const activeIndex = Math.round(scrollLeft / containerWidth);
+
+      progressTabs.forEach((tab, index) => {
+        if (index === activeIndex) {
+          tab.classList.add("active");
+        } else {
+          tab.classList.remove("active");
+        }
+      });
+    }, 50);
   });
 }
 
@@ -1553,11 +1884,45 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   function show(which) {
+    console.log('[Health Tab] Switching to:', which);
     buttons.forEach((b) => b.classList.toggle("active", b.dataset.health === which));
     Object.entries(panes).forEach(([key, el]) => {
-      if (!el) return;
-      el.classList.toggle("active", key === which);
+      if (!el) {
+        console.warn('[Health Tab] Pane not found:', key);
+        return;
+      }
+      const isActive = key === which;
+      el.classList.toggle("active", isActive);
+
+      // Detailed debugging
+      const computedStyle = window.getComputedStyle(el);
+      console.log('[Health Tab] Pane', key, isActive ? 'visible' : 'hidden',
+        '\n  - classList:', el.className,
+        '\n  - display:', computedStyle.display,
+        '\n  - offsetHeight:', el.offsetHeight,
+        '\n  - scrollHeight:', el.scrollHeight,
+        '\n  - children:', el.children.length);
     });
+
+    // CRITICAL FIX: Re-render Sleep/Diet content after panes become visible
+    // This ensures canvas and other elements can measure themselves correctly
+    if (which === 'sleep' && window.renderSleepInsights) {
+      console.log('[Health Tab] Triggering sleep render...');
+      requestAnimationFrame(() => {
+        window.renderSleepInsights();
+        if (window.renderSleepList) window.renderSleepList();
+      });
+    }
+
+    if (which === 'diet') {
+      console.log('[Health Tab] Triggering diet render...');
+      requestAnimationFrame(() => {
+        // Re-render all diet tabs
+        if (window.renderDietPlanEditor) window.renderDietPlanEditor();
+        if (window.renderDietChecklist) window.renderDietChecklist();
+        if (window.renderDietProgressSummary) window.renderDietProgressSummary();
+      });
+    }
   }
 
   buttons.forEach((b) => {
@@ -1578,15 +1943,29 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
 function show(which) {
+  console.log('[Sleep Tab] Switching to:', which);
   btns.forEach(b => b.classList.toggle("active", b.dataset.sleep === which));
 
   Object.entries(panes).forEach(([key, el]) => {
-    if (!el) return;
-    el.classList.toggle("active", key === which);
+    if (!el) {
+      console.warn('[Sleep Tab] Pane not found:', key);
+      return;
+    }
+    const isActive = key === which;
+    el.classList.toggle("active", isActive);
+
+    // Detailed debugging
+    const computedStyle = window.getComputedStyle(el);
+    console.log('[Sleep Tab] Pane', key, isActive ? 'visible' : 'hidden',
+      '\n  - classList:', el.className,
+      '\n  - display:', computedStyle.display,
+      '\n  - offsetHeight:', el.offsetHeight,
+      '\n  - scrollHeight:', el.scrollHeight);
   });
 
   // If we just opened Progress, re-render AFTER layout updates
   if (which === "progress" && window.renderSleepInsights) {
+    console.log('[Sleep Tab] Re-rendering sleep insights...');
     requestAnimationFrame(() => window.renderSleepInsights());
   }
 }
@@ -1594,6 +1973,9 @@ function show(which) {
   btns.forEach(b => b.addEventListener("click", () => show(b.dataset.sleep)));
 
   // default
+  console.log('[Sleep Tab Init] Initial pane states:',
+    '\n  - sleepPaneLog:', panes.log?.className,
+    '\n  - sleepPaneProgress:', panes.progress?.className);
   show("log");
 });
 
