@@ -783,11 +783,29 @@ input, select, textarea {
 
 select {
   appearance: none;
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 option {
   background: var(--surface);
   color: var(--text);
+}
+
+/* Ensure progress dropdowns are readable */
+#progressTab select,
+#progressTrackingMode,
+#progressExerciseSelect,
+#progressVariantSelect,
+#progressPatternSelect,
+#progressPatternVariantSelect {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+}
+
+#progressTab option {
+  background: var(--surface) !important;
+  color: var(--text) !important;
 }
 
 /* ===== Diet modal (clean, mobile-first) ===== */
