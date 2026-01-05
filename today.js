@@ -1378,12 +1378,18 @@ window.adjustWorkTime = function(deltaMinutes) {
     const newStatus = item.status === "done" ? "planned" : "done";
     LifeOSDB.upsert("planItems", { ...item, status: newStatus });
     renderTodayPlan();
+
+    // Dispatch event so Plan tab can update if it's open
+    document.dispatchEvent(new CustomEvent("lifeos:plan-updated"));
   };
 
   window.deletePlanItem = function(id) {
     if (!confirm("Delete this plan item?")) return;
     LifeOSDB.remove("planItems", id);
     renderTodayPlan();
+
+    // Dispatch event so Plan tab can update if it's open
+    document.dispatchEvent(new CustomEvent("lifeos:plan-updated"));
   };
 
   window.logActualTime = function(id) {
@@ -1407,6 +1413,9 @@ window.adjustWorkTime = function(deltaMinutes) {
     });
 
     renderTodayPlan();
+
+    // Dispatch event so Plan tab can update if it's open
+    document.dispatchEvent(new CustomEvent("lifeos:plan-updated"));
   };
 
   /* -------------------------
@@ -1582,6 +1591,16 @@ window.adjustWorkTime = function(deltaMinutes) {
     // Re-render goals when metrics are updated
     document.addEventListener("lifeos:metrics-updated", () => {
       renderTodayGoals();
+    });
+
+    // Re-render goals when goals are added/deleted from Goals tab
+    document.addEventListener("lifeos:goals-updated", () => {
+      renderTodayGoals();
+    });
+
+    // Re-render plan when plan items are updated from Plan tab
+    document.addEventListener("lifeos:plan-updated", () => {
+      renderTodayPlan();
     });
   });
 })();

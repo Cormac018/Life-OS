@@ -4,7 +4,7 @@
    - Static asset caching
    ========================= */
 
-const CACHE_NAME = 'lifeos-v39-bodycomp-swipe-fix';
+const CACHE_NAME = 'lifeos-v44-work-tab-redesign';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

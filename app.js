@@ -2072,6 +2072,90 @@ if (themeToggle) {
 }
 
 // =====================
+// Sidebar Navigation
+// =====================
+window.addEventListener("DOMContentLoaded", () => {
+  const sidebar = document.getElementById("sidebar");
+  const sidebarOverlay = document.getElementById("sidebarOverlay");
+  const sidebarToggle = document.getElementById("sidebarToggle");
+  const sidebarClose = document.getElementById("sidebarClose");
+  const sidebarLinks = document.querySelectorAll(".sidebar-link");
+  const pageTitle = document.getElementById("pageTitle");
+
+  // Function to open sidebar
+  function openSidebar() {
+    sidebar.classList.add("open");
+    sidebarOverlay.classList.add("open");
+    sidebarToggle.classList.add("open");
+  }
+
+  // Function to close sidebar
+  function closeSidebar() {
+    sidebar.classList.remove("open");
+    sidebarOverlay.classList.remove("open");
+    sidebarToggle.classList.remove("open");
+  }
+
+  // Hamburger button click
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener("click", () => {
+      if (sidebar.classList.contains("open")) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
+    });
+  }
+
+  // Close button click
+  if (sidebarClose) {
+    sidebarClose.addEventListener("click", closeSidebar);
+  }
+
+  // Overlay click
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener("click", closeSidebar);
+  }
+
+  // Sidebar link clicks
+  sidebarLinks.forEach(link => {
+    link.addEventListener("click", () => {
+      // Update active state
+      sidebarLinks.forEach(l => l.classList.remove("active"));
+      link.classList.add("active");
+
+      // Update page title
+      const linkText = link.querySelector("span:last-child").textContent;
+      if (pageTitle) {
+        pageTitle.textContent = linkText;
+      }
+
+      // Close sidebar after navigation
+      closeSidebar();
+    });
+  });
+
+  // Update page title based on active tab
+  function updatePageTitle() {
+    const activeTab = document.querySelector(".tab.active");
+    if (activeTab && pageTitle) {
+      const tabText = activeTab.textContent.trim();
+      pageTitle.textContent = tabText;
+    }
+  }
+
+  // Listen for tab changes to update page title
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      setTimeout(updatePageTitle, 0);
+    });
+  });
+
+  // Set initial page title
+  updatePageTitle();
+});
+
+// =====================
 // Initial load
 // =====================
 loadLogs();

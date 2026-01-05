@@ -24,18 +24,64 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <!-- Life OS Top Nav -->
-    <nav class="lifeos-nav" aria-label="Life OS navigation">
-      <a href="#today" data-route="today">Today</a>
-      <a href="#workouts" data-route="workouts">Health</a>
-      <a href="#metrics" data-route="metrics">Metrics</a>
-      <a href="#goals" data-route="goals">Goals</a>
-      <a href="#plan" data-route="plan">Plan</a>
-      <a href="#work" data-route="work">Work</a>
-      <a href="#finances" data-route="finances">Finances</a>
-      <a href="#journal" data-route="journal">Journal</a>
-      <a href="#people" data-route="people">People</a>
-    </nav>
+    <!-- Mobile Header with Hamburger -->
+    <header class="mobile-header">
+      <button id="sidebarToggle" class="hamburger-btn" aria-label="Toggle navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <h1 id="pageTitle" class="page-title">Today</h1>
+    </header>
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <h2 class="sidebar-title">Life OS</h2>
+        <button id="sidebarClose" class="sidebar-close-btn" aria-label="Close navigation">&times;</button>
+      </div>
+      <nav class="sidebar-nav" aria-label="Life OS navigation">
+        <a href="#today" data-route="today" class="sidebar-link">
+          <span class="sidebar-icon">📅</span>
+          <span>Today</span>
+        </a>
+        <a href="#workouts" data-route="workouts" class="sidebar-link">
+          <span class="sidebar-icon">💪</span>
+          <span>Health</span>
+        </a>
+        <a href="#metrics" data-route="metrics" class="sidebar-link">
+          <span class="sidebar-icon">📊</span>
+          <span>Metrics</span>
+        </a>
+        <a href="#goals" data-route="goals" class="sidebar-link">
+          <span class="sidebar-icon">🎯</span>
+          <span>Goals</span>
+        </a>
+        <a href="#plan" data-route="plan" class="sidebar-link">
+          <span class="sidebar-icon">📋</span>
+          <span>Plan</span>
+        </a>
+        <a href="#work" data-route="work" class="sidebar-link">
+          <span class="sidebar-icon">💼</span>
+          <span>Work</span>
+        </a>
+        <a href="#finances" data-route="finances" class="sidebar-link">
+          <span class="sidebar-icon">💰</span>
+          <span>Finances</span>
+        </a>
+        <a href="#journal" data-route="journal" class="sidebar-link">
+          <span class="sidebar-icon">📔</span>
+          <span>Journal</span>
+        </a>
+        <a href="#people" data-route="people" class="sidebar-link">
+          <span class="sidebar-icon">👥</span>
+          <span>People</span>
+        </a>
+      </nav>
+    </aside>
 
     <main class="lifeos-main">
       <!-- Placeholder views -->
@@ -301,10 +347,19 @@
           <input type="date" id="sleepDate" required style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
         </label>
 
-        <label style="display:flex; flex-direction:column; gap:6px;">
-          <span style="font-size:13px; font-weight:600; color:var(--muted);">Duration (hours)</span>
-          <input type="number" id="sleepHours" step="0.1" min="0" max="24" required placeholder="e.g., 7.5" style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
-        </label>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <span style="font-size:13px; font-weight:600; color:var(--muted);">Duration</span>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <label style="display:flex; flex-direction:column; gap:6px;">
+              <span style="font-size:12px; color:var(--muted);">Hours</span>
+              <input type="number" id="sleepHours" min="0" max="23" required placeholder="7" style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px;">
+              <span style="font-size:12px; color:var(--muted);">Minutes</span>
+              <input type="number" id="sleepMinutes" min="0" max="59" step="1" placeholder="30" style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
+            </label>
+          </div>
+        </div>
 
         <label style="display:flex; flex-direction:column; gap:6px;">
           <span style="font-size:13px; font-weight:600; color:var(--muted);">Quality (1-100)</span>
@@ -871,77 +926,35 @@
      <section id="view-plan" class="lifeos-view">
   <h1 class="app-title">Plan</h1>
 
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 style="margin:0 0 10px 0;">Weekly plan</h2>
-
-    <label>
-      Week starting (Monday)
-      <input type="date" id="weekStart" />
-    </label>
-
-    <label>
-      Filter by category
-      <select id="weekCategoryFilter">
-        <option value="">All categories</option>
-        <option value="training">Training</option>
-        <option value="health">Health</option>
-        <option value="work">Work</option>
-        <option value="admin">Admin</option>
-        <option value="social">Social</option>
-        <option value="finance">Finance</option>
-        <option value="rest">Rest</option>
-      </select>
-    </label>
-
-    <div class="btn-row" style="margin-top:10px;">
-      <button id="prevWeekBtn" type="button">Prev week</button>
-      <button id="thisWeekBtn" type="button">This week</button>
-      <button id="nextWeekBtn" type="button">Next week</button>
+  <!-- View Tabs -->
+  <div class="dashboard-card" style="margin-bottom:16px;">
+    <div class="dashboard-tabs">
+      <button class="dashboard-tab active" data-tab="day">Day</button>
+      <button class="dashboard-tab" data-tab="week">Week</button>
+      <button class="dashboard-tab" data-tab="month">Month</button>
     </div>
   </div>
 
-  <div id="weekWrap" style="margin-top:12px;"></div>
+  <!-- Dynamic content container -->
+  <div id="planViewContainer"></div>
 </section>
 
 <section id="view-work" class="lifeos-view">
   <h1 class="app-title">Work</h1>
 
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 style="margin:0 0 10px 0;">Log work</h2>
-
-    <form id="workLogForm">
-      <label>
-        Date
-        <input type="date" id="workDate" required />
-      </label>
-
-      <label>
-        Hours worked
-        <input type="number" id="workHours" step="0.25" min="0" placeholder="e.g. 8" required />
-      </label>
-
-      <label>
-        Notes (optional)
-        <input type="text" id="workNote" placeholder="e.g. On-call / release / late finish" />
-      </label>
-
-      <button type="submit">Save work log</button>
-    </form>
-
-    <div class="meta" style="margin-top:10px;">
-      Tip: enter hours in 0.25 steps (e.g. 7.5).
+  <!-- View Tabs -->
+  <div class="dashboard-card" style="margin-bottom:16px;">
+    <div class="dashboard-tabs">
+      <button class="dashboard-tab" data-tab="day">Day</button>
+      <button class="dashboard-tab active" data-tab="week">Week</button>
+      <button class="dashboard-tab" data-tab="month">Month</button>
+      <button class="dashboard-tab" data-tab="year">Year</button>
+      <button class="dashboard-tab" data-tab="all">All Time</button>
     </div>
   </div>
 
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 style="margin:0 0 10px 0;">This week</h2>
-    <div id="workWeekSummary" style="font-size:14px;"></div>
-  </div>
-
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 style="margin:0 0 10px 0;">History</h2>
-    <ul id="workHistoryList"></ul>
-  </div>
+  <!-- Dynamic content container -->
+  <div id="workViewContainer"></div>
 </section>
 
       <section id="view-finances" class="lifeos-view">

@@ -227,7 +227,14 @@ function removeEntry(entry) {
       const hours = hoursEntries.find((e) => e.date === date) || null;
       const quality = qualityByDate.get(date) || null;
 
-      const hoursText = hours ? `${hours.value}h` : "—";
+      // Convert decimal hours to hours:minutes format
+      let hoursText = "—";
+      if (hours) {
+        const totalHours = Number(hours.value);
+        const h = Math.floor(totalHours);
+        const m = Math.round((totalHours - h) * 60);
+        hoursText = `${h}h ${m}m`;
+      }
       const qualityText = quality ? `${quality.value}%` : "—";
       const qualityValue = quality ? Number(quality.value) : 0;
 
@@ -397,7 +404,13 @@ function removeEntry(entry) {
       if (!lastNight || (!Number.isFinite(lastNight.hours) && !Number.isFinite(lastNight.quality))) {
         lastNightEl.textContent = "No entry for last night";
       } else {
-        const h = Number.isFinite(lastNight.hours) ? `${lastNight.hours.toFixed(1)}h` : "—";
+        let h = "—";
+        if (Number.isFinite(lastNight.hours)) {
+          const totalHours = lastNight.hours;
+          const hours = Math.floor(totalHours);
+          const mins = Math.round((totalHours - hours) * 60);
+          h = `${hours}h ${mins}m`;
+        }
         const q = Number.isFinite(lastNight.quality) ? `${Math.round(lastNight.quality)}/100` : "—";
         lastNightEl.textContent = `${h} • ${q}`;
       }
@@ -448,16 +461,13 @@ function removeEntry(entry) {
       return;
     }
 
-    // Calculate trend for hours
+    // Get hours data for scale calculation
     const hoursVals = filtered.map(x => x.hours).filter(n => Number.isFinite(n));
-    const firstHours = hoursVals[0];
-    const lastHours = hoursVals[hoursVals.length - 1];
-    const hoursTrendPositive = lastHours >= firstHours;
 
-    // Line colors based on trend
-    const hoursLineColor = hoursTrendPositive ? "#22c55e" : "#ef4444"; // green : red
-    const hoursShadowColor = hoursTrendPositive ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)";
-    const qualityLineColor = "#78dca0";
+    // Line colors - green for duration, light purple for quality
+    const hoursLineColor = "#22c55e"; // green for duration
+    const hoursShadowColor = "rgba(34, 197, 94, 0.3)";
+    const qualityLineColor = "#a78bfa"; // light purple for quality
 
     // scales
     const maxHours = Math.max(8, Math.min(24, Math.ceil((hoursVals.length ? Math.max(...hoursVals) : 8) + 1)));
@@ -604,22 +614,22 @@ function removeEntry(entry) {
     const legendY = padT + h + 35;
     const legendCenterX = padL + w / 2;
 
-    // Hours legend item
+    // Duration legend item (green)
     ctx.fillStyle = hoursLineColor;
     ctx.beginPath();
-    ctx.arc(legendCenterX - 60, legendY, 3, 0, Math.PI * 2);
+    ctx.arc(legendCenterX - 70, legendY, 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = textColor;
     ctx.textAlign = "left";
-    ctx.fillText(`Sleep Hours ${hoursTrendPositive ? '↗' : '↘'}`, legendCenterX - 54, legendY + 4);
+    ctx.fillText("Duration (hours)", legendCenterX - 64, legendY + 4);
 
-    // Quality legend item
+    // Quality legend item (light purple)
     ctx.fillStyle = qualityLineColor;
     ctx.beginPath();
     ctx.arc(legendCenterX + 30, legendY, 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = textColor;
-    ctx.fillText("Quality %", legendCenterX + 36, legendY + 4);
+    ctx.fillText("Quality (%)", legendCenterX + 36, legendY + 4);
   }
 
   let sleepRangeDays = 7;
@@ -635,7 +645,12 @@ function removeEntry(entry) {
 
     const avgEl = document.getElementById("sleepAverages");
     if (avgEl) {
-      const h = avgHours == null ? "—" : `${avgHours.toFixed(1)}h`;
+      let h = "—";
+      if (avgHours != null) {
+        const hours = Math.floor(avgHours);
+        const mins = Math.round((avgHours - hours) * 60);
+        h = `${hours}h ${mins}m`;
+      }
       const q = avgQual == null ? "—" : `${Math.round(avgQual)}/100`;
       avgEl.textContent = `Avg (last ${sleepRangeDays} days): ${h} • ${q}`;
     }
@@ -787,12 +802,12 @@ function renderSleepInsightsPanel(series) {
           <div style="padding:10px; background:rgba(34,197,94,0.1); border-left:3px solid #22c55e; border-radius:6px;">
             <div style="font-size:12px; color:var(--muted);">Best Night</div>
             <div style="font-size:14px; font-weight:600; margin-top:4px;">${bestNight.date}</div>
-            <div style="font-size:13px; color:var(--text); opacity:0.85;">${bestNight.hours.toFixed(1)}h • ${Math.round(bestNight.quality)}% quality</div>
+            <div style="font-size:13px; color:var(--text); opacity:0.85;">${Math.floor(bestNight.hours)}h ${Math.round((bestNight.hours - Math.floor(bestNight.hours)) * 60)}m • ${Math.round(bestNight.quality)}% quality</div>
           </div>
           <div style="padding:10px; background:rgba(239,68,68,0.1); border-left:3px solid #ef4444; border-radius:6px;">
             <div style="font-size:12px; color:var(--muted);">Worst Night</div>
             <div style="font-size:14px; font-weight:600; margin-top:4px;">${worstNight.date}</div>
-            <div style="font-size:13px; color:var(--text); opacity:0.85;">${worstNight.hours.toFixed(1)}h • ${Math.round(worstNight.quality)}% quality</div>
+            <div style="font-size:13px; color:var(--text); opacity:0.85;">${Math.floor(worstNight.hours)}h ${Math.round((worstNight.hours - Math.floor(worstNight.hours)) * 60)}m • ${Math.round(worstNight.quality)}% quality</div>
           </div>
         </div>
       </div>
@@ -842,6 +857,7 @@ window.renderSleepList = renderSleepList;
 }
     const dateEl = document.getElementById("sleepDate");
     const hoursEl = document.getElementById("sleepHours");
+    const minutesEl = document.getElementById("sleepMinutes");
     const qualityEl = document.getElementById("sleepQuality");
 
     dateEl.value = isoToday();
@@ -851,17 +867,23 @@ setDefaultSleepDate();
       e.preventDefault();
 
       const date = dateEl.value;
-      const hours = Number(hoursEl.value);
+      const hoursInput = Number(hoursEl.value);
+      const minutesInput = Number(minutesEl.value) || 0;
       const quality = Number(qualityEl.value);
 
       if (!date) return;
-      if (!Number.isFinite(hours) || hours < 0 || hours > 24) return;
+      if (!Number.isFinite(hoursInput) || hoursInput < 0 || hoursInput > 23) return;
+      if (!Number.isFinite(minutesInput) || minutesInput < 0 || minutesInput > 59) return;
       if (!Number.isFinite(quality) || quality < 1 || quality > 100) return;
 
-      upsertEntry(METRICS.sleepHours.id, date, hours);
+      // Convert hours and minutes to decimal hours for storage
+      const totalHours = hoursInput + (minutesInput / 60);
+
+      upsertEntry(METRICS.sleepHours.id, date, Number(totalHours.toFixed(2)));
       upsertEntry(METRICS.sleepQuality.id, date, quality);
 
       hoursEl.value = "";
+      minutesEl.value = "";
       qualityEl.value = "";
       setDefaultSleepDate();
       renderSleepList();

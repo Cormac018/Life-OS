@@ -140,6 +140,8 @@
       card.querySelector("[data-delete]").addEventListener("click", () => {
         LifeOSDB.remove("goals", g.id);
         renderGoals();
+        // Notify Today tab to update
+        document.dispatchEvent(new CustomEvent("lifeos:goals-updated"));
       });
 
       wrap.appendChild(card);
@@ -193,6 +195,8 @@
       if (targetValueEl) targetValueEl.value = "";
       // keep dates; user often adds multiple goals
       renderGoals();
+      // Notify Today tab to update
+      document.dispatchEvent(new CustomEvent("lifeos:goals-updated"));
     });
   }
 
