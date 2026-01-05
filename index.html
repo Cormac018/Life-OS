@@ -960,165 +960,201 @@
       <section id="view-finances" class="lifeos-view">
   <h1 class="app-title">Finances</h1>
 
-  <!-- Overview -->
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 style="margin:0 0 10px 0;">Overview</h2>
-    <div class="btn-row" style="margin-top:0; margin-bottom:10px;">
-  <button id="moneyPeriodWeekBtn" type="button">Week</button>
-  <button id="moneyPeriodMonthBtn" type="button">Month</button>
-  <button id="moneyPeriodYearBtn" type="button">Year</button>
-</div>
-    <div id="moneyOverview" style="font-size:14px;"></div>
-    <div id="moneyOverviewHint" style="margin-top:8px; color:var(--muted); font-size:13px;"></div>
-  </div>
-
-  <!-- Accounts -->
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 style="margin:0 0 10px 0;">
-  <span id="moneyAccountsTitle">Accounts</span>
-</h2>
-
-<div id="moneyAccountDetailHeader" style="display:none; margin-bottom:10px;">
-  <button id="moneyBackToAccountsBtn" type="button">← Back to all accounts</button>
-  <div style="margin-top:8px;">
-    <div id="moneyAccountDetailName" style="font-weight:600;"></div>
-    <div id="moneyAccountDetailBalance" class="meta"></div>
-  </div>
-</div>
-<div id="moneyAccountCreateWrap">
-    <form id="moneyAccountForm">
-      <label>
-        Account name
-        <input type="text" id="moneyAccountName" placeholder="e.g. Current account" required />
-      </label>
-
-      <label>
-        Bank / provider
-        <input type="text" id="moneyAccountBank" placeholder="e.g. Revolut / Monzo / Barclays" />
-      </label>
-
-      <label>
-        Type
-        <select id="moneyAccountType">
-          <option value="current">Current</option>
-          <option value="savings">Savings</option>
-          <option value="credit">Credit card</option>
-          <option value="loan">Loan</option>
-          <option value="cash">Cash</option>
-          <option value="other">Other</option>
-        </select>
-      </label>
-
-      <label>
-        Starting balance (can be negative)
-        <input type="number" id="moneyAccountBalance" step="0.01" placeholder="e.g. 1250 or -50" required />
-      </label>
-
-      <button type="submit">Add account</button>
-    </form>
-
-    <div style="margin-top:12px;">
-      <ul id="moneyAccountsList"></ul>
+  <!-- Total Balance Summary -->
+  <div class="revolut-summary-card" style="margin-top:12px;">
+    <div class="summary-stat">
+      <div class="stat-value" id="moneyTotalBalance">£0.00</div>
+      <div class="stat-label">Total Balance</div>
     </div>
-  </div>
-  </div>
-
-  <!-- Salary settings -->
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 style="margin:0 0 10px 0;">Salary (optional)</h2>
-
-    <form id="moneySalaryForm">
-      <label>
-        Monthly salary (net)
-        <input type="number" id="moneySalaryNet" step="0.01" placeholder="e.g. 2800" />
-      </label>
-
-      <label>
-        Monthly deductions total (optional)
-        <input type="number" id="moneySalaryDeductions" step="0.01" placeholder="e.g. 250" />
-      </label>
-
-      <label>
-        Payday rule
-        <select id="moneyPaydayRule">
-          <option value="last_working_day">Last working day of month</option>
-          <option value="last_day">Last calendar day of month</option>
-        </select>
-      </label>
-
-      <button type="submit">Save salary settings</button>
-    </form>
-
-    <div class="btn-row" style="margin-top:10px;">
-      <button id="moneyAddPaydayBtn" type="button">Add this month’s payday income</button>
-    </div>
-
-    <div id="moneySalaryHint" style="margin-top:8px; color:var(--muted); font-size:13px;"></div>
-  </div>
-
-  <!-- Add transaction -->
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 style="margin:0 0 10px 0;">Add transaction</h2>
-
-    <form id="moneyTxForm">
-      <label>
-        Date
-        <input type="date" id="moneyTxDate" required />
-      </label>
-
-      <label>
-        Account
-        <select id="moneyTxAccount" required></select>
-      </label>
-
-      <label>
-        Amount (expenses are negative)
-        <input type="number" id="moneyTxAmount" step="0.01" placeholder="e.g. -12.50 or 200" required />
-      </label>
-
-      <label>
-        Category
-        <select id="moneyTxCategory" required></select>
-      </label>
-
-      <label>
-        Essential?
-        <select id="moneyTxEssential">
-          <option value="essential">Essential</option>
-          <option value="optional">Optional</option>
-        </select>
-      </label>
-
-      <label>
-        Merchant / label (optional)
-        <input type="text" id="moneyTxMerchant" placeholder="e.g. Tesco / Rent / Salary" />
-      </label>
-
-      <label>
-        Notes (optional)
-        <input type="text" id="moneyTxNote" placeholder="Any extra context" />
-      </label>
-
-      <button type="submit">Save transaction</button>
-    </form>
-  </div>
-
-  <!-- This month -->
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 id="moneyPeriodTitle" style="margin:0 0 10px 0;">This month</h2>
-
-    <div id="moneyMonthSummary" style="font-size:14px;"></div>
-
-    <div style="margin-top:10px;">
-      <h3 style="margin:0 0 8px 0;">By category</h3>
-      <ul id="moneyCategorySummary"></ul>
+    <div class="summary-stat">
+      <div class="stat-value" id="moneyPeriodNet">£0.00</div>
+      <div class="stat-label" id="moneyPeriodNetLabel">This Month</div>
     </div>
   </div>
 
-  <!-- History -->
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 style="margin:0 0 10px 0;">History</h2>
-    <ul id="moneyTxList"></ul>
+  <!-- Period Selection -->
+  <div style="margin-top:12px;">
+    <div class="btn-row" style="margin:0;">
+      <button id="moneyPeriodWeekBtn" type="button" class="sleep-range-btn">Week</button>
+      <button id="moneyPeriodMonthBtn" type="button" class="sleep-range-btn active">Month</button>
+      <button id="moneyPeriodYearBtn" type="button" class="sleep-range-btn">Year</button>
+    </div>
+  </div>
+
+  <!-- Overview Card -->
+  <div class="revolut-card" style="margin-top:12px; cursor:default;">
+    <div id="moneyOverview"></div>
+  </div>
+
+  <!-- Accounts Section -->
+  <div style="margin-top:12px;">
+    <div class="revolut-section-header">
+      <div class="revolut-section-title">Accounts</div>
+      <button id="moneyAddAccountBtn" class="revolut-section-action" style="background:none;border:none;cursor:pointer;">+ Add</button>
+    </div>
+    <div id="moneyAccountsList"></div>
+  </div>
+
+  <!-- Account Detail (hidden by default) -->
+  <div id="moneyAccountDetailHeader" style="display:none; margin-top:12px;">
+    <button id="moneyBackToAccountsBtn" type="button" style="margin-bottom:12px;">← Back to all accounts</button>
+    <div class="revolut-card" style="cursor:default;">
+      <div class="revolut-card-header">
+        <div class="revolut-card-title" id="moneyAccountDetailName"></div>
+        <div class="revolut-card-value" id="moneyAccountDetailBalance"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Account Form (collapsible, hidden by default) -->
+  <div id="moneyAccountCollapsible" style="display:none; margin-top:12px;">
+    <div class="revolut-card">
+      <form id="moneyAccountForm">
+        <label>
+          Account name
+          <input type="text" id="moneyAccountName" placeholder="e.g. Current account" required />
+        </label>
+        <label>
+          Bank / provider
+          <input type="text" id="moneyAccountBank" placeholder="e.g. Revolut / Monzo / Barclays" />
+        </label>
+        <label>
+          Type
+          <select id="moneyAccountType">
+            <option value="current">Current</option>
+            <option value="savings">Savings</option>
+            <option value="credit">Credit card</option>
+            <option value="loan">Loan</option>
+            <option value="cash">Cash</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label>
+          Starting balance
+          <input type="number" id="moneyAccountBalance" step="0.01" placeholder="e.g. 1250 or -50" required />
+        </label>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button type="submit" style="flex:1;">Add account</button>
+          <button type="button" id="moneyCancelAccountBtn" style="flex:1; background:var(--surface-2); color:var(--text); border:1px solid var(--border);">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div style="margin-top:16px;">
+    <div class="revolut-section-header">
+      <div class="revolut-section-title">Quick Actions</div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <button id="moneyQuickAddExpenseBtn" class="revolut-quick-action" style="width:100%;">Add Expense</button>
+      <button id="moneyQuickAddIncomeBtn" class="revolut-quick-action" style="width:100%;">Add Income</button>
+    </div>
+  </div>
+
+  <!-- Add Transaction Form (collapsible, hidden by default) -->
+  <div id="moneyTxCollapsible" style="display:none; margin-top:12px;">
+    <div class="revolut-card">
+      <form id="moneyTxForm">
+        <label>
+          Date
+          <input type="date" id="moneyTxDate" required />
+        </label>
+        <label>
+          Account
+          <select id="moneyTxAccount" required></select>
+        </label>
+        <label>
+          Amount (expenses are negative)
+          <input type="number" id="moneyTxAmount" step="0.01" placeholder="e.g. -12.50 or 200" required />
+        </label>
+        <label>
+          Category
+          <select id="moneyTxCategory" required></select>
+        </label>
+        <label>
+          Essential?
+          <select id="moneyTxEssential">
+            <option value="essential">Essential</option>
+            <option value="optional">Optional</option>
+          </select>
+        </label>
+        <label>
+          Merchant / label (optional)
+          <input type="text" id="moneyTxMerchant" placeholder="e.g. Tesco / Rent / Salary" />
+        </label>
+        <label>
+          Notes (optional)
+          <input type="text" id="moneyTxNote" placeholder="Any extra context" />
+        </label>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button type="submit" style="flex:1;">Save transaction</button>
+          <button type="button" id="moneyCancelTxBtn" style="flex:1; background:var(--surface-2); color:var(--text); border:1px solid var(--border);">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Period Summary -->
+  <div style="margin-top:16px;">
+    <div class="revolut-section-header">
+      <div class="revolut-section-title" id="moneyPeriodTitle">This Month</div>
+    </div>
+    <div id="moneyMonthSummary"></div>
+  </div>
+
+  <!-- Category Breakdown -->
+  <div style="margin-top:16px;">
+    <div class="revolut-section-header">
+      <div class="revolut-section-title">By Category</div>
+    </div>
+    <div id="moneyCategorySummary"></div>
+  </div>
+
+  <!-- Transaction History -->
+  <div style="margin-top:16px;">
+    <div class="revolut-section-header">
+      <div class="revolut-section-title">Transactions</div>
+    </div>
+    <div id="moneyTxList"></div>
+  </div>
+
+  <!-- Salary Settings (collapsible) -->
+  <div class="revolut-collapsible" style="margin-top:12px;">
+    <div class="revolut-collapsible-header">
+      <div>
+        <div class="revolut-collapsible-title">Salary Settings</div>
+        <div class="revolut-collapsible-summary" id="moneySalaryHint">Optional payday tracking</div>
+      </div>
+      <div class="revolut-collapsible-icon">
+        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+    </div>
+    <div class="revolut-collapsible-content">
+      <div class="revolut-collapsible-inner">
+        <form id="moneySalaryForm">
+          <label>
+            Monthly salary (net)
+            <input type="number" id="moneySalaryNet" step="0.01" placeholder="e.g. 2800" />
+          </label>
+          <label>
+            Monthly deductions total (optional)
+            <input type="number" id="moneySalaryDeductions" step="0.01" placeholder="e.g. 250" />
+          </label>
+          <label>
+            Payday rule
+            <select id="moneyPaydayRule">
+              <option value="last_working_day">Last working day of month</option>
+              <option value="last_day">Last calendar day of month</option>
+            </select>
+          </label>
+          <button type="submit">Save salary settings</button>
+        </form>
+        <div class="btn-row" style="margin-top:10px;">
+          <button id="moneyAddPaydayBtn" type="button">Add this month's payday income</button>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 

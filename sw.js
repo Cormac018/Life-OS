@@ -59,39 +59,19 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - NETWORK FIRST for development (serve fresh files)
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request)
-      .then((cachedResponse) => {
-        if (cachedResponse) {
-          // Return cached version
-          return cachedResponse;
-        }
-
-        // Not in cache, fetch from network
-        return fetch(event.request)
-          .then((networkResponse) => {
-            // Don't cache non-GET requests or non-successful responses
-            if (event.request.method !== 'GET' || !networkResponse || networkResponse.status !== 200) {
-              return networkResponse;
-            }
-
-            // Clone the response (can only be consumed once)
-            const responseToCache = networkResponse.clone();
-
-            // Cache the fetched response for next time
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-
-            return networkResponse;
-          })
-          .catch(() => {
-            // Network failed, return offline page if available
-            return caches.match('./index.html');
-          });
+    fetch(event.request)
+      .then((networkResponse) => {
+        // Return network response (fresh files)
+        return networkResponse;
+      })
+      .catch(() => {
+        // Network failed, fallback to cache
+        return caches.match(event.request).then((cachedResponse) => {
+          return cachedResponse || caches.match('./index.html');
+        });
       })
   );
 });
