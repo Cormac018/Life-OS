@@ -4,13 +4,15 @@
    - Static asset caching
    ========================= */
 
-const CACHE_NAME = 'lifeos-v44-work-tab-redesign';
+const CACHE_NAME = 'lifeos-v48-empty-states';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './style.css',
   './workouts.js',
   './app.js',
+  './toast.js',
+  './ui-helpers.js',
   './db.js',
   './lifeos-export.js',
   './lifeos.js',

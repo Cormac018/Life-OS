@@ -9,8 +9,8 @@
 
   function getRoute() {
     const raw = (window.location.hash || "").replace("#", "").trim().toLowerCase();
-    if (!raw) return "workouts";
-    return ROUTES.includes(raw) ? raw : "workouts";
+    if (!raw) return "today";
+    return ROUTES.includes(raw) ? raw : "today";
   }
 
   function setActiveNav(route) {
@@ -28,16 +28,37 @@
     if (active) active.classList.add("active");
   }
 
+  function updatePageTitle(route) {
+    const pageTitle = document.getElementById("pageTitle");
+    if (!pageTitle) return;
+
+    // Map routes to display names
+    const titleMap = {
+      today: "Today",
+      workouts: "Workouts",
+      metrics: "Metrics",
+      goals: "Goals",
+      plan: "Plan",
+      work: "Work",
+      finances: "Finances",
+      journal: "Journal",
+      people: "People"
+    };
+
+    pageTitle.textContent = titleMap[route] || "Life OS";
+  }
+
   function render() {
     const route = getRoute();
     setActiveNav(route);
     setActiveView(route);
+    updatePageTitle(route);
   }
 
   document.addEventListener("DOMContentLoaded", () => {
     // Ensure initial hash exists for consistent behavior
     if (!window.location.hash) {
-      window.location.hash = "#workouts";
+      window.location.hash = "#today";
     }
     window.addEventListener("hashchange", render);
     render();

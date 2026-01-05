@@ -33,13 +33,31 @@
     const btn = document.getElementById(btnId);
     if (!btn) return;
 
-    btn.addEventListener("click", () => {
-      const payload = global.LifeOSDB.exportAll();
-    const d = new Date();
-const stamp = d.toISOString().slice(0, 10);
-const time = d.toISOString().slice(11, 16).replace(":", ""); // HHMM
-downloadJSON(`lifeos-export-${stamp}-${time}.json`, payload);
+    btn.addEventListener("click", async () => {
+      await global.UIHelpers.withButtonLoading(btn, async () => {
+        // Small delay to show loading state
+        await new Promise(resolve => setTimeout(resolve, 300));
 
+        const payload = global.LifeOSDB.exportAll();
+        const d = new Date();
+        const stamp = d.toISOString().slice(0, 10);
+        const time = d.toISOString().slice(11, 16).replace(":", ""); // HHMM
+        downloadJSON(`lifeos-export-${stamp}-${time}.json`, payload);
+
+        // Record backup date in appMeta
+        const meta = global.LifeOSDB.getCollection("appMeta");
+        const currentMeta = meta[0] || { id: "meta" };
+        const updatedMeta = { ...currentMeta, lastBackupDate: stamp };
+        global.LifeOSDB.setCollection("appMeta", [updatedMeta]);
+        global.LifeOSDB.touchMeta();
+
+        // Hide backup reminder if visible
+        const banner = document.getElementById("backupReminderBanner");
+        if (banner) banner.style.display = "none";
+
+        // Show success toast
+        Toast.success("Data exported successfully! File downloaded.");
+      });
     });
   }
 
@@ -111,8 +129,7 @@ downloadJSON(`lifeos-export-${stamp}-${time}.json`, payload);
         // Comprehensive validation
         const validationErrors = validateImportPayload(payload);
         if (validationErrors.length > 0) {
-          const errorMsg = "Import validation failed:\n\n" + validationErrors.join("\n");
-          alert(errorMsg);
+          Toast.error(`Import validation failed: ${validationErrors[0]}`);
           if (status) {
             status.textContent = `Validation failed: ${validationErrors[0]}`;
           }
@@ -135,12 +152,12 @@ downloadJSON(`lifeos-export-${stamp}-${time}.json`, payload);
         if (status) {
           status.textContent = `Imported successfully (${file.name}).`;
         }
+        Toast.success("Data imported successfully!");
 
       } catch (err) {
+        Toast.error(`Import failed: ${err.message}`);
         if (status) {
           status.textContent = `Import failed: ${err.message}`;
-        } else {
-          alert(`Import failed: ${err.message}`);
         }
       } finally {
         // Allow re-importing same file

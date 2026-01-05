@@ -88,9 +88,21 @@
     <section id="view-today" class="lifeos-view">
   <h1 class="app-title">Today</h1>
 
+  <!-- Backup Reminder Banner -->
+  <div id="backupReminderBanner" style="display:none; margin-top:12px; padding:14px; background:linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); border-radius:12px; color:white; box-shadow:0 2px 8px rgba(255,107,107,0.3);">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="font-size:24px;">⚠️</div>
+      <div style="flex:1;">
+        <div style="font-weight:700; font-size:15px; margin-bottom:4px;">Time to back up your data!</div>
+        <div style="font-size:13px; opacity:0.95;" id="backupReminderText">It's been a while since your last backup.</div>
+      </div>
+      <button id="dismissBackupReminder" type="button" style="padding:8px 16px; background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.3); color:white; border-radius:8px; font-weight:600; cursor:pointer; font-size:13px;">Dismiss</button>
+    </div>
+  </div>
+
   <!-- Goals summary -->
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 style="margin:0 0 10px 0;">Active goals</h2>
+  <div class="revolut-card" style="padding:20px; margin-top:12px;">
+    <div style="font-size:16px; font-weight:700; margin-bottom:12px; color:var(--text);">🎯 Active Goals</div>
     <div id="todayGoals"></div>
   </div>
 <!-- Diet summary (Swipeable Card) -->
@@ -109,8 +121,8 @@
   </div>
 
   <!-- Life OS Data (export/import) -->
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 style="margin:0 0 10px 0;">Life OS Data</h2>
+  <div class="revolut-card" style="padding:20px; margin-top:12px;">
+    <div style="font-size:16px; font-weight:700; margin-bottom:16px; color:var(--text);">💾 Life OS Data</div>
 
     <div class="btn-row">
       <button id="lifeosExportBtn" type="button">Export Life OS</button>
@@ -428,8 +440,8 @@
 </div>
 
 <div id="healthPaneDiet" class="health-pane">
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 style="margin-top:0;">Diet</h2>
+  <div class="revolut-card" style="padding:20px; margin-top:12px;">
+    <div style="font-size:16px; font-weight:700; margin-bottom:16px; color:var(--text);">🍽️ Diet</div>
 
     <!-- Diet Tabs -->
     <div class="diet-tabs" role="tablist" aria-label="Diet sections">
@@ -693,24 +705,29 @@
   </div>
 
   <!-- Manual Notes (Legacy) -->
-  <details class="panel" style="padding:12px; margin-bottom:12px;">
-    <summary style="cursor:pointer; font-weight:700; font-size:15px;">📝 Manual Notes</summary>
+  <details class="dashboard-card" style="margin-bottom:12px;">
+    <summary style="cursor:pointer; padding:16px; font-weight:700; font-size:16px; display:flex; align-items:center; gap:8px;">
+      📝 Manual Notes
+      <span style="font-size:14px; color:var(--muted); font-weight:400; margin-left:auto;">▼</span>
+    </summary>
 
-    <div style="margin-top:12px;">
-      <h4 style="margin:0 0 8px 0;">Monthly list (supplements, etc.)</h4>
-      <div class="meta">Use this for supplements/protein powders + anything you buy monthly.</div>
-      <textarea id="dietMonthlyListText" rows="6" style="width:100%; margin-top:10px;" placeholder="- Creatine (1 tub)&#10;- Whey (2 bags)&#10;- Vitamins ..."></textarea>
-      <div class="btn-row" style="margin-top:10px;">
-        <button id="dietSaveMonthlyBtn" type="button">Save monthly list</button>
+    <div style="padding:0 16px 16px 16px; border-top:1px solid var(--border);">
+      <div style="margin-top:16px;">
+        <h4 style="margin:0 0 8px 0; font-size:14px; font-weight:600;">Monthly list (supplements, etc.)</h4>
+        <div class="meta">Use this for supplements/protein powders + anything you buy monthly.</div>
+        <textarea id="dietMonthlyListText" rows="6" style="width:100%; margin-top:10px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2);" placeholder="- Creatine (1 tub)&#10;- Whey (2 bags)&#10;- Vitamins ..."></textarea>
+        <div class="btn-row" style="margin-top:10px;">
+          <button id="dietSaveMonthlyBtn" type="button">Save monthly list</button>
+        </div>
       </div>
-    </div>
 
-    <div style="margin-top:16px;">
-      <h4 style="margin:0 0 8px 0;">Sunday prep notes</h4>
-      <div class="meta">Additional notes for meal prep.</div>
-      <textarea id="dietSundayPrepText" rows="6" style="width:100%; margin-top:10px;" placeholder="- Portion: 200g chicken + 100g rice per lunch&#10;- Store in containers ..."></textarea>
-      <div class="btn-row" style="margin-top:10px;">
-        <button id="dietSaveSundayBtn" type="button">Save Sunday prep</button>
+      <div style="margin-top:16px;">
+        <h4 style="margin:0 0 8px 0; font-size:14px; font-weight:600;">Sunday prep notes</h4>
+        <div class="meta">Additional notes for meal prep.</div>
+        <textarea id="dietSundayPrepText" rows="6" style="width:100%; margin-top:10px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2);" placeholder="- Portion: 200g chicken + 100g rice per lunch&#10;- Store in containers ..."></textarea>
+        <div class="btn-row" style="margin-top:10px;">
+          <button id="dietSaveSundayBtn" type="button">Save Sunday prep</button>
+        </div>
       </div>
     </div>
   </details>
@@ -840,41 +857,43 @@
     <div style="margin-top:12px; display:flex; flex-direction:column; gap:12px;">
 
       <!-- Measurements -->
-      <div class="panel" style="padding:14px;">
-        <h3 style="margin-top:0;">Measurements (cm)</h3>
-        <form id="measureForm" style="display:flex; flex-direction:column; gap:10px;">
-          <label>
-            Date
-            <input type="date" id="mDate" required />
+      <div class="revolut-card" style="padding:20px;">
+        <div style="font-size:16px; font-weight:700; margin-bottom:16px; color:var(--text);">📏 Measurements (cm)</div>
+        <form id="measureForm" style="display:flex; flex-direction:column; gap:14px;">
+          <label style="display:flex; flex-direction:column; gap:6px;">
+            <span style="font-size:13px; font-weight:600; color:var(--muted);">Date</span>
+            <input type="date" id="mDate" required style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
           </label>
-          <label>
-            Waist (cm)
-            <input type="number" id="mWaist" step="0.1" min="0" />
-          </label>
-          <label>
-            Chest (cm)
-            <input type="number" id="mChest" step="0.1" min="0" />
-          </label>
-          <label>
-            Shoulders (cm)
-            <input type="number" id="mShoulders" step="0.1" min="0" />
-          </label>
-          <label>
-            Thigh (cm)
-            <input type="number" id="mThigh" step="0.1" min="0" />
-          </label>
-          <label>
-            Biceps (cm)
-            <input type="number" id="mBiceps" step="0.1" min="0" />
-          </label>
-          <button type="submit">Save measurements</button>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px;">
+            <label style="display:flex; flex-direction:column; gap:6px;">
+              <span style="font-size:12px; color:var(--muted);">Waist (cm)</span>
+              <input type="number" id="mWaist" step="0.1" min="0" placeholder="e.g. 85.5" style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px;">
+              <span style="font-size:12px; color:var(--muted);">Chest (cm)</span>
+              <input type="number" id="mChest" step="0.1" min="0" placeholder="e.g. 100" style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px;">
+              <span style="font-size:12px; color:var(--muted);">Shoulders (cm)</span>
+              <input type="number" id="mShoulders" step="0.1" min="0" placeholder="e.g. 115" style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px;">
+              <span style="font-size:12px; color:var(--muted);">Thigh (cm)</span>
+              <input type="number" id="mThigh" step="0.1" min="0" placeholder="e.g. 58" style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px;">
+              <span style="font-size:12px; color:var(--muted);">Biceps (cm)</span>
+              <input type="number" id="mBiceps" step="0.1" min="0" placeholder="e.g. 38" style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
+            </label>
+          </div>
+          <button type="submit" style="background:linear-gradient(135deg, var(--accent) 0%, rgba(122,167,255,1) 100%); color:white; font-weight:600; padding:12px; border-radius:8px; font-size:15px; border:none; cursor:pointer;">Save Measurements</button>
         </form>
       </div>
 
       <!-- History -->
-      <div class="panel" style="padding:14px;">
-        <h3 style="margin-top:0;">Body Comp & Measurements History</h3>
-        <ul id="bodyCompList" style="list-style:none; padding:0;"></ul>
+      <div class="revolut-card" style="padding:20px;">
+        <div style="font-size:16px; font-weight:700; margin-bottom:16px; color:var(--text);">📊 Body Comp & Measurements History</div>
+        <ul id="bodyCompList" style="list-style:none; padding:0; margin:0;"></ul>
       </div>
     </div>
   </details>
@@ -884,41 +903,41 @@
       <section id="view-goals" class="lifeos-view">
   <h1 class="app-title">Goals</h1>
 
-  <div class="panel" style="padding:14px;">
-    <h2 style="margin-top:0;">Create goal</h2>
+  <div class="revolut-card" style="padding:20px;">
+    <div style="font-size:16px; font-weight:700; margin-bottom:16px; color:var(--text);">🎯 Create Goal</div>
 
-    <form id="goalForm">
-      <label>
-        Goal title
-        <input type="text" id="goalTitle" placeholder="e.g. Cut to 75kg" required />
+    <form id="goalForm" style="display:flex; flex-direction:column; gap:14px;">
+      <label style="display:flex; flex-direction:column; gap:6px;">
+        <span style="font-size:13px; font-weight:600; color:var(--muted);">Goal title</span>
+        <input type="text" id="goalTitle" placeholder="e.g. Cut to 75kg" required style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
       </label>
 
-      <label>
-        Start date
-        <input type="date" id="goalStartDate" required />
+      <label style="display:flex; flex-direction:column; gap:6px;">
+        <span style="font-size:13px; font-weight:600; color:var(--muted);">Start date</span>
+        <input type="date" id="goalStartDate" required style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
       </label>
 
-      <label>
-        Target date
-        <input type="date" id="goalTargetDate" required />
+      <label style="display:flex; flex-direction:column; gap:6px;">
+        <span style="font-size:13px; font-weight:600; color:var(--muted);">Target date</span>
+        <input type="date" id="goalTargetDate" required style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
       </label>
 
-      <label>
-        Track metric
-        <select id="goalMetricSelect" required></select>
+      <label style="display:flex; flex-direction:column; gap:6px;">
+        <span style="font-size:13px; font-weight:600; color:var(--muted);">Track metric</span>
+        <select id="goalMetricSelect" required style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);"></select>
       </label>
 
-      <label>
-        Target value (optional - enables progress bar)
-        <input type="number" id="goalTargetValue" placeholder="e.g. 75" step="0.1" />
+      <label style="display:flex; flex-direction:column; gap:6px;">
+        <span style="font-size:13px; font-weight:600; color:var(--muted);">Target value (optional - enables progress bar)</span>
+        <input type="number" id="goalTargetValue" placeholder="e.g. 75" step="0.1" style="padding:12px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text);" />
       </label>
 
-      <button type="submit">Create goal</button>
+      <button type="submit" style="background:linear-gradient(135deg, var(--accent) 0%, rgba(122,167,255,1) 100%); color:white; font-weight:600; padding:12px; border-radius:8px; font-size:15px; border:none; cursor:pointer;">Create Goal</button>
     </form>
   </div>
 
-  <div class="panel" style="padding:14px; margin-top:12px;">
-    <h2 style="margin-top:0;">Your goals</h2>
+  <div class="revolut-card" style="padding:20px; margin-top:12px;">
+    <div style="font-size:16px; font-weight:700; margin-bottom:16px; color:var(--text);">📈 Your Goals</div>
     <div id="goalsList"></div>
   </div>
 </section>
@@ -1173,6 +1192,8 @@
    <script src="workouts.js"></script>
 <script src="app.js"></script>
 
+<script src="toast.js"></script>
+<script src="ui-helpers.js"></script>
 <script src="db.js"></script>
 <script src="lifeos-export.js"></script>
 <script src="lifeos.js"></script>

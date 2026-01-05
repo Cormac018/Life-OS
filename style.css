@@ -3257,3 +3257,555 @@ option {
     font-size: 9px;
   }
 }
+
+/* =============================================
+   COMPREHENSIVE MOBILE RESPONSIVENESS
+   ============================================= */
+
+/* Small mobile devices (phones, 480px and down) */
+@media (max-width: 480px) {
+  /* Base layout adjustments */
+  :root {
+    --spacing: 12px;
+  }
+
+  body {
+    font-size: 14px;
+  }
+
+  /* Header and navigation */
+  .app-title {
+    font-size: 22px;
+  }
+
+  /* Sidebar improvements */
+  #sidebar {
+    width: 280px;
+  }
+
+  /* Button rows should stack on mobile */
+  .btn-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .btn-row button,
+  .btn-row label {
+    width: 100% !important;
+  }
+
+  /* Form inputs */
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  input[type="email"],
+  select,
+  textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: 12px;
+  }
+
+  /* Dashboard tabs */
+  .dashboard-tabs {
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dashboard-tab {
+    padding: 10px 14px;
+    font-size: 13px;
+    white-space: nowrap;
+    min-width: fit-content;
+  }
+
+  /* Goals section */
+  .progress-bar {
+    height: 6px;
+  }
+
+  .progress-text {
+    font-size: 11px;
+  }
+
+  /* Metrics section - make grid responsive */
+  [style*="grid-template-columns: repeat(auto-fit"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Finance transaction list */
+  .revolut-transaction {
+    padding: 12px;
+  }
+
+  .transaction-details {
+    gap: 2px;
+  }
+
+  .transaction-merchant {
+    font-size: 14px;
+  }
+
+  .transaction-meta {
+    font-size: 11px;
+  }
+
+  .transaction-amount {
+    font-size: 16px;
+  }
+
+  /* Sleep dashboard swipe cards */
+  .dashboard-card {
+    min-height: auto;
+  }
+
+  .swipe-indicator {
+    bottom: 6px;
+    gap: 4px;
+  }
+
+  .swipe-dot {
+    width: 6px;
+    height: 6px;
+  }
+
+  /* Diet tabs */
+  .diet-tabs {
+    gap: 6px;
+    overflow-x: auto;
+  }
+
+  .diet-tab {
+    padding: 8px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  /* Toast notifications */
+  #toastContainer {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: 100%;
+  }
+
+  /* Modal dialogs */
+  .modal-content {
+    width: 95%;
+    max-width: 95%;
+    margin: 5% auto;
+    padding: 16px;
+  }
+}
+
+/* Tablet devices (481px to 768px) */
+@media (min-width: 481px) and (max-width: 768px) {
+  /* Optimize for tablet layout */
+  .btn-row {
+    flex-wrap: wrap;
+  }
+
+  .btn-row > * {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 140px;
+  }
+
+  /* Dashboard tabs stay horizontal */
+  .dashboard-tabs {
+    overflow-x: auto;
+  }
+
+  /* Two-column grids on tablet */
+  [style*="grid-template-columns: repeat(auto-fit, minmax(140px"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Landscape phone optimization */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Reduce vertical padding for landscape */
+  .revolut-card,
+  .dashboard-card {
+    padding: 12px;
+  }
+
+  .app-title {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+
+  /* Compact forms in landscape */
+  input,
+  select,
+  textarea,
+  button {
+    padding: 8px 12px;
+  }
+}
+
+/* Touch target improvements for all mobile devices */
+@media (hover: none) and (pointer: coarse) {
+  /* Ensure all interactive elements are at least 44x44px (Apple HIG) */
+  button,
+  a,
+  input[type="checkbox"],
+  input[type="radio"],
+  select {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Larger tap targets for small buttons */
+  .dashboard-tab,
+  .diet-tab,
+  .sleep-range-btn {
+    min-height: 44px;
+    padding: 12px 16px;
+  }
+
+  /* Better spacing for touch */
+  .btn-row {
+    gap: 12px;
+  }
+}
+
+/* =============================================
+   LOADING STATES & DISABLED BUTTONS
+   ============================================= */
+
+/* Button loading state */
+button.loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+button.loading::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spinner 0.6s linear infinite;
+}
+
+@keyframes spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Disabled button styles */
+button:disabled,
+button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Form loading state */
+form.loading {
+  opacity: 0.6;
+  pointer-events: none;
+  position: relative;
+}
+
+form.loading::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-md);
+  z-index: 1;
+}
+
+/* Card loading state */
+.revolut-card.loading,
+.dashboard-card.loading {
+  opacity: 0.6;
+  pointer-events: none;
+  position: relative;
+}
+
+.revolut-card.loading::after,
+.dashboard-card.loading::after {
+  content: "";
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  top: 50%;
+  left: 50%;
+  margin-left: -12px;
+  margin-top: -12px;
+  border: 3px solid rgba(79, 140, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: var(--accent);
+  animation: spinner 0.8s linear infinite;
+  z-index: 2;
+}
+
+/* Skeleton loader for content */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-text {
+  height: 16px;
+  margin-bottom: 8px;
+}
+
+.skeleton-title {
+  height: 24px;
+  width: 60%;
+  margin-bottom: 12px;
+}
+
+.skeleton-card {
+  height: 100px;
+  margin-bottom: 12px;
+}
+
+/* =============================================
+   FORM VALIDATION & INLINE FEEDBACK
+   ============================================= */
+
+/* Input validation states */
+input.valid,
+select.valid,
+textarea.valid {
+  border-color: #22c55e;
+  background-color: rgba(34, 197, 94, 0.05);
+}
+
+input.invalid,
+select.invalid,
+textarea.invalid {
+  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+/* Validation message */
+.validation-message {
+  font-size: 12px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.validation-message.error {
+  color: #ef4444;
+}
+
+.validation-message.success {
+  color: #22c55e;
+}
+
+.validation-message.warning {
+  color: #f59e0b;
+}
+
+.validation-message.info {
+  color: #3b82f6;
+}
+
+/* Field wrapper for validation */
+.field-wrapper {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.field-wrapper.has-error input,
+.field-wrapper.has-error select,
+.field-wrapper.has-error textarea {
+  border-color: #ef4444;
+}
+
+.field-wrapper.has-success input,
+.field-wrapper.has-success select,
+.field-wrapper.has-success textarea {
+  border-color: #22c55e;
+}
+
+/* Validation icon */
+.validation-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.validation-icon.success {
+  color: #22c55e;
+}
+
+.validation-icon.error {
+  color: #ef4444;
+}
+
+/* Required field indicator */
+.required-indicator {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+/* Form error summary */
+.form-errors {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  animation: slideDown 0.3s ease-out;
+}
+
+.form-errors-title {
+  font-weight: 600;
+  color: #ef4444;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.form-errors-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+  color: #dc2626;
+}
+
+.form-errors-list li {
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-errors-list li::before {
+  content: "•";
+  color: #ef4444;
+}
+
+/* Character counter */
+.char-counter {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+  margin-top: 4px;
+}
+
+.char-counter.warning {
+  color: #f59e0b;
+}
+
+.char-counter.error {
+  color: #ef4444;
+}
+
+/* =============================================
+   EMPTY STATES
+   ============================================= */
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.empty-state-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.empty-state-description {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.empty-state-action {
+  margin-top: 16px;
+}
+
+.empty-state-action button {
+  background: linear-gradient(135deg, var(--accent) 0%, rgba(122,167,255,1) 100%);
+  color: white;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.empty-state-action button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 140, 255, 0.3);
+}
+
+/* Compact empty state for smaller containers */
+.empty-state-compact {
+  padding: 24px 16px;
+}
+
+.empty-state-compact .empty-state-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.empty-state-compact .empty-state-title {
+  font-size: 15px;
+}
+
+.empty-state-compact .empty-state-description {
+  font-size: 13px;
+  margin-bottom: 12px;
+}

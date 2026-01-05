@@ -2080,7 +2080,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const sidebarToggle = document.getElementById("sidebarToggle");
   const sidebarClose = document.getElementById("sidebarClose");
   const sidebarLinks = document.querySelectorAll(".sidebar-link");
-  const pageTitle = document.getElementById("pageTitle");
 
   // Function to open sidebar
   function openSidebar() {
@@ -2124,35 +2123,16 @@ window.addEventListener("DOMContentLoaded", () => {
       sidebarLinks.forEach(l => l.classList.remove("active"));
       link.classList.add("active");
 
-      // Update page title
-      const linkText = link.querySelector("span:last-child").textContent;
-      if (pageTitle) {
-        pageTitle.textContent = linkText;
-      }
+      // Page title will be updated by shell.js render() function
+      // which handles route changes via hashchange event
 
       // Close sidebar after navigation
       closeSidebar();
     });
   });
 
-  // Update page title based on active tab
-  function updatePageTitle() {
-    const activeTab = document.querySelector(".tab.active");
-    if (activeTab && pageTitle) {
-      const tabText = activeTab.textContent.trim();
-      pageTitle.textContent = tabText;
-    }
-  }
-
-  // Listen for tab changes to update page title
-  document.querySelectorAll(".tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-      setTimeout(updatePageTitle, 0);
-    });
-  });
-
-  // Set initial page title
-  updatePageTitle();
+  // Page title is now managed by shell.js based on the current route
+  // Internal tabs (Train/Progress) within views don't affect the main page title
 });
 
 // =====================

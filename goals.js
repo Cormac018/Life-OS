@@ -68,7 +68,17 @@
       .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
     if (goals.length === 0) {
-      wrap.innerHTML = `<p style="color:var(--muted); margin:0;">No goals yet.</p>`;
+      // Show friendly empty state
+      if (window.UIHelpers) {
+        window.UIHelpers.showEmptyState(wrap, {
+          icon: '🎯',
+          title: 'No goals yet',
+          description: 'Set your first goal to start tracking your progress. Goals help you stay motivated and measure success.',
+          compact: true
+        });
+      } else {
+        wrap.innerHTML = `<p style="color:var(--muted); margin:0;">No goals yet.</p>`;
+      }
       return;
     }
 
@@ -101,8 +111,8 @@
       }
 
       const card = document.createElement("div");
-      card.className = "panel";
-      card.style.padding = "14px";
+      card.className = "revolut-card";
+      card.style.padding = "16px";
       card.style.marginBottom = "12px";
 
       const progressBarHTML = g.targetValue !== undefined

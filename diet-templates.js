@@ -2324,6 +2324,12 @@ renderPrepManual();
     renderInventoryList();
     wirePrepCalculator();
 
+    // Listen for metrics updates to re-render progress
+    document.addEventListener("lifeos:metrics-updated", () => {
+      renderProgressSummary();
+      renderChecklist();
+    });
+
     // Expose render functions globally for re-rendering when tab becomes visible
     window.renderDietPlanEditor = renderPlanEditor;
     window.renderDietChecklist = renderChecklist;

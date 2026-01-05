@@ -706,13 +706,13 @@
     btn.addEventListener("click", () => {
       const s = getSettings();
       if (!s || !Number.isFinite(Number(s.salaryNet)) || Number(s.salaryNet) <= 0) {
-        alert("Save a monthly net salary first.");
+        Toast.warning("Save a monthly net salary first.");
         return;
       }
 
       const accounts = getAccounts();
       if (accounts.length === 0) {
-        alert("Add an account first.");
+        Toast.warning("Add an account first.");
         return;
       }
 
@@ -722,7 +722,7 @@
       const mk = monthKey(paydayISO);
       const existing = getTransactions().find((t) => t && t.isPayday === true && monthKey(t.date) === mk);
       if (existing) {
-        alert("Payday income for this month already exists.");
+        Toast.info("Payday income for this month already exists.");
         return;
       }
 
@@ -742,7 +742,7 @@
       });
 
       refreshAll();
-      alert(`Added payday income on ${paydayISO}.`);
+      Toast.success(`Added payday income on ${paydayISO}.`);
     });
   }
 

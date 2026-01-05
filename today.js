@@ -608,16 +608,48 @@
     const plan = meta.dietPlansV1[activePlanId];
     const slots = plan.slots || {};
 
-    // Filter to only slots that have a meal template assigned
+    // Filter to only slots that have a meal template assigned and sort by time
     const slotIds = Object.keys(slots)
       .filter(slotId => slots[slotId] && slots[slotId].templateId)
-      .sort();
+      .sort((a, b) => {
+        const timeA = slots[a]?.time || "00:00";
+        const timeB = slots[b]?.time || "00:00";
+        return timeA.localeCompare(timeB);
+      });
 
     if (slotIds.length === 0) return; // No meals in plan
 
     // Get all meal templates
     const templates = LifeOSDB.getCollection("mealTemplates") || [];
     const templatesById = new Map(templates.map(t => [t.id, t]));
+
+    // Find which meals have already been logged today
+    const today = isoToday();
+    const existingLog = LifeOSDB.getCollection("dietLogs")?.find(l => l.date === today);
+    const loggedSlotIds = new Set(existingLog ? existingLog.items.map(item => item.slotId) : []);
+
+    // Find the next meal to log based on current time
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    // Find next unlogged meal (first one after current time, or first unlogged if all are before current time)
+    let nextMealId = null;
+
+    // First try: find next meal after current time that hasn't been logged
+    for (const slotId of slotIds) {
+      if (!loggedSlotIds.has(slotId)) {
+        const mealTime = slots[slotId]?.time || "00:00";
+        if (mealTime >= currentTime) {
+          nextMealId = slotId;
+          break;
+        }
+      }
+    }
+
+    // If no meal found after current time, use first unlogged meal
+    if (!nextMealId) {
+      nextMealId = slotIds.find(id => !loggedSlotIds.has(id)) || slotIds[0];
+    }
 
     // Find the card inside day panel and add meal selector after it
     const dietCard = dayPanel.querySelector(".revolut-card");
@@ -627,17 +659,24 @@
     const planLabels = { bulk: "Bulk", cut: "Cut", maintain: "Maintain" };
     const planLabel = planLabels[activePlanId] || activePlanId;
 
+    // Count logged vs total meals
+    const totalMeals = slotIds.length;
+    const loggedCount = loggedSlotIds.size;
+
     const mealSelectorHTML = `
       <div style="margin-top:12px; padding:12px; background:var(--surface-2); border-radius:var(--radius-sm); border:1px solid var(--border);">
         <div style="font-size:13px; color:var(--muted); margin-bottom:4px; font-weight:600;">Quick Log Meal</div>
-        <div style="font-size:12px; color:var(--muted); margin-bottom:8px;">Plan: ${planLabel}</div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:8px;">Plan: ${planLabel} • Progress: ${loggedCount}/${totalMeals} logged</div>
         <select id="quickMealSelector" style="width:100%; padding:10px; font-size:14px; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); margin-bottom:8px;">
           <option value="">Select a meal...</option>
           ${slotIds.map(slotId => {
             const slot = slots[slotId];
             const template = templatesById.get(slot.templateId);
             const mealName = template ? template.name : "Unknown meal";
-            return `<option value="${slotId}">${slot.label || slotId}: ${mealName}</option>`;
+            const mealTime = slot.time || "";
+            const isLogged = loggedSlotIds.has(slotId);
+            const loggedMark = isLogged ? "✓ " : "";
+            return `<option value="${slotId}" ${slotId === nextMealId ? 'selected' : ''}>${loggedMark}${slot.label || slotId} (${mealTime}): ${mealName}</option>`;
           }).join('')}
         </select>
         <button id="quickMealLogBtn" type="button" style="width:100%; padding:10px; border-radius:8px; font-weight:600; background:linear-gradient(135deg, var(--accent) 0%, rgba(122,167,255,1) 100%); color:white; border:none; cursor:pointer;">Log Meal</button>
@@ -725,25 +764,34 @@
           updatedAt: now,
         });
 
-        // Dispatch events
+        // Dispatch events to update Diet tab
         document.dispatchEvent(new CustomEvent("lifeos:metrics-updated", {
           detail: { metricId: CAL_ID, date: today, value: newCal }
         }));
+        document.dispatchEvent(new CustomEvent("lifeos:metrics-updated", {
+          detail: { metricId: PRO_ID, date: today, value: newPro }
+        }));
 
-        // Reset selector and refresh view
-        selector.value = "";
+        // Trigger Diet tab updates
+        if (window.renderDietChecklist) window.renderDietChecklist();
+        if (window.renderDietProgressSummary) window.renderDietProgressSummary();
+
+        // Refresh Today view (this will auto-select next meal)
         renderTodayDiet();
 
         // Show success feedback
-        logBtn.textContent = "✓ Logged!";
-        logBtn.style.background = "#22c55e";
-        setTimeout(() => {
-          const btn = document.getElementById("quickMealLogBtn");
-          if (btn) {
-            btn.textContent = "Log Meal";
-            btn.style.background = "linear-gradient(135deg, var(--accent) 0%, rgba(122,167,255,1) 100%)";
-          }
-        }, 1500);
+        const newBtn = document.getElementById("quickMealLogBtn");
+        if (newBtn) {
+          newBtn.textContent = "✓ Logged!";
+          newBtn.style.background = "#22c55e";
+          setTimeout(() => {
+            const btn = document.getElementById("quickMealLogBtn");
+            if (btn) {
+              btn.textContent = "Log Meal";
+              btn.style.background = "linear-gradient(135deg, var(--accent) 0%, rgba(122,167,255,1) 100%)";
+            }
+          }, 1500);
+        }
       });
     }
   }
@@ -1419,150 +1467,11 @@ window.adjustWorkTime = function(deltaMinutes) {
   };
 
   /* -------------------------
-     Storage Health Check
-     ------------------------- */
-
-  function checkStorageHealth() {
-    try {
-      const usage = LifeOSDB.getStorageUsage();
-      const totalBytes = usage.totalBytes || 0;
-      const limitBytes = 5_000_000; // 5MB conservative estimate
-      const warningThreshold = 4_000_000; // 4MB = 80%
-
-      if (totalBytes > warningThreshold) {
-        const usedMB = (totalBytes / 1_000_000).toFixed(2);
-        const limitMB = (limitBytes / 1_000_000).toFixed(1);
-
-        // Show warning banner in Today view
-        const banner = document.createElement("div");
-        banner.className = "panel";
-        banner.style.cssText = `
-          background: rgba(255,90,107,.12);
-          border-color: rgba(255,90,107,.35);
-          padding: 12px;
-          margin-bottom: 14px;
-          font-size: 14px;
-        `;
-        banner.innerHTML = `
-          <div style="font-weight:700; margin-bottom:6px;">⚠️ Storage Warning</div>
-          <div style="color:var(--muted); font-size:13px;">
-            Using ${usedMB} MB of ~${limitMB} MB.
-            <a href="#today" onclick="document.getElementById('exportBtn').click(); return false;"
-               style="color:var(--accent); text-decoration:underline;">
-              Export your data
-            </a>
-            to back up before storage fills.
-          </div>
-        `;
-
-        const main = document.querySelector("#view-today");
-        if (main && main.firstChild) {
-          main.insertBefore(banner, main.firstChild);
-        }
-      }
-    } catch (err) {
-      console.error("Storage health check failed:", err);
-    }
-  }
-
-  /* -------------------------
-     Weekly Backup Reminder
-     ------------------------- */
-
-  function checkBackupReminder() {
-    try {
-      const lastBackupDate = localStorage.getItem("lifeos.lastBackupDate");
-      const today = isoToday();
-
-      if (!lastBackupDate) {
-        // First time: set to today (give user a week grace period)
-        localStorage.setItem("lifeos.lastBackupDate", today);
-        return;
-      }
-
-      // Calculate days since last backup
-      const lastDate = new Date(lastBackupDate + "T00:00:00");
-      const currentDate = new Date(today + "T00:00:00");
-      const daysSince = Math.floor((currentDate - lastDate) / (1000 * 60 * 60 * 24));
-
-      if (daysSince >= 7) {
-        // Show backup reminder banner
-        const banner = document.createElement("div");
-        banner.className = "panel";
-        banner.style.cssText = `
-          background: rgba(79,140,255,.12);
-          border-color: rgba(79,140,255,.35);
-          padding: 12px;
-          margin-bottom: 14px;
-          font-size: 14px;
-        `;
-        banner.innerHTML = `
-          <div style="font-weight:700; margin-bottom:6px;">💾 Weekly Backup Reminder</div>
-          <div style="color:var(--muted); font-size:13px; margin-bottom:8px;">
-            It's been ${daysSince} days since your last backup.
-            Keep your data safe by exporting regularly.
-          </div>
-          <div style="display:flex; gap:8px;">
-            <button id="backupNowBtn" style="
-              height:36px;
-              padding:0 12px;
-              border-radius:10px;
-              background:rgba(79,140,255,.18);
-              border-color:rgba(79,140,255,.55);
-            ">Backup Now</button>
-            <button id="backupLaterBtn" style="
-              height:36px;
-              padding:0 12px;
-              border-radius:10px;
-            ">Remind Me Tomorrow</button>
-          </div>
-        `;
-
-        const main = document.querySelector("#view-today");
-        if (main && main.firstChild) {
-          main.insertBefore(banner, main.firstChild);
-
-          // Wire backup button
-          const backupNowBtn = document.getElementById("backupNowBtn");
-          if (backupNowBtn) {
-            backupNowBtn.addEventListener("click", () => {
-              const exportBtn = document.getElementById("exportBtn");
-              if (exportBtn) {
-                exportBtn.click();
-                localStorage.setItem("lifeos.lastBackupDate", today);
-                banner.remove();
-              }
-            });
-          }
-
-          // Wire "later" button
-          const backupLaterBtn = document.getElementById("backupLaterBtn");
-          if (backupLaterBtn) {
-            backupLaterBtn.addEventListener("click", () => {
-              // Set to yesterday so it reminds again tomorrow
-              const yesterday = new Date(currentDate);
-              yesterday.setDate(yesterday.getDate() - 6);
-              localStorage.setItem("lifeos.lastBackupDate", yesterday.toISOString().slice(0, 10));
-              banner.remove();
-            });
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Backup reminder check failed:", err);
-    }
-  }
-
-  /* -------------------------
      Boot
      ------------------------- */
 
   document.addEventListener("DOMContentLoaded", () => {
     if (!window.LifeOSDB) return;
-
-    // Check storage health and backup reminder on load
-    checkStorageHealth();
-    checkBackupReminder();
 
     // Initial render + wiring
     renderTodayGoals();
@@ -1602,5 +1511,116 @@ window.adjustWorkTime = function(deltaMinutes) {
     document.addEventListener("lifeos:plan-updated", () => {
       renderTodayPlan();
     });
+
+    // Check backup status and show reminder if needed
+    checkBackupStatus();
+
+    // Check storage quota
+    checkStorageQuota();
   });
+
+  // Storage quota monitoring
+  async function checkStorageQuota() {
+    try {
+      if (!navigator.storage || !navigator.storage.estimate) {
+        // Storage API not supported, skip
+        return;
+      }
+
+      const estimate = await navigator.storage.estimate();
+      const usage = estimate.usage || 0;
+      const quota = estimate.quota || 0;
+
+      if (quota === 0) return; // Can't determine quota
+
+      const percentUsed = (usage / quota) * 100;
+      const usageMB = (usage / (1024 * 1024)).toFixed(1);
+      const quotaMB = (quota / (1024 * 1024)).toFixed(1);
+
+      // Show warning at 80% capacity
+      if (percentUsed >= 80) {
+        const banner = document.createElement("div");
+        banner.style.cssText = `
+          margin-top: 12px;
+          padding: 14px;
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+          border-radius: 12px;
+          color: white;
+          box-shadow: 0 2px 8px rgba(245,158,11,0.3);
+        `;
+
+        banner.innerHTML = `
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="font-size:24px;">⚠️</div>
+            <div style="flex:1;">
+              <div style="font-weight:700; font-size:15px; margin-bottom:4px;">Storage Almost Full</div>
+              <div style="font-size:13px; opacity:0.95;">
+                Using ${usageMB}MB of ${quotaMB}MB (${percentUsed.toFixed(0)}%).
+                Export your data and consider cleaning old entries.
+              </div>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" style="padding:8px 16px; background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.3); color:white; border-radius:8px; font-weight:600; cursor:pointer; font-size:13px;">Dismiss</button>
+          </div>
+        `;
+
+        const backupBanner = document.getElementById("backupReminderBanner");
+        if (backupBanner && backupBanner.parentNode) {
+          backupBanner.parentNode.insertBefore(banner, backupBanner.nextSibling);
+        }
+      }
+
+      // Log storage info for debugging
+      console.log(`[Storage] Using ${usageMB}MB / ${quotaMB}MB (${percentUsed.toFixed(1)}%)`);
+
+    } catch (err) {
+      console.warn("[Storage] Could not check quota:", err);
+    }
+  }
+
+  // Backup reminder functionality
+  function checkBackupStatus() {
+    const banner = document.getElementById("backupReminderBanner");
+    const reminderText = document.getElementById("backupReminderText");
+    const dismissBtn = document.getElementById("dismissBackupReminder");
+
+    if (!banner) return;
+
+    const today = isoToday();
+    const meta = LifeOSDB.getCollection("appMeta")[0] || {};
+    const lastBackup = meta.lastBackupDate || null;
+
+    let daysSinceBackup = 999;
+    if (lastBackup) {
+      const lastDate = new Date(lastBackup);
+      const currentDate = new Date(today);
+      daysSinceBackup = Math.floor((currentDate - lastDate) / (1000 * 60 * 60 * 24));
+    }
+
+    // Show banner if no backup or 7+ days since last backup
+    if (daysSinceBackup >= 7) {
+      banner.style.display = "block";
+
+      if (lastBackup) {
+        reminderText.textContent = `Last backup was ${daysSinceBackup} days ago. Protect your data by exporting regularly.`;
+      } else {
+        reminderText.textContent = "You haven't backed up your data yet. Protect your data by exporting it below.";
+      }
+
+      // Wire dismiss button
+      if (dismissBtn) {
+        dismissBtn.addEventListener("click", () => {
+          banner.style.display = "none";
+          // Snooze for 1 day
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 6);
+          const snoozedDate = yesterday.toISOString().slice(0, 10);
+
+          const updatedMeta = { ...meta, lastBackupDate: snoozedDate };
+          LifeOSDB.setCollection("appMeta", [updatedMeta]);
+        });
+      }
+    } else {
+      banner.style.display = "none";
+    }
+  }
 })();
