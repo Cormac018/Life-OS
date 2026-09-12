@@ -8,14 +8,16 @@
   // Human-facing build marker, and the single source of truth for it. Bump this
   // alongside CACHE_NAME in sw.js on every deploy, so a glance at the badge in
   // the header confirms which build the installed PWA is actually running.
-  const APP_VERSION = "v56";
+  const APP_VERSION = "v60";
 
   // "rig" is the ops proving rig and "library" is the food library import.
   // Both are deliberately absent from the nav and from titleMap below, which
   // falls back to "Life OS": they exist only for someone who types the hash.
   // Without an entry here getRoute would fall through to "today" and the view
   // could never activate.
-  const ROUTES = ["today", "workouts", "metrics", "goals", "plan", "work", "finances", "journal", "people", "rig", "library"];
+  // "diet" is the Diet page. "diet-classic" is the older diet screen, reached
+  // only by the Classic toggle inside it, which is why it has no nav link.
+  const ROUTES = ["today", "workouts", "metrics", "goals", "plan", "work", "finances", "journal", "people", "rig", "library", "diet", "diet-classic"];
 
   function getRoute() {
     const raw = (window.location.hash || "").replace("#", "").trim().toLowerCase();
@@ -52,7 +54,9 @@
       work: "Work",
       finances: "Finances",
       journal: "Journal",
-      people: "People"
+      people: "People",
+      diet: "Diet",
+      "diet-classic": "Diet"
     };
 
     pageTitle.textContent = titleMap[route] || "Life OS";

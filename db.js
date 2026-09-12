@@ -225,6 +225,12 @@ return [];
   }
 
   function upsert(collectionName, entity) {
+    // The v2 workspace is an atomic, versioned document in IndexedDB. Legacy
+    // collections keep their existing synchronous contract and are untouched.
+    if (collectionName === "workspaceSnapshots") {
+      if (!global.LifeOSPersistentDB) throw new Error("Durable workspace storage is unavailable.");
+      return global.LifeOSPersistentDB.upsert(entity);
+    }
     if (!entity || typeof entity !== "object") {
       throw new Error("upsert expects an object entity");
     }
@@ -483,6 +489,7 @@ return [];
   }
 
   global.LifeOSDB = {
+    readWorkspace: () => global.LifeOSPersistentDB.read(),
     SCHEMA_VERSION,
     COLLECTIONS,
     WORKOUT_KEYS,

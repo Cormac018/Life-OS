@@ -1,14 +1,18 @@
 {
   "name": "Life OS",
   "short_name": "LifeOS",
-  "description": "Personal life tracking and goal management system",
+  "description": "Your private life planner and lifelong record",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0b0f17",
-  "theme_color": "#4f8cff",
-  "orientation": "portrait-primary",
-  "categories": ["productivity", "health", "lifestyle"],
+  "background_color": "#0c1020",
+  "theme_color": "#0c1020",
+  "orientation": "any",
+  "categories": [
+    "productivity",
+    "health",
+    "lifestyle"
+  ],
   "icons": [
     {
       "src": "./icon-192.png",

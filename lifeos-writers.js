@@ -705,6 +705,12 @@
      Filling that gap is a deliberate repair, and belongs in a visible one-time
      tool like the finance sign review, not silently inside a writer.
 
+     THE DAY'S AIM IS FROZEN TOO. A caller may pass `target` ({ targetId,
+     name, kcal, protein }); it is stored as targetSnapshot when the day record
+     is created and never recomputed, so changing your target tomorrow cannot
+     turn last month's days into days you missed. A day created without one
+     never gains one, for the same no-backfill reason.
+
      The two diet metrics are emitted here rather than by callers. They are a
      projection of these totals, and leaving them to each caller is precisely
      how they drifted apart in the first place.
@@ -849,6 +855,25 @@
       perServing: perServing,
       name: String(source.name || "").trim(),
       source: item.customMeal ? "custom" : source.nutritionSource || "manual",
+    };
+  }
+
+  // The writer stays ignorant of where targets live. The caller states the
+  // aim, this freezes it, and the shape is deliberately the same as an item
+  // snapshot: the numbers, plus who they were and when they were true.
+  function buildTargetSnapshot(target, now) {
+    if (!target || typeof target !== "object") return null;
+
+    const kcal = Number(target.kcal);
+    const protein = Number(target.protein);
+    if (!Number.isFinite(kcal) || !Number.isFinite(protein)) return null;
+
+    return {
+      targetId: target.targetId || target.id || null,
+      name: String(target.name || "").trim(),
+      kcal: kcal,
+      protein: protein,
+      at: now,
     };
   }
 
@@ -1021,7 +1046,18 @@
       }) &&
       deepEqual(items, storedItems);
 
-    const stored = db().upsert("dietLogs", {
+    // WHAT THE DAY WAS AIMING AT, frozen the same way a meal is. A day whose
+    // target is read live would silently restate itself the moment the target
+    // changed: raise the target in November and every day last month becomes a
+    // day you missed. So the caller may pass `target`, and it is frozen onto
+    // the day AT CREATION and never afterwards.
+    //
+    // Creation only, deliberately. A day that already exists without one
+    // predates targets, and stamping today's target onto it would attribute an
+    // aim to a past day that was never recorded, which is the same backfill
+    // the item snapshots refuse. Such a day keeps no targetSnapshot, and a
+    // reader shows the live target and says so. Absence is the marker.
+    const entity = {
       id: `diet_${date}`,
       date,
       goal,
@@ -1029,7 +1065,16 @@
       totals: preserving ? existing.totals : derived.totals,
       createdAt: existing ? existing.createdAt || now : now,
       updatedAt: now,
-    });
+    };
+
+    if (existing && has(existing, "targetSnapshot")) {
+      entity.targetSnapshot = existing.targetSnapshot;
+    } else if (!existing) {
+      const frozenTarget = buildTargetSnapshot(patch.target, now);
+      if (frozenTarget) entity.targetSnapshot = frozenTarget;
+    }
+
+    const stored = db().upsert("dietLogs", entity);
 
     // The projection, written from the same derived totals every caller now
     // gets. Through the canonical writer, never a direct upsert. Skipped
@@ -1071,7 +1116,22 @@
     return dietLog({ ...rest, date, items });
   }
 
+  // A separate versioned domain contract preserves the new signed-leg money
+  // journal and all historical revisions. It does not reinterpret or overwrite
+  // the six legacy collection formats. See LIVE_APP_ARCHITECTURE.md.
+  function workspaceSnapshot(payload, expectedRevision) {
+    if (!payload || payload.format !== "lifeos-state/1" || !payload.domains || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0) {
+      throw new Error("Invalid workspace snapshot.");
+    }
+    const required = ["training", "sleep", "food", "work", "goals", "money", "recurring", "reference", "people", "life", "capture", "captureReceipts"];
+    for (const name of required) {
+      if (!payload.domains[name] || typeof payload.domains[name] !== "object") throw new Error("Missing workspace section: " + name);
+    }
+    return db().upsert("workspaceSnapshots", { id: "primary", format: "lifeos-workspace/1", expectedRevision, payload });
+  }
+
   global.LifeOSWrite = {
+    workspaceSnapshot,
     workLog,
     metricEntry,
     moneyTransaction,
