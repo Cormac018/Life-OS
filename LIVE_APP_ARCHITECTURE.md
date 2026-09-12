@@ -1,4 +1,4 @@
-# Life OS v60: live workspace
+# Life OS v61: live workspace
 
 The approved interface is the first client of a new versioned workspace contract. It uses the platform's built-in IndexedDB and Web Crypto APIs, with no dependency, framework, remote database or analytics. The old localStorage collections and workout keys remain untouched.
 
@@ -22,6 +22,6 @@ Portable backups use AES-256-GCM with a random 96-bit nonce and a 128-bit salt. 
 
 ## Release and verification
 
-Only the production asset allowlist is deployed. Prototype files containing reference financial details, local documents, tests and backups are excluded. Assets are cached as one release. A SHA-256 release manifest verifies every required file before installation can complete, rejecting missing files and mixed releases. The current release remains usable until the complete update is ready. A running workout or work clock is persisted and resumes after reloading.
+Only the production asset allowlist is deployed. Prototype files containing reference financial details, local documents, tests and backups are excluded. Assets are cached as one release. A SHA-256 release manifest verifies every required file before installation can complete, rejecting missing files and mixed releases. The current release remains usable until the complete update is ready. Entry assets carry a release query to avoid legacy HTTP cache collisions. The update mechanism starts independently of workspace opening, so a stale legacy database script cannot strand the app before recovery controls are registered. A running workout or work clock is persisted and resumes after reloading.
 
 The live app starts with empty historical records and editable generic libraries. Dates and clocks use actual device time; the work calendar retains its explicit regional rules. Receipt rows, sleep and transactions can be entered manually. Garmin import, offline speech recognition, automatic receipt OCR, background reminders and a home inference connection require separate integrations and are not represented as active services.

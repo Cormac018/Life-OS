@@ -1,10 +1,10 @@
 {
-  "release": "v60",
+  "release": "v61",
   "assets": {
-    "./index.html": "5e001c01b6f34d763e0b381c30a4d3319aeeb7d4b7e89d6123732f9b6543941d",
+    "./index.html": "88d04ca929b969efe913a7feabff8e106dcf9001e36c01de2e1506954926fe33",
     "./manifest.json": "ca165befa6fabe25e91770b6af06c30d471a8ba2b5cba37e01fb1486ab2c62fb",
     "./life-app.css": "51c715146a0edf850c2bea85c468a73411da4477f6f5e8ad15faa931df0593c3",
-    "./life-app.js": "9dcdadb8e6aac04622200887f2bc5149286a12dd511b2ebfae3b56468cc575db",
+    "./life-app.js": "4cff502c871d324a2c9ef3a902d39dfd7bf5acdd574df90cfff5d79274618744",
     "./lifeos-storage.js": "6ff3529e420392cd6906a08724e7556485f4d173bdee20b4d74f96265b51ab48",
     "./db.js": "460da9ff51c6fd83fc603253d07c21d7be96d3356cde45587701c6dd0d525189",
     "./lifeos-writers.js": "14ba91d82328c3f180f1e06a5c4a7b2fac8ebc1d29b055621018bb50a00488f9",

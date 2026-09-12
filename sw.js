@@ -1,6 +1,6 @@
 /* Complete, same-origin release cache. Personal records are never cached here. */
-const CACHE_NAME = 'lifeos-v60-private-workspace-final';
-const RELEASE = 'v60';
+const CACHE_NAME = 'lifeos-v61-private-workspace';
+const RELEASE = 'v61';
 const RELEASE_MANIFEST = './release-manifest.json';
 const ASSETS_TO_CACHE = ['./','./index.html','./manifest.json','./life-app.css','./life-app.js','./lifeos-storage.js','./db.js','./lifeos-writers.js','./lifeos-vault.js','./lifeos-runtime.js','./icon-192.png','./icon-512.png','./logo.svg','./release-manifest.json'];
 const BASE = new URL('./', self.location.href);
