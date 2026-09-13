@@ -359,6 +359,26 @@ return [];
     return payload;
   }
 
+  // Production workspace backups preserve legacy bytes without triggering the
+  // classic collection reader's repair behavior. A failed read aborts export.
+  function exportLegacyArchive() {
+    const keys = new Set(WORKOUT_KEYS);
+    const present = new Set();
+    for (let index = 0; index < localStorage.length; index++) {
+      const key = localStorage.key(index);
+      if (key === null) throw new Error('Previous-app storage changed while it was being read. Try the backup again.');
+      if (key.startsWith(KEY_PREFIX) || keys.has(key)) { keys.add(key); present.add(key); }
+    }
+    const entries = [];
+    for (const key of [...keys].sort()) {
+      const value = localStorage.getItem(key);
+      if (value === null && present.has(key)) throw new Error('Previous-app storage changed while it was being read. Try the backup again.');
+      if (value !== null && typeof value !== 'string') throw new Error('A previous-app record could not be read. No incomplete archive was created.');
+      if (value !== null) entries.push({ key, value });
+    }
+    return { format: 'lifeos-legacy-archive/1', exportedAt: nowISO(), entries };
+  }
+
   function importAll(payload, opts = {}) {
     const { overwrite = false } = opts;
 
@@ -471,8 +491,10 @@ return [];
     return summary;
   }
 
-  // Initialize meta on load
-  initAppMeta();
+  // The classic client keeps its initialization behavior. The redesigned
+  // workspace never repairs or initializes the previous app's raw records.
+  const workspaceClient = global.document?.currentScript?.dataset?.lifeosClient === 'workspace' || !!global.LifeOSPersistentDB;
+  if (!workspaceClient) initAppMeta();
   function getStorageUsage() {
     // Estimate bytes used by LifeOS keys only
     let total = 0;
@@ -490,6 +512,9 @@ return [];
 
   global.LifeOSDB = {
     readWorkspace: () => global.LifeOSPersistentDB.read(),
+    inspectRecovery: () => global.LifeOSPersistentDB.inspectRecovery(),
+    listRecovery: () => global.LifeOSPersistentDB.listRecovery(),
+    readRecovery: id => global.LifeOSPersistentDB.readRecovery(id),
     SCHEMA_VERSION,
     COLLECTIONS,
     WORKOUT_KEYS,
@@ -500,6 +525,7 @@ return [];
     upsert,
     remove,
     exportAll,
+    exportLegacyArchive,
     importAll,
     exportWorkoutData,
     importWorkoutData,

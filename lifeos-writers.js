@@ -1119,19 +1119,24 @@
   // A separate versioned domain contract preserves the new signed-leg money
   // journal and all historical revisions. It does not reinterpret or overwrite
   // the six legacy collection formats. See LIVE_APP_ARCHITECTURE.md.
-  function workspaceSnapshot(payload, expectedRevision) {
+  function workspaceSnapshot(payload, expectedRevision, options = {}) {
     if (!payload || payload.format !== "lifeos-state/1" || !payload.domains || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0) {
       throw new Error("Invalid workspace snapshot.");
     }
-    const required = ["training", "sleep", "food", "work", "goals", "money", "recurring", "reference", "people", "life", "capture", "captureReceipts"];
-    for (const name of required) {
-      if (!payload.domains[name] || typeof payload.domains[name] !== "object") throw new Error("Missing workspace section: " + name);
-    }
-    return db().upsert("workspaceSnapshots", { id: "primary", format: "lifeos-workspace/1", expectedRevision, payload });
+    if (!global.LifeOSWorkspace) throw new Error("Workspace validation is unavailable. No records were written.");
+    global.LifeOSWorkspace.validate(payload);
+    return db().upsert("workspaceSnapshots", { id: "primary", format: "lifeos-workspace/1", expectedRevision, payload, preservePrevious: options.preservePrevious === true });
+  }
+
+  function workspaceRecovery(payload, recoveryToken) {
+    if (!global.LifeOSWorkspace || typeof recoveryToken !== "string" || !/^[a-f0-9]{64}$/.test(recoveryToken)) throw new Error("Inspect the stored workspace before restoring it.");
+    global.LifeOSWorkspace.validate(payload);
+    return db().upsert("workspaceSnapshots", { id: "primary", format: "lifeos-workspace/1", payload, recoveryToken, preservePrevious: true });
   }
 
   global.LifeOSWrite = {
     workspaceSnapshot,
+    workspaceRecovery,
     workLog,
     metricEntry,
     moneyTransaction,
