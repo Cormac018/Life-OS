@@ -4,6 +4,7 @@
   let hooks, ready = false, restoring = false, revision = 0, saved = '', pending = null, draining = null, failure = null;
   let legacyArchive = null;
   let recoveryDraft = false;
+  let transactionBlock = null;
   const copy = value => JSON.parse(JSON.stringify(value));
   function status(kind, message) { if (hooks && hooks.status) hooks.status(kind, message); }
   function configureRecovery(callbacks) {
@@ -76,7 +77,102 @@
     while (draining) await draining;
     if (failure) throw failure;
   }
-  async function retry() { if (!ready) throw new Error('Use workspace recovery before retrying normal saves.'); failure = null; queue(); if (pending) pump(); await flush(); status('saved', 'Saved on this device'); }
+  async function retry() { if (!ready) throw new Error('Use workspace recovery before retrying normal saves.'); if (transactionBlock) throw transactionBlock; failure = null; queue(); if (pending) pump(); await flush(); status('saved', 'Saved on this device'); }
+  function transactionError(code, message, details = {}) {
+    const error = new Error(message); error.code = code; Object.assign(error, details); return error;
+  }
+  // A shared client supplies a synchronous, detached builder, never live domain
+  // mutations. Publish its candidate only after the single canonical write.
+  async function transact(options) {
+    if (!ready) throw new Error('Wait for your saved workspace to open before recording this purchase.');
+    if (restoring) throw new Error('A workspace operation is already in progress.');
+    if (transactionBlock) throw transactionBlock;
+    if (!options || !Number.isSafeInteger(options.expectedRevision) || options.expectedRevision < 1 || typeof options.prepare !== 'function') throw new Error('A transaction needs its reviewed revision and a detached prepare function.');
+    queue(); restoring = true;
+    let before, beforeText, candidate, candidateText, prepared, committed = false;
+    try {
+      await flush();
+      before = copy(capture()); beforeText = JSON.stringify(before);
+      // A programmatic caller can still edit while an earlier save drains.
+      // Such edits need their own durable save and a fresh review first.
+      if (beforeText !== saved) throw transactionError('STALE_REVIEW', 'The workspace changed while earlier edits were saving. Review this purchase again.');
+      prepared = options.prepare(copy(before), { revision });
+      if (prepared && typeof prepared.then === 'function') { Promise.resolve(prepared).catch(() => {}); throw new Error('Transaction preparation must return a synchronous result.'); }
+      if (!prepared || typeof prepared !== 'object') throw new Error('Transaction preparation must return a synchronous result.');
+      if (JSON.stringify(capture()) !== beforeText) throw transactionError('STALE_REVIEW', 'The workspace changed during preparation. Review this purchase again.');
+      const result = prepared.result === undefined ? null : copy(prepared.result);
+      // A durable operation receipt can answer a lost-response retry even when
+      // its original reviewed revision is now old. Builders must verify identity.
+      if (prepared.unchanged === true) {
+        if (prepared.workspace !== undefined) throw new Error('An unchanged transaction cannot also replace the workspace.');
+        return { revision, result, replayed: true };
+      }
+      if (options.expectedRevision !== revision) throw transactionError('STALE_REVIEW', 'The workspace has changed since this purchase was reviewed. Review it again before saving.');
+      if (!prepared.workspace || typeof prepared.workspace !== 'object') throw new Error('Transaction preparation returned no workspace.');
+      candidate = copy(prepared.workspace); candidateText = JSON.stringify(candidate);
+      if (JSON.stringify(candidate.legacyArchive || null) !== JSON.stringify(before.legacyArchive || null)) throw new Error('A purchase cannot replace the preserved legacy archive.');
+      if (!hooks || typeof hooks.validate !== 'function') throw new Error('The workspace validator is unavailable. Records have not been changed.');
+      const checked = await hooks.validate(copy(candidate));
+      if (checked === false || checked?.ok === false) throw new Error(checked?.error || 'The purchase workspace did not pass validation.');
+      if (JSON.stringify(capture()) !== beforeText) throw transactionError('STALE_REVIEW', 'The workspace changed during validation. Review this purchase again.');
+      let record;
+      try {
+        record = await LifeOSWrite.workspaceSnapshot(candidate, revision);
+        if (!record || record.id !== 'primary' || record.format !== 'lifeos-workspace/1' || record.revision !== revision + 1 || JSON.stringify(record.payload) !== candidateText) throw new Error('The purchase save returned an unconfirmed result.');
+      }
+      catch (error) {
+        // The database may have committed while a transport wrapper lost its
+        // response. Confirm the exact durable candidate before allowing a retry.
+        let observed;
+        try { observed = await LifeOSDB.readWorkspace(); } catch (_) { /* Uncertain writes stay locked for explicit recovery. */ }
+        const supported = observed && observed.id === 'primary' && observed.format === 'lifeos-workspace/1' && Object.keys(observed).every(key => ['id', 'format', 'revision', 'savedAt', 'payload'].includes(key));
+        if (supported && observed.revision === revision + 1 && JSON.stringify(observed.payload) === candidateText) record = observed;
+        else if ((supported && observed.revision === revision) || error.code === 'CONFLICT' || error.code === 'NEEDS_RECOVERY') {
+          if (error.code === 'CONFLICT' || error.code === 'NEEDS_RECOVERY') { transactionBlock = failure = error; status('error', error.message); }
+          throw error;
+        } else {
+          transactionBlock = failure = transactionError('COMMIT_UNCERTAIN', 'The purchase save could not be confirmed. Your open draft remains available. Export your unsaved work, then reload to inspect the saved purchase before trying again.', { committed: null });
+          status('error', failure.message); throw failure;
+        }
+      }
+      committed = true;
+      revision = record.revision; saved = candidateText; pending = null; failure = null;
+      const current = copy(capture()), currentText = JSON.stringify(current);
+      if (currentText !== beforeText) {
+        // Never write an old model over a committed purchase merely to keep a
+        // concurrent edit. The primary record and the exportable open draft are
+        // both retained; a reload is required after exporting those newer edits.
+        pending = { payload: current, text: currentText };
+        transactionBlock = failure = transactionError('CONCURRENT_EDIT', 'The purchase was saved, but newer changes remain open and unsaved. Export those changes before reloading. Normal saving is paused so neither version is overwritten.', { committed: true, revision, result });
+        status('error', failure.message); throw failure;
+      }
+      try {
+        hooks.restore(copy(candidate));
+        legacyArchive = candidate.legacyArchive || null;
+        if (hooks.render) hooks.render();
+      } catch (error) {
+        // Validation normally makes hydration infallible. If a client violates
+        // that contract, retain its pre-commit view and the durable new record.
+        try { hooks.restore(copy(before)); } catch (_) { /* Reload reads the intact committed primary record. */ }
+        transactionBlock = failure = transactionError('COMMITTED_NOT_OPENED', 'The purchase was saved, but this window could not display it. Export any open changes, then reload to open the saved workspace.', { committed: true, revision, result });
+        status('error', failure.message); throw failure;
+      }
+      status('saved', 'Purchase saved on this device');
+      return { revision, result, replayed: false };
+    } catch (error) {
+      if (committed && !failure) {
+        transactionBlock = failure = transactionError('COMMITTED_NOT_OPENED', 'The purchase was saved, but this window could not reopen its workspace. Keep any open changes and use the saved recovery copy before reloading.', { committed: true, revision, result: prepared.result === undefined ? null : copy(prepared.result) });
+        status('error', failure.message); throw failure;
+      }
+      if (!failure && !committed) status('error', error.message || 'The purchase could not be saved. Its draft is still available.');
+      throw error;
+    } finally {
+      restoring = false;
+      // Edits made before a failed detached write can save normally. Conflicting
+      // post-commit drafts and unconfirmed writes are intentionally never pumped.
+      if (!failure) queue();
+    }
+  }
   function backupPayload() {
     if (!ready && !recoveryDraft) throw new Error('Use an encrypted rescue copy while the workspace cannot open.');
     return { format: 'lifeos-backup/2', exportedAt: new Date().toISOString(), workspace: capture(), legacy: legacyArchive || LifeOSDB.exportLegacyArchive() };
@@ -205,5 +301,5 @@
       if (changed && !failure) queue();
     }
   }
-  global.LifeOSRuntime = Object.freeze({ start, configureRecovery, queue, flush, retry, backupPayload, backupFromRecord, backupFromRescue, restoreBackup, verifyBackup, inspectRecovery, listRecovery, readRecovery, rescuePayload, recoverBackup, get ready() { return ready; }, get restoring() { return restoring; }, get saving() { return restoring || !!draining || !!pending; }, get hasRecoveryDraft() { return recoveryDraft; }, get error() { return failure; }, get revision() { return revision; } });
+  global.LifeOSRuntime = Object.freeze({ start, configureRecovery, queue, flush, retry, transact, backupPayload, backupFromRecord, backupFromRescue, restoreBackup, verifyBackup, inspectRecovery, listRecovery, readRecovery, rescuePayload, recoverBackup, get ready() { return ready; }, get restoring() { return restoring; }, get saving() { return restoring || !!draining || !!pending; }, get hasRecoveryDraft() { return recoveryDraft; }, get error() { return failure; }, get revision() { return revision; } });
 })(window);

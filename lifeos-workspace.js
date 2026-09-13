@@ -1,8 +1,8 @@
 /* Shared workspace validation. No DOM, storage or network access. */
 (function(global){
   'use strict';
-  const FORMAT='lifeos-state/1', READER_VERSION=62;
-  const DOMAINS=Object.freeze(['training','sleep','food','work','goals','money','recurring','reference','moneySetup','people','life','capture','captureReceipts']);
+  const FORMAT='lifeos-state/1', READER_VERSION=63;
+  const DOMAINS=Object.freeze(['training','sleep','food','work','goals','money','recurring','reference','moneySetup','people','life','capture','captureReceipts','purchases']);
   const DOMAIN_FIELDS={
     training:['version','routines','schedule','history','state'],sleep:['version','revisions','goal'],
     food:['version','foods','recipes','plans','revisions','movements','purchases','yields','targets','targetDays','receiptKeys','directLogOperations'],
@@ -11,14 +11,35 @@
     money:['schema','accounts','debts','versions','sequence','monthlyPlan'],recurring:['schema','versions'],
     reference:['schema','reference'],moneySetup:['schema','allowances'],people:['schema','people','eventVersions','gifts','plans'],
     life:['schema','ambitions','versions','notes','connections','connectionVersions','goalLinks','actionLinks'],
-    capture:['version','current','batches'],captureReceipts:['version','consumed']
+    capture:['version','current','batches'],captureReceipts:['version','consumed'],purchases:['schema','products','versions','operations']
   };
   let validators=null;
   const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
   const fail=message=>{throw new Error(message);};
   function keys(value,allowed,label){if(!object(value))fail(label+' must be an object.');for(const key of Object.keys(value))if(!allowed.includes(key))fail('This app cannot safely read '+label+' field '+key+'. Open a compatible version. Nothing has been replaced.');}
   function registerValidators(input){if(validators)fail('Workspace validators are already registered.');if(!object(input)||DOMAINS.some(name=>typeof input[name]!=='function'))fail('All workspace validators must be provided.');validators=Object.freeze({...input});}
+  function normalize(payload){
+    if(!object(payload)||payload.format!==FORMAT||!object(payload.domains))return payload;
+    const reader=payload.minimumReaderVersion,old=reader===undefined||(Number.isSafeInteger(reader)&&reader>=1&&reader<=62);
+    if(!old)return payload;
+    const domains={...payload.domains};
+    if(!Object.prototype.hasOwnProperty.call(domains,'purchases'))domains.purchases=global.PurchaseOperations.empty();
+    const drafts=payload.drafts===undefined?{}:payload.drafts;
+    return {...payload,domains,...(object(drafts)?{drafts:{receipt:null,...drafts}}:{})};
+  }
+  function validateReceiptDraft(draft){
+    if(draft===null||draft===undefined)return {ok:true};
+    const strings=['operationId','purchaseId','versionId','sourceId','capturedAt','date','store','receiptNumber','paymentMode','accountId','transactionRootId','total','basketDiscount','attachmentName','documentHash'];
+    keys(draft,['schema',...strings,'lines'],'receipt draft');
+    if(draft.schema!=='lifeos.purchase-draft/1')fail('The receipt draft format is unsupported.');
+    for(const key of strings)if(typeof draft[key]!=='string'||draft[key].length>500)fail('The receipt draft '+key+' is invalid.');
+    if(!['create','link'].includes(draft.paymentMode)||!Array.isArray(draft.lines)||!draft.lines.length||draft.lines.length>100)fail('The receipt draft is invalid.');
+    const fields=['id','kind','foodId','productChoice','productId','productVersionId','description','brand','preparation','packGrams','grams','gross','discount','category'];
+    const ids=new Set();for(const line of draft.lines){keys(line,fields,'receipt draft line');for(const key of fields)if(typeof line[key]!=='string'||line[key].length>500)fail('The receipt draft line '+key+' is invalid.');if(!line.id||ids.has(line.id)||!['product','non-food','fee','deposit'].includes(line.kind))fail('The receipt draft line identity is invalid.');ids.add(line.id);}
+    return {ok:true};
+  }
   function validate(payload){
+    payload=normalize(payload);
     keys(payload,['format','minimumReaderVersion','domains','drafts','legacyArchive'],'workspace');
     if(payload.format!==FORMAT)fail('This workspace format is not supported.');
     if(payload.minimumReaderVersion!==undefined&&(!Number.isSafeInteger(payload.minimumReaderVersion)||payload.minimumReaderVersion<1||payload.minimumReaderVersion>READER_VERSION))fail('This workspace needs a newer Life OS version. Your records have not been replaced.');
@@ -27,7 +48,8 @@
     for(const name of DOMAINS){if(!object(payload.domains[name]))fail('Missing workspace section: '+name);keys(payload.domains[name],DOMAIN_FIELDS[name],name);const result=validators[name](payload.domains[name]);if(!result||!result.ok)fail('Could not validate '+name+': '+(result?.error||'invalid records'));}
     keys(payload.domains.training.state,['routineId','active','currentExercise','timer','chartExercise','chartMetric','chartRange','chartSessionId'],'training state');
     validateLinks(payload);
-    const drafts=payload.drafts===undefined?{}:payload.drafts;keys(drafts,['capture','ambitions'],'drafts');
+    const drafts=payload.drafts===undefined?{}:payload.drafts;keys(drafts,['capture','ambitions','receipt'],'drafts');
+    validateReceiptDraft(drafts.receipt);
     const capture=drafts.capture===undefined?{}:drafts.capture;keys(capture,['draft','date','source','fileName'],'capture draft');
     if(capture.draft!==undefined&&(typeof capture.draft!=='string'||capture.draft.length>12000))fail('The saved capture draft is invalid.');
     if(capture.date!==undefined&&(typeof capture.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(capture.date)||!Number.isFinite(Date.parse(capture.date+'T12:00:00Z'))||new Date(capture.date+'T12:00:00Z').toISOString().slice(0,10)!==capture.date))fail('The capture date is invalid.');
@@ -37,6 +59,7 @@
     return {ok:true,domainCount:DOMAINS.length};
   }
 function validateLinks(payload) {
+  payload=normalize(payload);
   const fail = message => { throw new Error('The workspace links are incomplete: ' + message); };
   const object = value => value && typeof value === 'object' && !Array.isArray(value);
   const list = (value, label) => { if (!Array.isArray(value)) fail(label + ' are missing.'); return value; };
@@ -111,7 +134,8 @@ function validateLinks(payload) {
     receipts.set(operationId, result);
   }
   for (const row of savedProposals) { const receipt = receipts.get(row.operationId); if (!receipt || receipt.id !== row.recordId || receipt.route !== routes[row.target]) fail('a saved Capture update is missing its matching operation receipt.'); }
+  const purchaseLinks=global.PurchaseOperations.validateLinks(payload);if(!purchaseLinks.ok)fail(purchaseLinks.error||'Purchase links are invalid.');
   return { ok: true };
 }
-  global.LifeOSWorkspace=Object.freeze({validate,validateLinks,registerValidators,FORMAT,READER_VERSION,DOMAINS});
+  global.LifeOSWorkspace=Object.freeze({validate,validateLinks,registerValidators,normalize,validateReceiptDraft,FORMAT,READER_VERSION,DOMAINS});
 })(window);
