@@ -6,10 +6,11 @@
   <meta name="theme-color" content="#0c1020">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'">
   <meta name="description" content="Your private life planner and lifelong record.">
-<link rel="manifest" href="./manifest.json?v=65">
-<link rel="icon" href="./icon-192.png?v=65">
+<link rel="manifest" href="./manifest.json?v=66">
+<link rel="icon" href="./icon-192.png?v=66">
 <title>Life OS</title>
-  <link rel="stylesheet" href="./life-app.css?v=65">
+  <link rel="stylesheet" href="./life-app.css?v=66">
+  <link rel="stylesheet" href="./lifeos-planner.css?v=66">
 </head>
 <body>
   <div class="preview-bar live-status"><button id="workspaceStatus" type="button" data-action="workspace-settings" aria-live="polite">Opening your private workspace...</button><button id="updateButton" type="button" hidden>Update ready</button></div>
@@ -20,22 +21,24 @@
       <div class="sidebar-foot" id="privacyNote"></div>
     </aside>
     <div class="workspace">
-      <header class="topbar"><div class="topbar-label"><strong id="breadcrumb">Your day</strong><span> / Life OS</span></div><div class="topbar-actions"><button class="pill" data-action="workspace-settings" aria-label="Storage, backups and app settings"><span class="dot"></span>v65</button><button class="icon-button" data-action="add-event" aria-label="Add to your day" id="addEventButton"></button><div class="avatar" aria-label="Personal workspace">ME</div></div></header>
+      <header class="topbar"><div class="topbar-label"><strong id="breadcrumb">Your day</strong><span> / Life OS</span></div><div class="topbar-actions"><button class="pill" data-action="workspace-settings" aria-label="Storage, backups and app settings"><span class="dot"></span>v66</button><button class="icon-button" data-action="add-event" aria-label="Add to your day" id="addEventButton"></button><div class="avatar" aria-label="Personal workspace">ME</div></div></header>
       <main class="main" id="main"><h1>Your life, kept here.</h1><p>Opening the private database on this device...</p></main>
     </div>
   </div>
   <nav class="bottom-nav" id="mobileNav" aria-label="Main navigation"></nav>
   <dialog id="dialog" aria-labelledby="dialogTitle"><div class="dialog-inner" id="dialogContent"></div></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="./lifeos-storage.js?v=65" defer></script>
-<script src="./db.js?v=65" data-lifeos-client="workspace" defer></script>
-<script src="./lifeos-purchases.js?v=65" defer></script>
-<script src="./lifeos-workspace.js?v=65" defer></script>
-<script src="./lifeos-writers.js?v=65" defer></script>
-<script src="./lifeos-vault.js?v=65" defer></script>
-<script src="./lifeos-runtime.js?v=65" defer></script>
-<script src="./lifeos-purchase-ui.js?v=65" defer></script>
-<script src="./life-app.js?v=65" defer></script>
+  <script src="./lifeos-storage.js?v=66" defer></script>
+<script src="./db.js?v=66" data-lifeos-client="workspace" defer></script>
+<script src="./lifeos-purchases.js?v=66" defer></script>
+<script src="./lifeos-planner.js?v=66" defer></script>
+<script src="./lifeos-workspace.js?v=66" defer></script>
+<script src="./lifeos-writers.js?v=66" defer></script>
+<script src="./lifeos-vault.js?v=66" defer></script>
+<script src="./lifeos-runtime.js?v=66" defer></script>
+<script src="./lifeos-purchase-ui.js?v=66" defer></script>
+<script src="./lifeos-planner-ui.js?v=66" defer></script>
+<script src="./life-app.js?v=66" defer></script>
 <noscript>Life OS needs JavaScript to open your on-device records.</noscript>
 </body>
 </html>

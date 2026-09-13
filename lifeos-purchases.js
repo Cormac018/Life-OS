@@ -268,7 +268,7 @@
   function buildCandidate(command,context){
     const review=prepare(command,context);if(review.status!=='ready')return {error:review.problems[0]?.reason||'Receipt needs review.',review};
     if(review.alreadyCommitted)return {unchanged:true,result:{status:'already-committed',operationId:review.result.id,purchaseId:review.result.purchaseId,versionId:review.result.versionId,workspaceRevision:review.result.workspaceRevision,recordIds:copy(review.result.recordIds)},review};
-    const workspace=copy(context.workspace),c=review.command,ids=review.recordIds;workspace.minimumReaderVersion=64;const domain=workspace.domains.purchases||(workspace.domains.purchases=empty());
+    const workspace=copy(context.workspace),c=review.command,ids=review.recordIds;workspace.minimumReaderVersion=Math.max(workspace.minimumReaderVersion||1,64);const domain=workspace.domains.purchases||(workspace.domains.purchases=empty());
     if(c.operation!=='record')return buildAmendment(review,context,workspace);
     domain.products.push(...copy(c.entity.products));let n=0;
     for(const l of c.entity.lines){if(l.inventory.mode!=='receive')continue;const grams=l.inventory.grams;

@@ -1,8 +1,8 @@
 /* Shared workspace validation. No DOM, storage or network access. */
 (function(global){
   'use strict';
-  const FORMAT='lifeos-state/1', READER_VERSION=64;
-  const DOMAINS=Object.freeze(['training','sleep','food','work','goals','money','recurring','reference','moneySetup','people','life','capture','captureReceipts','purchases']);
+  const FORMAT='lifeos-state/1', READER_VERSION=66;
+  const DOMAINS=Object.freeze(['training','sleep','food','work','goals','money','recurring','reference','moneySetup','people','life','capture','captureReceipts','purchases','planner']);
   const DOMAIN_FIELDS={
     training:['version','routines','schedule','history','state'],sleep:['version','revisions','goal'],
     food:['version','foods','recipes','plans','revisions','movements','purchases','yields','targets','targetDays','receiptKeys','directLogOperations'],
@@ -11,7 +11,8 @@
     money:['schema','accounts','debts','versions','sequence','monthlyPlan'],recurring:['schema','versions'],
     reference:['schema','reference'],moneySetup:['schema','allowances'],people:['schema','people','eventVersions','gifts','plans'],
     life:['schema','ambitions','versions','notes','connections','connectionVersions','goalLinks','actionLinks'],
-    capture:['version','current','batches'],captureReceipts:['version','consumed'],purchases:['schema','products','versions','operations']
+    capture:['version','current','batches'],captureReceipts:['version','consumed'],purchases:['schema','products','versions','operations'],
+    planner:['schema','profiles','days','events','operations']
   };
   let validators=null;
   const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
@@ -20,12 +21,14 @@
   function registerValidators(input){if(validators)fail('Workspace validators are already registered.');if(!object(input)||DOMAINS.some(name=>typeof input[name]!=='function'))fail('All workspace validators must be provided.');validators=Object.freeze({...input});}
   function normalize(payload){
     if(!object(payload)||payload.format!==FORMAT||!object(payload.domains))return payload;
-    const reader=payload.minimumReaderVersion,old=reader===undefined||(Number.isSafeInteger(reader)&&reader>=1&&reader<=62);
-    if(!old)return payload;
+    const reader=payload.minimumReaderVersion,knownOlder=reader===undefined||(Number.isSafeInteger(reader)&&reader>=1&&reader<=65);
+    if(!knownOlder)return payload;
     const domains={...payload.domains};
-    if(!Object.prototype.hasOwnProperty.call(domains,'purchases'))domains.purchases=global.PurchaseOperations.empty();
+    const beforePurchases=reader===undefined||reader<=62;
+    if(beforePurchases&&!Object.prototype.hasOwnProperty.call(domains,'purchases'))domains.purchases=global.PurchaseOperations.empty();
+    if(!Object.prototype.hasOwnProperty.call(domains,'planner'))domains.planner=global.PlannerOperations.empty();
     const drafts=payload.drafts===undefined?{}:payload.drafts;
-    return {...payload,domains,...(object(drafts)?{drafts:{receipt:null,...drafts}}:{})};
+    return {...payload,domains,...(beforePurchases&&object(drafts)?{drafts:{receipt:null,...drafts}}:{})};
   }
   function validateReceiptDraft(draft){
     if(draft===null||draft===undefined)return {ok:true};

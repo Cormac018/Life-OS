@@ -1,8 +1,8 @@
 /* Complete, same-origin release cache. Personal records are never cached here. */
-const CACHE_NAME = 'lifeos-v65-private-workspace';
-const RELEASE = 'v65';
+const CACHE_NAME = 'lifeos-v66-private-workspace';
+const RELEASE = 'v66';
 const RELEASE_MANIFEST = './release-manifest.json';
-const ASSETS_TO_CACHE = ['./','./index.html','./manifest.json','./life-app.css','./life-app.js','./lifeos-storage.js','./db.js','./lifeos-purchases.js','./lifeos-workspace.js','./lifeos-purchase-ui.js','./lifeos-writers.js','./lifeos-vault.js','./lifeos-runtime.js','./icon-192.png','./icon-512.png','./logo.svg','./release-manifest.json'];
+const ASSETS_TO_CACHE = ['./','./index.html','./manifest.json','./life-app.css','./lifeos-planner.css','./life-app.js','./lifeos-storage.js','./db.js','./lifeos-purchases.js','./lifeos-planner.js','./lifeos-workspace.js','./lifeos-purchase-ui.js','./lifeos-planner-ui.js','./lifeos-writers.js','./lifeos-vault.js','./lifeos-runtime.js','./icon-192.png','./icon-512.png','./logo.svg','./release-manifest.json'];
 const BASE = new URL('./', self.location.href);
 const digest = async response => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await response.clone().arrayBuffer())), byte => byte.toString(16).padStart(2, '0')).join('');
 async function installRelease() {
