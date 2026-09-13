@@ -1,10 +1,10 @@
 {
-  "release": "v64",
+  "release": "v65",
   "assets": {
-    "./index.html": "c1f3d18d6e21e55a058938a8f6138c71da10d7e4704c8d131427597ec961e775",
+    "./index.html": "3f96a7dd13511618505389f9f655faed716d8a880f58aa7f499f5b64deac4704",
     "./manifest.json": "ca165befa6fabe25e91770b6af06c30d471a8ba2b5cba37e01fb1486ab2c62fb",
     "./life-app.css": "36ac5fa2f5eb88221021ac070b6db1a839fdb4910ab7f8407289bc094f2b6bf3",
-    "./life-app.js": "31ddc02cf9d6b18eef7cc6b3b1634111b5d92eef3a60565d2d873901dc45b29c",
+    "./life-app.js": "f45e50d02ab77115ef21fa7149f0cf8a08db736c1f3a6917f8f3b1907f5178c0",
     "./lifeos-storage.js": "45a8a8457a6983a230927ad3e3613d8c7d84b414b214b2f941655863759a02c0",
     "./db.js": "38195160433518faf884eb7eca49e9fb40f1d17677f50df1a80ccc7230251d81",
     "./lifeos-purchases.js": "a280939edd4ef25ec1b86ea408e3937977f278fc6a9cac57523d465c54632f26",
