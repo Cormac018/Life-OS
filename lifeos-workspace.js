@@ -1,7 +1,7 @@
 /* Shared workspace validation. No DOM, storage or network access. */
 (function(global){
   'use strict';
-  const FORMAT='lifeos-state/1', READER_VERSION=63;
+  const FORMAT='lifeos-state/1', READER_VERSION=64;
   const DOMAINS=Object.freeze(['training','sleep','food','work','goals','money','recurring','reference','moneySetup','people','life','capture','captureReceipts','purchases']);
   const DOMAIN_FIELDS={
     training:['version','routines','schedule','history','state'],sleep:['version','revisions','goal'],
@@ -30,12 +30,15 @@
   function validateReceiptDraft(draft){
     if(draft===null||draft===undefined)return {ok:true};
     const strings=['operationId','purchaseId','versionId','sourceId','capturedAt','date','store','receiptNumber','paymentMode','accountId','transactionRootId','total','basketDiscount','attachmentName','documentHash'];
-    keys(draft,['schema',...strings,'lines'],'receipt draft');
+    keys(draft,['schema',...strings,'lines','operation','baseVersionId','reason'],'receipt draft');
+    if(draft.operation!==undefined&&!['record','correct','refund'].includes(draft.operation))fail('The receipt draft operation is unsupported.');
+    for(const key of ['baseVersionId','reason'])if(draft[key]!==undefined&&(typeof draft[key]!=='string'||draft[key].length>1000))fail('The receipt change draft is invalid.');
+    if(['correct','refund'].includes(draft.operation)&&!draft.baseVersionId)fail('The receipt change must retain its original version.');
     if(draft.schema!=='lifeos.purchase-draft/1')fail('The receipt draft format is unsupported.');
     for(const key of strings)if(typeof draft[key]!=='string'||draft[key].length>500)fail('The receipt draft '+key+' is invalid.');
     if(!['create','link'].includes(draft.paymentMode)||!Array.isArray(draft.lines)||!draft.lines.length||draft.lines.length>100)fail('The receipt draft is invalid.');
     const fields=['id','kind','foodId','productChoice','productId','productVersionId','description','brand','preparation','packGrams','grams','gross','discount','category'];
-    const ids=new Set();for(const line of draft.lines){keys(line,fields,'receipt draft line');for(const key of fields)if(typeof line[key]!=='string'||line[key].length>500)fail('The receipt draft line '+key+' is invalid.');if(!line.id||ids.has(line.id)||!['product','non-food','fee','deposit'].includes(line.kind))fail('The receipt draft line identity is invalid.');ids.add(line.id);}
+    const ids=new Set();for(const line of draft.lines){keys(line,[...fields,'refundAmount','returnedGrams'],'receipt draft line');for(const key of ['refundAmount','returnedGrams'])if(line[key]!==undefined&&(typeof line[key]!=='string'||line[key].length>500))fail('The refund draft amount is invalid.');for(const key of fields)if(typeof line[key]!=='string'||line[key].length>500)fail('The receipt draft line '+key+' is invalid.');if(!line.id||ids.has(line.id)||!['product','non-food','fee','deposit'].includes(line.kind))fail('The receipt draft line identity is invalid.');ids.add(line.id);}
     return {ok:true};
   }
   function validate(payload){
