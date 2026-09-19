@@ -290,7 +290,7 @@ function todayPanorama(snapshot) {
 }
     const todayView={filter:'all'};
     function todayPlannerRail(date){
-      const saved=PlannerOperations.currentDay(plannerRecords,date),count=saved?saved.value.slots.filter(slot=>!slot.cancelled&&slot.origin==='manual').length:0;
+      const saved=PlannerOperations.currentDay(plannerRecords,date),count=saved?saved.value.slots.filter(slot=>!slot.cancelled&&slot.origin!=='baseline').length:0;
       return '<button class="today-capture-rail" data-action="planner-open" data-date="'+date+'"><span>'+icon('planner')+'</span><span><strong>Make space for your day</strong><small>'+(saved?count+' activities in your saved plan. Open your timeline and week.':'Arrange sleep, work and what matters in your day planner.')+'</small></span>'+icon('arrow')+'</button>';
     }
     const todayColors={train:'#c0b3ff',sleep:'#94bbff',food:'#a0d4c0',work:'#f1bc7b',goals:'#bca5f7',money:'#91cbbb',people:'#e8b2d1',capture:'#85d6ff'};
@@ -4054,7 +4054,7 @@ document.addEventListener('submit',event=>{
       moneySetup:{snapshot:snapshotMoneySetup,restore:restoreMoneySetup},people:PeopleDemo,life:LifePlannerDemo,capture:CaptureDemo,
       captureReceipts:{snapshot:()=>CaptureTargetsDemo.persistenceSnapshot(),restore:(data,options)=>CaptureTargetsDemo.restore(data,options)},purchases:PurchasesDemo,planner:PlannerDemo
     };}
-    function captureWorkspace(){const domains={};for(const[name,part]of Object.entries(workspaceParts()))domains[name]=part.snapshot();return {format:'lifeos-state/1',minimumReaderVersion:66,domains,drafts:{capture:{draft:captureView.draft,date:captureView.date,source:captureView.source,fileName:captureView.fileName},ambitions:clone(lifeView.drafts),receipt:PurchaseUI.snapshotDraft()}};}
+    function captureWorkspace(){const domains={};for(const[name,part]of Object.entries(workspaceParts()))domains[name]=part.snapshot();return {format:'lifeos-state/1',minimumReaderVersion:69,domains,drafts:{capture:{draft:captureView.draft,date:captureView.date,source:captureView.source,fileName:captureView.fileName},ambitions:clone(lifeView.drafts),receipt:PurchaseUI.snapshotDraft()}};}
 function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(payload);}
 
     function restoreWorkspace(payload){
@@ -4100,10 +4100,52 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
       }});
       return {ok:true,...result};
     }
-    function plannerActuals(date){
-      return TodayDemo.snapshot(date).entries.filter(row=>row.status==='recorded'||row.status==='active'||row.ref.kind==='work-absence').map(row=>({id:row.id,title:row.title,detail:row.detail,route:row.route,kind:row.ref.kind==='work-absence'?'evidence':row.status==='active'?'active':'record'}));
+    // Exact evidence references for the planner: kind, stable root, exact version and the record's own date. Read-only.
+    function plannerEvidenceRef(ref){
+      if(!ref||typeof ref!=='object')return null;
+      let row;
+      if(ref.kind==='training-session'){row=history.find(s=>s.id===ref.id);return row?{kind:'training-session',rootId:row.id,versionId:row.id,date:row.date}:null;}
+      if(ref.kind==='sleep-record'){row=activeSleepRecords().find(r=>r.id===ref.id);return row?{kind:'sleep-record',rootId:row.sessionId,versionId:row.id,date:row.wakeDate}:null;}
+      if(ref.kind==='meal-log'){row=FoodDemo.logs.find(l=>l.id===ref.id);return row?{kind:'meal-log',rootId:row.planId,versionId:row.id,date:row.date}:null;}
+      if(ref.kind==='work-entry'){row=WorkDemo.entries.find(e=>e.id===ref.id);return row?{kind:'work-entry',rootId:row.id,versionId:row.revisionId,date:row.date}:null;}
+      if(ref.kind==='goal-progress'){row=GoalsDemo.logs.find(l=>l.id===ref.id);return row?{kind:'goal-progress',rootId:row.recordId,versionId:row.id,date:row.date}:null;}
+      if(ref.kind==='goal-action-event'){row=GoalsDemo.actionEvents.find(e=>e.id===ref.id);return row?{kind:'goal-action-event',rootId:row.id,versionId:row.id,date:row.date}:null;}
+      if(ref.kind==='people-event'){row=PeopleDemo.events.find(e=>e.id===ref.id);return row?{kind:'people-event',rootId:row.rootId||row.id,versionId:row.id,date:row.date}:null;}
+      if(ref.kind==='money-transaction'){row=MoneyDemo.transactions.find(t=>t.id===ref.id);return row?{kind:'money-transaction',rootId:row.rootId||row.id,versionId:row.id,date:row.date}:null;}
+      return null;
     }
-    PlannerUI.configure({context:plannerContext,commit:commitPlanner,flush:()=>LifeOSRuntime.flush(),dialog:showDialog,closeDialog,render,toast,navigate,actuals:plannerActuals});
+    function plannerActuals(date){
+      return TodayDemo.snapshot(date).entries.filter(row=>row.status==='recorded'||row.status==='active'||row.ref.kind==='work-absence').map(row=>({id:row.id,title:row.title,detail:row.detail,route:row.route,time:row.time||null,kind:row.ref.kind==='work-absence'?'evidence':row.status==='active'?'active':'record',evidence:row.status==='recorded'?plannerEvidenceRef(row.ref):null}));
+    }
+    const plannerEvidenceRoutes={'training-session':'progress','sleep-record':'sleep','meal-log':'food','work-entry':'work','goal-progress':'goals','goal-action-event':'goals','people-event':'people','money-transaction':'money'};
+    // Open the exact linked record, preferring its current version so a corrected entry still opens.
+    function plannerOpenEvidence(reference){
+      if(!reference||!plannerEvidenceRoutes[reference.kind])return todayAdapterMissing('This linked record kind cannot be opened.');
+      const resolved=PlannerOperations.resolveEvidence(reference,captureWorkspace());
+      if(!resolved.ok)return todayAdapterMissing('This linked record is no longer readable: '+resolved.error);
+      const id=reference.kind==='work-entry'?reference.rootId:resolved.current.versionId;
+      return todayOpenRef({kind:reference.kind,id,date:resolved.current.date},plannerEvidenceRoutes[reference.kind],resolved.current.date);
+    }
+    // Start opens the real flow for a planned activity. It never records completion.
+    function plannerStart(slot,date){
+      if(!slot||!todayAdapterDate(date))return todayAdapterMissing('Choose a valid day before starting an activity.');
+      const category=slot.category,route=slot.link?.route||null;
+      if(category==='training'){
+        if(state.active){navigate('train');toast('A workout is already in progress. Continue or finish it here.');return true;}
+        // Planner slots do not yet bind an exact workout version. A sport or shorter
+        // activity must not silently start whichever gym routine shares its date.
+        if(!todayAdapterDomain('train',date))return false;
+        toast(date===TODAY?'Review or choose the workout here before starting. This planner activity has not started a session.':'Review the routine here. Workouts are recorded on the day you actually perform them.');return true;
+      }
+      if(category==='meal'){if(!todayAdapterDomain('food',date))return false;if(date>TODAY){toast('Log food on or after the day it is eaten.');return true;}foodDirectLogDialog();return true;}
+      if(category==='sleep'){const wake=slot.end?.date||date;if(wake>TODAY){toast('Sleep is recorded after you wake up.');return true;}if(!todayAdapterDomain('sleep',wake))return false;sleepLog(wake);return true;}
+      if(category==='work')return todayAdapterDomain('work',date);
+      if(category==='goal')return todayAdapterDomain('goals',date);
+      if(route==='life'||route==='plan'){closeDialog();navigate(route);return true;}
+      if(route)return todayAdapterDomain(route,date);
+      return false;
+    }
+    PlannerUI.configure({context:plannerContext,commit:commitPlanner,flush:()=>LifeOSRuntime.flush(),dialog:showDialog,closeDialog,render,toast,navigate,actuals:plannerActuals,start:plannerStart,openEvidence:plannerOpenEvidence});
     function workspaceStatus(kind,message){const button=$('workspaceStatus');if(!button)return;button.dataset.state=kind;button.textContent=message;button.title=message;if(kind==='error')button.setAttribute('aria-label','Save failed. '+message+' Open storage and backup options.');else button.removeAttribute('aria-label');}
     function queueWorkspaceSave(){if(!restoringWorkspace&&LifeOSRuntime.ready)LifeOSRuntime.queue();}
     function workspaceDialog(title,html){showDialog(title,html);$('dialog').dataset.workspaceUi='true';}
@@ -4118,7 +4160,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     }
     function workspaceSettings(){
       if(!LifeOSRuntime.ready){workspaceDialog('Recovery and device transfer','<p class="dialog-sub">Your normal workspace could not open. These tools work independently.</p><div class="workspace-backup-actions"><button class="button primary" data-action="workspace-import">Restore a backup</button><button class="button ghost" data-action="workspace-verify">Check a backup file</button><button class="button ghost" data-action="workspace-checkpoints">Recovery copies</button><button class="button ghost" data-action="workspace-rescue">Export stored rescue copy</button>'+(LifeOSRuntime.hasRecoveryDraft?'<button class="button ghost" data-action="workspace-export">Export unsaved changes</button>':'')+'</div>');return;}
-      workspaceDialog('Your private workspace','<div class="workspace-settings"><span class="eyebrow">Life OS v66</span><p class="dialog-sub">Your records stay in this browser on this device. Your future home server is optional; no connection is enabled.</p><div class="workspace-save-info"><strong>'+esc(LifeOSRuntime.error?'A save needs attention':LifeOSRuntime.saving?'Saving your changes':'Saved on this device')+'</strong><p>'+esc(LifeOSRuntime.error?.message||'Keep an encrypted copy outside this device, and check that you can open it.')+'</p>'+(LifeOSRuntime.error?'<button class="button primary" data-action="workspace-retry">Try saving again</button>':'')+'</div><div class="workspace-backup-actions"><button class="button primary" data-action="workspace-export">'+icon('shield')+' Create encrypted backup</button><button class="button ghost" data-action="workspace-verify">Check a backup file</button><button class="button ghost" data-action="workspace-import">'+icon('upload')+' Restore a backup</button><button class="button ghost" data-action="workspace-transfer">Move to a new phone</button><button class="button ghost" data-action="workspace-checkpoints">Recovery copies</button></div><h3>Under your control</h3><p>Your phone lock and device encryption protect local storage. The browser database has no separate app password. Backup files are encrypted before download. Keep the password safe: Life OS cannot reset it.</p><p>Recovery copies on this device help with a mistaken restore. They do not protect against a lost phone or cleared browser storage.</p><div id="workspaceCapacity" class="workspace-capacity">Checking local storage...</div><button class="text-button" data-action="workspace-persist">Request persistent device storage</button><details><summary>Services and previous records</summary><p>Local text capture and manual entry work offline. Garmin, receipt recognition, private voice processing and background reminders are not connected yet.</p><p>Previous-app records remain untouched and are included as an archive in encrypted backups. They have not been silently converted.</p></details><div class="dialog-footer"><button class="button ghost" data-action="workspace-update">Check for app updates</button><button class="button primary" data-action="close-dialog">Done</button></div></div>');
+      workspaceDialog('Your private workspace','<div class="workspace-settings"><span class="eyebrow">Life OS '+esc(window.LifeOSApp.version)+'</span><p class="dialog-sub">Your records stay in this browser on this device. Your future home server is optional; no connection is enabled.</p><div class="workspace-save-info"><strong>'+esc(LifeOSRuntime.error?'A save needs attention':LifeOSRuntime.saving?'Saving your changes':'Saved on this device')+'</strong><p>'+esc(LifeOSRuntime.error?.message||'Keep an encrypted copy outside this device, and check that you can open it.')+'</p>'+(LifeOSRuntime.error?'<button class="button primary" data-action="workspace-retry">Try saving again</button>':'')+'</div><div class="workspace-backup-actions"><button class="button primary" data-action="workspace-export">'+icon('shield')+' Create encrypted backup</button><button class="button ghost" data-action="workspace-verify">Check a backup file</button><button class="button ghost" data-action="workspace-import">'+icon('upload')+' Restore a backup</button><button class="button ghost" data-action="workspace-transfer">Move to a new phone</button><button class="button ghost" data-action="workspace-checkpoints">Recovery copies</button></div><h3>Under your control</h3><p>Your phone lock and device encryption protect local storage. The browser database has no separate app password. Backup files are encrypted before download. Keep the password safe: Life OS cannot reset it.</p><p>Recovery copies on this device help with a mistaken restore. They do not protect against a lost phone or cleared browser storage.</p><div id="workspaceCapacity" class="workspace-capacity">Checking local storage...</div><button class="text-button" data-action="workspace-persist">Request persistent device storage</button><details><summary>Services and previous records</summary><p>Local text capture and manual entry work offline. Garmin, receipt recognition, private voice processing and background reminders are not connected yet.</p><p>Previous-app records remain untouched and are included as an archive in encrypted backups. They have not been silently converted.</p></details><div class="dialog-footer"><button class="button ghost" data-action="workspace-update">Check for app updates</button><button class="button primary" data-action="close-dialog">Done</button></div></div>');
       if(navigator.storage?.estimate)navigator.storage.estimate().then(async info=>{const label=$('workspaceCapacity');if(!label)return;const persistent=navigator.storage.persisted?await navigator.storage.persisted():false;label.textContent=((info.usage||0)/1048576).toFixed(1)+' MB used'+(info.quota?' of about '+Math.round(info.quota/1048576)+' MB available':'')+'. '+(persistent?'Persistent storage granted.':'Persistent storage is not yet granted.');}).catch(()=>{if($('workspaceCapacity'))$('workspaceCapacity').textContent='Storage estimate unavailable.';});
     }
     function workspaceTransferDialog(){workspaceDialog('Take your record with you','<p class="dialog-sub">A complete transfer uses an encrypted file. No account or home server is required.</p><ol class="transfer-steps"><li><strong>On this phone</strong><p>Create an encrypted backup, then use Check a backup file to reopen the actual downloaded file with your password.</p></li><li><strong>On your new phone</strong><p>Open Life OS, choose Restore a backup in workspace settings, and select the encrypted file. Check its date and section counts before restoring.</p></li><li><strong>Check before retiring this phone</strong><p>Inspect recent workouts, meals, finances and ambitions on the new phone. Close and reopen the app to check persistence. Keep the old phone and your backup until you are satisfied.</p></li></ol><p class="workspace-form-help">A transfer replaces the destination workspace; it does not merge two independently edited phones. Stop recording on the old phone once you switch. Keep the backup password separately from the file.</p><div class="workspace-backup-actions"><button class="button primary" data-action="workspace-export">Create the backup</button><button class="button ghost" data-action="workspace-verify">Check downloaded file</button></div>');}
@@ -4186,7 +4228,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     for(const type of ['click','input','change','submit'])document.addEventListener(type,()=>queueMicrotask(queueWorkspaceSave));
     window.addEventListener('beforeunload',event=>{if(LifeOSRuntime.ready&&LifeOSRuntime.saving){event.preventDefault();event.returnValue='';}});
     window.addEventListener('error',()=>{if(LifeOSRuntime.ready)workspaceStatus('error','Something went wrong. Open backups before reloading.');});
-    window.LifeOSApp=Object.freeze({get version(){return 'v66';},snapshot:captureWorkspace,restore:async data=>LifeOSRuntime.restoreBackup({format:'lifeos-backup/2',workspace:data}),domains:()=>workspaceParts(),capture:CaptureDemo,captureTargets:CaptureTargetsDemo,commitCapture:commitCaptureDurably,preparePurchase,commitPurchase,preparePlanner,commitPlanner,save:()=>LifeOSRuntime.flush()});
+    window.LifeOSApp=Object.freeze({get version(){return 'v69';},snapshot:captureWorkspace,restore:async data=>LifeOSRuntime.restoreBackup({format:'lifeos-backup/2',workspace:data}),domains:()=>workspaceParts(),capture:CaptureDemo,captureTargets:CaptureTargetsDemo,commitCapture:commitCaptureDurably,preparePurchase,commitPurchase,preparePlanner,commitPlanner,save:()=>LifeOSRuntime.flush()});
 
     $('addEventButton').innerHTML=icon('plus');$('privacyNote').innerHTML=icon('shield')+'<p>A little more intention.<br>A record that stays yours.</p>';
     const initialRoute=window.location.hash.slice(1);if(nav.some(n=>n.id===initialRoute))state.route=initialRoute;

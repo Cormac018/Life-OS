@@ -1,7 +1,7 @@
 /* Shared workspace validation. No DOM, storage or network access. */
 (function(global){
   'use strict';
-  const FORMAT='lifeos-state/1', READER_VERSION=66;
+  const FORMAT='lifeos-state/1', READER_VERSION=69;
   const DOMAINS=Object.freeze(['training','sleep','food','work','goals','money','recurring','reference','moneySetup','people','life','capture','captureReceipts','purchases','planner']);
   const DOMAIN_FIELDS={
     training:['version','routines','schedule','history','state'],sleep:['version','revisions','goal'],
@@ -12,7 +12,7 @@
     reference:['schema','reference'],moneySetup:['schema','allowances'],people:['schema','people','eventVersions','gifts','plans'],
     life:['schema','ambitions','versions','notes','connections','connectionVersions','goalLinks','actionLinks'],
     capture:['version','current','batches'],captureReceipts:['version','consumed'],purchases:['schema','products','versions','operations'],
-    planner:['schema','profiles','days','events','operations']
+    planner:['schema','profiles','routines','days','events','operations']
   };
   let validators=null;
   const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
@@ -21,12 +21,14 @@
   function registerValidators(input){if(validators)fail('Workspace validators are already registered.');if(!object(input)||DOMAINS.some(name=>typeof input[name]!=='function'))fail('All workspace validators must be provided.');validators=Object.freeze({...input});}
   function normalize(payload){
     if(!object(payload)||payload.format!==FORMAT||!object(payload.domains))return payload;
-    const reader=payload.minimumReaderVersion,knownOlder=reader===undefined||(Number.isSafeInteger(reader)&&reader>=1&&reader<=65);
+    const reader=payload.minimumReaderVersion,knownOlder=reader===undefined||(Number.isSafeInteger(reader)&&reader>=1&&reader<=66);
     if(!knownOlder)return payload;
     const domains={...payload.domains};
-    const beforePurchases=reader===undefined||reader<=62;
+    const beforePurchases=reader===undefined||reader<=62,beforePlanner=reader===undefined||reader<=65;
     if(beforePurchases&&!Object.prototype.hasOwnProperty.call(domains,'purchases'))domains.purchases=global.PurchaseOperations.empty();
-    if(!Object.prototype.hasOwnProperty.call(domains,'planner'))domains.planner=global.PlannerOperations.empty();
+    if(beforePlanner&&!Object.prototype.hasOwnProperty.call(domains,'planner'))domains.planner=global.PlannerOperations.empty();
+    // A v66 planner keeps every record; it only gains the empty routine list and the v2 marker.
+    if(Object.prototype.hasOwnProperty.call(domains,'planner'))domains.planner=global.PlannerOperations.normalize(domains.planner);
     const drafts=payload.drafts===undefined?{}:payload.drafts;
     return {...payload,domains,...(beforePurchases&&object(drafts)?{drafts:{receipt:null,...drafts}}:{})};
   }
@@ -141,6 +143,7 @@ function validateLinks(payload) {
   }
   for (const row of savedProposals) { const receipt = receipts.get(row.operationId); if (!receipt || receipt.id !== row.recordId || receipt.route !== routes[row.target]) fail('a saved Capture update is missing its matching operation receipt.'); }
   const purchaseLinks=global.PurchaseOperations.validateLinks(payload);if(!purchaseLinks.ok)fail(purchaseLinks.error||'Purchase links are invalid.');
+  const plannerLinks=global.PlannerOperations.validateLinks(payload);if(!plannerLinks.ok)fail(plannerLinks.error||'Planner evidence links are invalid.');
   return { ok: true };
 }
   global.LifeOSWorkspace=Object.freeze({validate,validateLinks,registerValidators,normalize,validateReceiptDraft,FORMAT,READER_VERSION,DOMAINS});

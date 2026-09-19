@@ -8,7 +8,7 @@
   // Human-facing build marker, and the single source of truth for it. Bump this
   // alongside CACHE_NAME in sw.js on every deploy, so a glance at the badge in
   // the header confirms which build the installed PWA is actually running.
-  const APP_VERSION = "v66";
+  const APP_VERSION = "v69";
 
   // "rig" is the ops proving rig and "library" is the food library import.
   // Both are deliberately absent from the nav and from titleMap below, which

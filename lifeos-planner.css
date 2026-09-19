@@ -219,3 +219,75 @@
   .planner-dialog .dialog-footer .button{font-size:11px;padding:11px 13px;flex:1}
 }
 @media(prefers-reduced-motion:reduce){#plannerView *, .planner-dialog *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* v67: week agenda, routines, plan-to-action proposals and evidence marks. */
+#plannerView .planner-agenda-week{margin:-18px 0 26px;border:1px solid var(--planner-border);border-radius:14px;background:#141d3266}
+#plannerView .planner-agenda-week>summary{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:12px 16px;cursor:pointer;font-size:12px;color:#d7d0ee;list-style:none}
+#plannerView .planner-agenda-week>summary::-webkit-details-marker{display:none}
+#plannerView .planner-agenda-week>summary small{font-size:10px;color:var(--muted)}
+#plannerView .planner-agenda-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;padding:0 10px 12px}
+#plannerView .planner-agenda-day{min-width:0;border-radius:11px;background:#18233a55;padding:8px 7px 9px;display:flex;flex-direction:column;gap:6px}
+#plannerView .planner-agenda-day.is-selected{background:linear-gradient(160deg,#3a3a5e,#233650);box-shadow:inset 0 0 0 1px #b4a4e680}
+#plannerView .planner-agenda-day.is-today .planner-agenda-head strong:after{content:'';display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--mint);margin-left:5px;vertical-align:middle}
+#plannerView .planner-agenda-head{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:34px;background:none;border:0;padding:0;color:#eae4fb;text-align:left}
+#plannerView .planner-agenda-head strong{font:400 14px/1.2 var(--serif)}
+#plannerView .planner-agenda-head small,#plannerView .planner-agenda-foot{font-size:9px;color:var(--muted)}
+#plannerView .planner-agenda-day ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+#plannerView .planner-agenda-day li button{display:flex;align-items:center;gap:5px;width:100%;min-height:28px;padding:3px 4px;border:0;border-radius:7px;background:#0d172955;color:#cfd8ea;font-size:10px;line-height:1.25;text-align:left}
+#plannerView .planner-agenda-day li button i{flex:none;width:6px;height:6px;border-radius:50%}
+#plannerView .planner-agenda-day li button span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+#plannerView .planner-agenda-day li button em{font-style:normal;color:var(--mint);flex:none}
+#plannerView .planner-agenda-day li.is-done button{color:#aab8d2}
+#plannerView .planner-agenda-day li.is-skipped button{color:#8c98b3;text-decoration:line-through}
+#plannerView .planner-routines .planner-routine{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;min-height:52px;padding:10px 12px;margin:0 0 6px;border:1px solid #58638466;border-left:3px solid var(--planner-colour);border-radius:10px;background:#18233a55;color:#eae4fb;text-align:left}
+#plannerView .planner-routines .planner-routine.is-paused{opacity:.72}
+#plannerView .planner-routines .planner-routine strong{display:block;font-weight:500;font-size:12px}
+#plannerView .planner-routines .planner-routine small{display:block;font-size:10px;color:var(--muted);margin-top:2px;line-height:1.5}
+.planner-dialog .planner-proposal{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-top:1px solid #4d587a66}
+.planner-dialog .planner-proposal>span{min-width:0;font-size:12px;color:#eae4fb}
+.planner-dialog .planner-proposal small{display:block;font-size:10px;color:var(--muted);margin-top:3px;line-height:1.5}
+.planner-dialog .planner-proposal .button{flex:none;font-size:11px;padding:9px 12px;min-height:40px}
+.planner-dialog .planner-done h4,.planner-dialog .planner-alternatives h4{font-size:12px;margin:16px 0 4px;color:#cdc0f3}
+.planner-dialog .planner-reported .text-button{margin-left:8px}
+@media (max-width:720px){
+  #plannerView .planner-agenda-grid{grid-template-columns:1fr;gap:5px}
+  #plannerView .planner-agenda-day{flex-direction:row;flex-wrap:wrap;align-items:flex-start}
+  #plannerView .planner-agenda-head{flex:0 0 74px}
+  #plannerView .planner-agenda-day ul{flex:1;min-width:0}
+  #plannerView .planner-agenda-foot{flex-basis:100%}
+}
+/* v68: proposed week review. */
+#plannerView .planner-header-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.planner-dialog .planner-plan-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;margin:14px 0}
+.planner-dialog .planner-scenarios{display:grid;gap:8px}
+.planner-dialog .planner-scenario{display:flex;flex-direction:column;gap:4px;padding:11px 13px;border:1px solid #58638466;border-radius:11px;background:#18233a55}
+.planner-dialog .planner-scenario.is-active{border-color:#b4a4e6b0;background:linear-gradient(150deg,#3c395c66,#24364e66)}
+.planner-dialog .planner-scenario>strong{font:400 22px var(--serif);color:#e0f0ff;display:flex;align-items:baseline;gap:8px}
+.planner-dialog .planner-scenario>strong small{font:400 10px var(--sans,sans-serif);color:var(--muted)}
+.planner-dialog .planner-scenario>span{font-size:12px;color:#eae4fb}
+.planner-dialog .planner-scenario>small{font-size:10px;color:var(--muted)}
+.planner-dialog .planner-scenario>em{font-size:10px;color:#eac698;font-style:normal}
+.planner-dialog .planner-plan-day{padding:12px 0 6px;border-top:1px solid #4d587a66}
+.planner-dialog .planner-plan-day.is-included{border-left:3px solid var(--mint);padding-left:10px;margin-left:-13px}
+.planner-dialog .planner-plan-day-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.planner-dialog .planner-plan-day-head strong{display:block;font-weight:500;font-size:13px;color:#eae4fb}
+.planner-dialog .planner-plan-day-head small{font-size:10px;color:var(--muted)}
+.planner-dialog .planner-plan-toggle{min-height:36px;padding:6px 12px;font-size:11px}
+.planner-dialog .planner-plan-nochange{font-size:10px;color:var(--muted)}
+.planner-dialog .planner-plan-changes{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.planner-dialog .planner-plan-changes li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;align-items:start;font-size:12px}
+.planner-dialog .planner-plan-changes li strong{display:block;font-weight:500;color:#eae4fb}
+.planner-dialog .planner-plan-changes li small{display:block;font-size:10px;color:var(--muted);line-height:1.5}
+.planner-dialog .planner-plan-kind{display:inline-block;min-width:58px;text-align:center;padding:3px 7px;border-radius:999px;font-size:9px;letter-spacing:.5px;text-transform:uppercase;background:#2c3a5a;color:#cfd8ea}
+.planner-dialog .planner-plan-kind.is-add,.planner-dialog .planner-plan-kind.is-due{background:#1f4d44;color:#a9e4d9}
+.planner-dialog .planner-plan-kind.is-move,.planner-dialog .planner-plan-kind.is-shorten,.planner-dialog .planner-plan-kind.is-overdue{background:#4d3c22;color:#eac698}
+.planner-dialog .planner-plan-kind.is-defer,.planner-dialog .planner-plan-kind.is-unplaced,.planner-dialog .planner-plan-kind.is-unresolved{background:#4a2b3a;color:#f0aac6}
+.planner-dialog .planner-plan-kind.is-placed,.planner-dialog .planner-plan-kind.is-beyond-horizon{background:#2c3a5a;color:#aab8d2}
+.planner-dialog .planner-plan-unscheduled,.planner-dialog .planner-plan-unresolved{margin:10px 0 0;padding:9px 0 0 12px;border-left:2px solid #f0aac683;font-size:11px;color:#dcc5d3}
+.planner-dialog .planner-plan-unscheduled strong,.planner-dialog .planner-plan-unresolved strong{display:block;font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:#f0aac6;margin-bottom:4px}
+.planner-dialog .planner-plan-unscheduled p,.planner-dialog .planner-plan-unresolved p{margin:4px 0;line-height:1.55}
+.planner-dialog .planner-plan-unscheduled em{font-style:normal;color:var(--muted);font-size:10px}
+.planner-dialog .planner-queue{display:flex;flex-direction:column;gap:8px}
+.planner-dialog .planner-queue-item{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;align-items:start;font-size:12px}
+.planner-dialog .planner-queue-item strong{display:block;font-weight:500;color:#eae4fb}
+.planner-dialog .planner-queue-item small{display:block;font-size:10px;color:var(--muted);line-height:1.5}
+@media (max-width:720px){.planner-dialog .planner-plan-controls{grid-template-columns:1fr}#plannerView .planner-header-actions{justify-content:flex-start}}
