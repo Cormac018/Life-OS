@@ -1,7 +1,7 @@
 /* Pure planning records and proposals. No DOM, storage, clock or transport reads. */
 (function(global){
   'use strict';
-  const CONTRACT='lifeos-planner/1',SCHEMA='lifeos.planner/2',LEGACY_SCHEMA='lifeos.planner/1',READER=69;
+  const CONTRACT='lifeos-planner/1',SCHEMA='lifeos.planner/2',LEGACY_SCHEMA='lifeos.planner/1',READER=70;
   const CATEGORIES=['sleep','work','commute','buffer','training','meal','goal','care','admin','rest','other'];
   const ROUTINE_CATEGORIES=['training','meal','goal','care','admin','rest','other'];
   const DAY_TYPES=['normal','travel','leave','sick','rest'],ORIGINS=['baseline','manual','routine'];

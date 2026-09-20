@@ -46,7 +46,7 @@
       const assumptions=[],policy=policyFrom(profile,options.policy,assumptions);
       check(horizon.from>=today,'/horizon','Plans start today. Earlier days are history and are not replanned.');check(daysBetween(horizon.from,horizon.to)<policy.horizonMaxDays,'/horizon','Plan at most '+policy.horizonMaxDays+' days at a time.');
       const dayTypeOverrides=object(options.dayTypes)?options.dayTypes:{};for(const [d,t] of Object.entries(dayTypeOverrides))check(isDate(d)&&DAY_TYPES.includes(t),'/options/dayTypes','Choose supported day types.');
-      const absences=latestBy(domains.work?.absenceVersions,'id').filter(r=>!r.cancelled&&typeof r.start==='string'&&typeof r.end==='string');
+      const calendar=global.LifeOSWorkCalendar;check(calendar,'/calendar','The Work calendar reader is unavailable.');
       const training=object(domains.training)?domains.training:{routines:[],schedule:{},history:[],state:{}};
       const food=object(domains.food)?domains.food:{plans:[],revisions:[],recipes:[]};const loggedPlans=new Set((food.revisions||[]).filter(object).map(r=>r.planId));
       const goals=object(domains.goals)?domains.goals:{actions:[],completionEvents:[]};
@@ -60,13 +60,19 @@
       const running=object(domains.work)&&object(domains.work.running)?domains.work.running:null;
       for(const date of dates){
         const head=heads.get(date)||null;
-        let dayType=dayTypeOverrides[date]||head?.value.dayType||null,typeReason=null;
-        if(!dayType){const absence=absences.find(r=>r.start<=date&&r.end>=date);if(absence&&absence.type==='annual'){dayType='leave';typeReason='Work calendar shows annual leave.';}else if(absence&&absence.type==='sick'){dayType='sick';typeReason='Work calendar shows sickness.';}else dayType='normal';}
+        const calendarDay=calendar.describe(domains.work,date),sameCalendarZone=zone===calendar.timeZone,chosenType=dayTypeOverrides[date]||head?.value.dayType||null,inferredType=sameCalendarZone?calendarDay.dayType:null;
+        let dayType=chosenType||inferredType||'normal',typeReason=null;
+        const recoveryGuard=calendarDay.recovery;
+        if(!chosenType&&inferredType){const kind=calendarDay.recovery?'sickness':calendarDay.rows.some(r=>r.type==='annual')?'annual leave':'a bank holiday';typeReason='Work calendar shows '+kind+' covering the full scheduled day ('+duration(calendarDay.creditMinutes)+').';}
         const scenario=options.scenario||head?.value.scenario||'usual';
         const generated=Ops.generateDay({id:profileRow.id,value:profile},{date,dayType,scenario,note:head?.value.note||''},head,domain);
         const day={date,dayType,scenario,previousVersionId:head?.id||null,changes:[],unscheduled:[],notices:[],assumptions:[],value:null,unchanged:false,spareMinutes:null,unresolved:[],analysis:null};
         days.push(day);dayByDate.set(date,day);
         if(typeReason)day.notices.push(typeReason+' Change the day type if that is wrong.');
+        day.notices.push(...calendarDay.notices);
+        if(!sameCalendarZone)day.notices.push('Work calendar dates use '+calendar.timeZone+' while this plan uses '+zone+'. Time off is not applied automatically across time zones. Review the day timing; recorded sickness still limits new activities until reviewed.');
+        if(chosenType&&inferredType&&chosenType!==inferredType)day.notices.push('Work calendar suggests '+(inferredType==='leave'?'a full day of time off':'sickness')+', but your '+(dayTypeOverrides[date]?'explicit choice':'saved day type')+' is retained. Review this day if its work timing should change.');
+        if(calendarDay.scheduledMinutes!==null&&((calendarDay.scheduledMinutes>0)!==profile.workDays.includes(new Date(date+'T12:00:00Z').getUTCDay()||7)))day.notices.push('Work contract days and planning attendance days differ here. The selected planning profile is retained; review both settings instead of assuming extra free time.');
         if(!generated.ok){day.notices.push(generated.error);day.value=head?clone(head.value):null;day.unchanged=true;continue;}
         const value=generated.value;for(const n of generated.notices)if(!/routine occurrence|no longer matches|not paused automatically/.test(n))day.notices.push(n);
         const bounds=Ops.dayBounds(date,zone);check(bounds.ok,'/horizon',bounds.error);const dayStart=bounds.start,dayEnd=bounds.end,dayMinutes=Math.round((dayEnd-dayStart)/60000);
@@ -108,7 +114,7 @@
         if(routine&&!activeIds.has('plan_training_'+date)&&!value.slots.some(s=>s.id==='plan_training_'+date)){
           if(trainedToday)day.notices.push('A workout is already recorded on this date; the scheduled '+routine.name+' is not added again.');
           else if(hasTraining){const other=value.slots.find(s=>!s.cancelled&&s.category==='training');day.unscheduled.push({id:'plan_training_'+date,title:routine.name,reason:'Training is already planned today ('+other.title+'). A second session is not stacked automatically; keep recovery.',alternatives:['Keep '+other.title+' only','Move '+routine.name+' to a rest day in the Training programme']});}
-          else if(['travel','sick'].includes(dayType))day.unscheduled.push({id:'plan_training_'+date,title:routine.name,reason:dayType==='travel'?'Work-travel day: ordinary training is not scheduled. The missed session is not stacked onto another day.':'Sick day: training is not scheduled. Recovery comes first.',alternatives:['Rest','Review the Training programme when you are back']});
+          else if(['travel','sick'].includes(dayType)||recoveryGuard)day.unscheduled.push({id:'plan_training_'+date,title:routine.name,reason:dayType==='travel'?'Work-travel day: ordinary training is not scheduled. The missed session is not stacked onto another day.':'Sickness is recorded: training is not scheduled automatically. Recovery comes first.',alternatives:['Rest','Review the Training programme when you are back']});
           else candidates.push({slot:null,id:'plan_training_'+date,title:routine.name,category:'training',minutes:policy.trainingMinutes,before:policy.trainingTravelMinutes+policy.changingMinutes,after:policy.changingMinutes+policy.trainingTravelMinutes,window:null,preferred:null,current:null,alternatives:[],priority:2,existing:false,deferrable:false,link:{route:'train',label:'Train'},source:'Training schedule'});
         }
         for(const plan of (food.plans||[]).filter(p=>object(p)&&p.date===date&&!loggedPlans.has(p.id))){const id='plan_meal_'+plan.id;if(activeIds.has(id)||value.slots.some(s=>s.id===id))continue;const recipe=(food.recipes||[]).find(r=>object(r)&&r.id===plan.mealId);const t=isTime(plan.time)?civil(plan.time):null;candidates.push({slot:null,id,title:'Meal: '+(recipe?recipe.name:'planned meal'),category:'meal',minutes:policy.mealMinutes,before:0,after:0,window:null,preferred:t,current:null,alternatives:[],priority:1,existing:false,deferrable:false,link:{route:'food',label:'Food'},source:'Planned meal'});}
@@ -123,8 +129,9 @@
         const fitsIn=(c,occ)=>{const total=(c.before||0)+c.minutes+(c.after||0);return rangesFor(c).some(([ra,rb])=>gaps(occ,ra,rb).some(([a,b])=>b-a>=total));};
         for(const c of candidates){
           processed.add(c.id);if(c.slot&&c.originDate===date)release(c);
-          const rested=dayType==='sick'||dayType==='travel',allowedRest=c.category==='meal'||(c.existing&&c.slot?.origin==='routine'&&c.originDate===date);
-          if(rested&&!allowedRest){const why=dayType==='sick'?'Sick day: only meals, pinned commitments and routines you allow on sick days are planned.':'Work-travel day: itinerary and essentials only. Train time is not treated as free time for goals.';if(c.deferrable&&defer(c,why))continue;leave(c,why,dayType==='sick'?['Rest today','Replan when you feel better']:['Add it to a day after the trip']);continue;}
+          const rested=dayType==='sick'||dayType==='travel'||recoveryGuard,routineRule=c.slot?.anchor?.routineVersionId?domain.routines.find(r=>r.id===c.slot.anchor.routineVersionId)?.value:null;
+          const allowedRest=c.category==='meal'||(c.existing&&c.slot?.origin==='routine'&&c.originDate===date&&(!recoveryGuard||(c.category!=='training'&&routineRule?.dayTypes.includes('sick'))));
+          if(rested&&!allowedRest){const why=dayType==='sick'?'Sick day: only meals, pinned commitments and routines you allow on sick days are planned.':recoveryGuard?'Sickness is recorded: optional activities and training wait for review; meals and explicitly allowed recovery routines are retained.':'Work-travel day: itinerary and essentials only. Train time is not treated as free time for goals.';if(c.deferrable&&defer(c,why))continue;leave(c,why,dayType==='sick'||recoveryGuard?['Rest today','Replan when you feel better']:['Add it to a day after the trip']);continue;}
           const before=c.before||0,after=c.after||0,need=before+c.minutes+after;
           const ranges=(c.window?waking.map(([a,b])=>[Math.max(a,c.window[0]),Math.min(b,c.window[1])]):waking.map(([a,b])=>[a,c.category==='meal'?Math.max(b,Math.min(dayMinutes,b+policy.windDownMinutes)):b])).map(([a,b])=>[Math.max(a,low),b]).filter(([a,b])=>b>a);
           const tryPlace=mins=>{const total=before+mins+after;
@@ -189,8 +196,20 @@
       for(const d of days){for(const c of d.changes){if(c.kind==='add')summary.added++;if(c.kind==='move')summary.moved++;if(c.kind==='shorten')summary.shortened++;if(c.kind==='defer')summary.deferred++;}summary.unscheduled+=d.unscheduled.length;summary.unresolved+=d.unresolved.length;summary.conflicts+=d.analysis?.conflicts.length||0;}
       const digestInput={policyVersion:VERSION,now,horizon,revision,options,policy,heads:dates.map(d=>heads.get(d)?.id||null),routines:domain.routines.map(r=>r.id),events:domain.events.length};
       const digest=fnv(stable(digestInput));
-      return {ok:true,proposal:{policyVersion:VERSION,digest,id:'plan_'+digest,now,today,horizon,revision,policy,assumptions,days,queue,scenarios,summary}};
+      return {ok:true,proposal:{policyVersion:VERSION,digest,id:'plan_'+digest,inputsDigest:inputsDigest(workspace),now,today,horizon,revision,policy,assumptions,days,queue,scenarios,summary}};
     }catch(error){return {ok:false,error:error.message||String(error),path:error.path||''};}
+  }
+  // Everything a proposal reads, as a deterministic digest. Draft saves and other bookkeeping leave it unchanged.
+  function inputsDigest(workspace){
+    const d=object(workspace)&&object(workspace.domains)?workspace.domains:{},planner=object(d.planner)?d.planner:{},headIds=rows=>{const m=new Map();for(const r of rows||[])if(object(r))m.set(r.rootId,r.id);return [...m.entries()].sort((a,b)=>a[0].localeCompare(b[0]));};
+    const n=v=>v===undefined?null:v;
+    const parts={profile:headIds(planner.profiles),routines:headIds(planner.routines),days:headIds(planner.days),events:(planner.events||[]).filter(object).map(e=>e.id),
+      training:{history:(d.training?.history||[]).filter(object).map(s=>[s.id,n(s.date)]),schedule:object(d.training?.schedule)?Object.entries(d.training.schedule).sort():[],active:n(d.training?.state?.active?.id),routines:(d.training?.routines||[]).filter(object).map(r=>[r.id,n(r.name)])},
+      food:{plans:(d.food?.plans||[]).filter(object).map(p=>[p.id,n(p.date),n(p.time),n(p.mealId)]),logs:(d.food?.revisions||[]).filter(object).map(r=>[r.id,n(r.planId)]),recipes:(d.food?.recipes||[]).filter(object).map(r=>[r.id,n(r.name)])},
+      goals:{actions:(d.goals?.actions||[]).filter(object).map(a=>[a.id,n(a.date),n(a.minutes),n(a.title)]),events:(d.goals?.completionEvents||[]).filter(object).map(e=>[e.id,n(e.actionId),n(e.type)])},
+      people:{people:(d.people?.people||[]).filter(object).map(p=>[p.id,n(p.name),n(p.birthday),n(p.leapDay),!!p.archived]),gifts:(d.people?.gifts||[]).filter(object).map(g=>[g.id,n(g.personId),n(g.status),n(g.date)]),plans:(d.people?.plans||[]).filter(object).map(p=>[p.id,n(p.personId),n(p.date),n(p.status),n(p.title)])},
+      work:{calendar:global.LifeOSWorkCalendar?global.LifeOSWorkCalendar.decisionInputs(d.work):{policy:'unavailable'},running:object(d.work?.running)?[n(d.work.running.id),n(d.work.running.startAt)]:null}};
+    return fnv(stable(parts));
   }
   function buildQueue(people,today,horizon,policy,activeIds){
     const out=[],limit=addDays(today,policy.queueDays);
@@ -214,5 +233,5 @@
       if(scenario==='intended'&&(p.intendedStart===null||p.intendedEnd===null))notes.push('Intended hours are not set.');if(scenario==='future'&&p.futureCommuteMinutesEachWay===null)notes.push('Future commute is not set.');
       return {scenario,label:labels[scenario],freeMinutes:free,workMinutes:work,commuteMinutes:commute,workdays,notes,contractMinutes:p.contractMinutes,remark:p.contractMinutes!==null&&work>p.contractMinutes*(days.length/7)?'Planned attendance exceeds contract hours for this span; that is a planning fact, not payroll.':''};});
   }
-  global.LifeConductor=Object.freeze({VERSION,DEFAULTS:Object.freeze(clone(DEFAULTS)),propose,buildQueue});
+  global.LifeConductor=Object.freeze({VERSION,DEFAULTS:Object.freeze(clone(DEFAULTS)),propose,buildQueue,inputsDigest});
 })(window);

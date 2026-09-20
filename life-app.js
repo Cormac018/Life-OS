@@ -1181,31 +1181,19 @@ const WorkDemo = (() => {
       const absenceVersions = [];
       let calendarRegion = 'england-and-wales';
       // Official GOV.UK bank holidays, embedded from its public calendar. No runtime request.
-      const bankHolidayCalendars = {"england-and-wales":{"name":"England and Wales","dates":[["2019-01-01","New Year’s Day"],["2019-04-19","Good Friday"],["2019-04-22","Easter Monday"],["2019-05-06","Early May bank holiday"],["2019-05-27","Spring bank holiday"],["2019-08-26","Summer bank holiday"],["2019-12-25","Christmas Day"],["2019-12-26","Boxing Day"],["2020-01-01","New Year’s Day"],["2020-04-10","Good Friday"],["2020-04-13","Easter Monday"],["2020-05-08","Early May bank holiday (VE day)"],["2020-05-25","Spring bank holiday"],["2020-08-31","Summer bank holiday"],["2020-12-25","Christmas Day"],["2020-12-28","Boxing Day"],["2021-01-01","New Year’s Day"],["2021-04-02","Good Friday"],["2021-04-05","Easter Monday"],["2021-05-03","Early May bank holiday"],["2021-05-31","Spring bank holiday"],["2021-08-30","Summer bank holiday"],["2021-12-27","Christmas Day"],["2021-12-28","Boxing Day"],["2022-01-03","New Year’s Day"],["2022-04-15","Good Friday"],["2022-04-18","Easter Monday"],["2022-05-02","Early May bank holiday"],["2022-06-02","Spring bank holiday"],["2022-06-03","Platinum Jubilee bank holiday"],["2022-08-29","Summer bank holiday"],["2022-09-19","Bank Holiday for the State Funeral of Queen Elizabeth II"],["2022-12-26","Boxing Day"],["2022-12-27","Christmas Day"],["2023-01-02","New Year’s Day"],["2023-04-07","Good Friday"],["2023-04-10","Easter Monday"],["2023-05-01","Early May bank holiday"],["2023-05-08","Bank holiday for the coronation of King Charles III"],["2023-05-29","Spring bank holiday"],["2023-08-28","Summer bank holiday"],["2023-12-25","Christmas Day"],["2023-12-26","Boxing Day"],["2024-01-01","New Year’s Day"],["2024-03-29","Good Friday"],["2024-04-01","Easter Monday"],["2024-05-06","Early May bank holiday"],["2024-05-27","Spring bank holiday"],["2024-08-26","Summer bank holiday"],["2024-12-25","Christmas Day"],["2024-12-26","Boxing Day"],["2025-01-01","New Year’s Day"],["2025-04-18","Good Friday"],["2025-04-21","Easter Monday"],["2025-05-05","Early May bank holiday"],["2025-05-26","Spring bank holiday"],["2025-08-25","Summer bank holiday"],["2025-12-25","Christmas Day"],["2025-12-26","Boxing Day"],["2026-01-01","New Year’s Day"],["2026-04-03","Good Friday"],["2026-04-06","Easter Monday"],["2026-05-04","Early May bank holiday"],["2026-05-25","Spring bank holiday"],["2026-08-31","Summer bank holiday"],["2026-12-25","Christmas Day"],["2026-12-28","Boxing Day"],["2027-01-01","New Year’s Day"],["2027-03-26","Good Friday"],["2027-03-29","Easter Monday"],["2027-05-03","Early May bank holiday"],["2027-05-31","Spring bank holiday"],["2027-08-30","Summer bank holiday"],["2027-12-27","Christmas Day"],["2027-12-28","Boxing Day"],["2028-01-03","New Year’s Day"],["2028-04-14","Good Friday"],["2028-04-17","Easter Monday"],["2028-05-01","Early May bank holiday"],["2028-05-29","Spring bank holiday"],["2028-08-28","Summer bank holiday"],["2028-12-25","Christmas Day"],["2028-12-26","Boxing Day"]]},"scotland":{"name":"Scotland","dates":[["2019-01-01","New Year’s Day"],["2019-01-02","2nd January"],["2019-04-19","Good Friday"],["2019-05-06","Early May bank holiday"],["2019-05-27","Spring bank holiday"],["2019-08-05","Summer bank holiday"],["2019-12-02","St Andrew’s Day"],["2019-12-25","Christmas Day"],["2019-12-26","Boxing Day"],["2020-01-01","New Year’s Day"],["2020-01-02","2nd January"],["2020-04-10","Good Friday"],["2020-05-08","Early May bank holiday (VE day)"],["2020-05-25","Spring bank holiday"],["2020-08-03","Summer bank holiday"],["2020-11-30","St Andrew’s Day"],["2020-12-25","Christmas Day"],["2020-12-28","Boxing Day"],["2021-01-01","New Year’s Day"],["2021-01-04","2nd January"],["2021-04-02","Good Friday"],["2021-05-03","Early May bank holiday"],["2021-05-31","Spring bank holiday"],["2021-08-02","Summer bank holiday"],["2021-11-30","St Andrew’s Day"],["2021-12-27","Christmas Day"],["2021-12-28","Boxing Day"],["2022-01-03","New Year’s Day"],["2022-01-04","2nd January"],["2022-04-15","Good Friday"],["2022-05-02","Early May bank holiday"],["2022-06-02","Spring bank holiday"],["2022-06-03","Platinum Jubilee bank holiday"],["2022-08-01","Summer bank holiday"],["2022-09-19","Bank Holiday for the State Funeral of Queen Elizabeth II"],["2022-11-30","St Andrew’s Day"],["2022-12-26","Boxing Day"],["2022-12-27","Christmas Day"],["2023-01-02","New Year’s Day"],["2023-01-03","2nd January"],["2023-04-07","Good Friday"],["2023-05-01","Early May bank holiday"],["2023-05-08","Bank holiday for the coronation of King Charles III"],["2023-05-29","Spring bank holiday"],["2023-08-07","Summer bank holiday"],["2023-11-30","St Andrew’s Day"],["2023-12-25","Christmas Day"],["2023-12-26","Boxing Day"],["2024-01-01","New Year’s Day"],["2024-01-02","2nd January"],["2024-03-29","Good Friday"],["2024-05-06","Early May bank holiday"],["2024-05-27","Spring bank holiday"],["2024-08-05","Summer bank holiday"],["2024-12-02","St Andrew’s Day"],["2024-12-25","Christmas Day"],["2024-12-26","Boxing Day"],["2025-01-01","New Year’s Day"],["2025-01-02","2nd January"],["2025-04-18","Good Friday"],["2025-05-05","Early May bank holiday"],["2025-05-26","Spring bank holiday"],["2025-08-04","Summer bank holiday"],["2025-12-01","St Andrew’s Day"],["2025-12-25","Christmas Day"],["2025-12-26","Boxing Day"],["2026-01-01","New Year’s Day"],["2026-01-02","2nd January"],["2026-04-03","Good Friday"],["2026-05-04","Early May bank holiday"],["2026-05-25","Spring bank holiday"],["2026-06-15","World Cup bank holiday"],["2026-08-03","Summer bank holiday"],["2026-11-30","St Andrew’s Day"],["2026-12-25","Christmas Day"],["2026-12-28","Boxing Day"],["2027-01-01","New Year’s Day"],["2027-01-04","2nd January"],["2027-03-26","Good Friday"],["2027-05-03","Early May bank holiday"],["2027-05-31","Spring bank holiday"],["2027-08-02","Summer bank holiday"],["2027-11-30","St Andrew’s Day"],["2027-12-27","Christmas Day"],["2027-12-28","Boxing Day"],["2028-01-03","New Year’s Day"],["2028-01-04","2nd January"],["2028-04-14","Good Friday"],["2028-05-01","Early May bank holiday"],["2028-05-29","Spring bank holiday"],["2028-08-07","Summer bank holiday"],["2028-11-30","St Andrew’s Day"],["2028-12-25","Christmas Day"],["2028-12-26","Boxing Day"]]},"northern-ireland":{"name":"Northern Ireland","dates":[["2019-01-01","New Year’s Day"],["2019-03-18","St Patrick’s Day"],["2019-04-19","Good Friday"],["2019-04-22","Easter Monday"],["2019-05-06","Early May bank holiday"],["2019-05-27","Spring bank holiday"],["2019-07-12","Battle of the Boyne (Orangemen’s Day)"],["2019-08-26","Summer bank holiday"],["2019-12-25","Christmas Day"],["2019-12-26","Boxing Day"],["2020-01-01","New Year’s Day"],["2020-03-17","St Patrick’s Day"],["2020-04-10","Good Friday"],["2020-04-13","Easter Monday"],["2020-05-08","Early May bank holiday (VE day)"],["2020-05-25","Spring bank holiday"],["2020-07-13","Battle of the Boyne (Orangemen’s Day)"],["2020-08-31","Summer bank holiday"],["2020-12-25","Christmas Day"],["2020-12-28","Boxing Day"],["2021-01-01","New Year’s Day"],["2021-03-17","St Patrick’s Day"],["2021-04-02","Good Friday"],["2021-04-05","Easter Monday"],["2021-05-03","Early May bank holiday"],["2021-05-31","Spring bank holiday"],["2021-07-12","Battle of the Boyne (Orangemen’s Day)"],["2021-08-30","Summer bank holiday"],["2021-12-27","Christmas Day"],["2021-12-28","Boxing Day"],["2022-01-03","New Year’s Day"],["2022-03-17","St Patrick’s Day"],["2022-04-15","Good Friday"],["2022-04-18","Easter Monday"],["2022-05-02","Early May bank holiday"],["2022-06-02","Spring bank holiday"],["2022-06-03","Platinum Jubilee bank holiday"],["2022-07-12","Battle of the Boyne (Orangemen’s Day)"],["2022-08-29","Summer bank holiday"],["2022-09-19","Bank Holiday for the State Funeral of Queen Elizabeth II"],["2022-12-26","Boxing Day"],["2022-12-27","Christmas Day"],["2023-01-02","New Year’s Day"],["2023-03-17","St Patrick’s Day"],["2023-04-07","Good Friday"],["2023-04-10","Easter Monday"],["2023-05-01","Early May bank holiday"],["2023-05-08","Bank holiday for the coronation of King Charles III"],["2023-05-29","Spring bank holiday"],["2023-07-12","Battle of the Boyne (Orangemen’s Day)"],["2023-08-28","Summer bank holiday"],["2023-12-25","Christmas Day"],["2023-12-26","Boxing Day"],["2024-01-01","New Year’s Day"],["2024-03-18","St Patrick’s Day"],["2024-03-29","Good Friday"],["2024-04-01","Easter Monday"],["2024-05-06","Early May bank holiday"],["2024-05-27","Spring bank holiday"],["2024-07-12","Battle of the Boyne (Orangemen’s Day)"],["2024-08-26","Summer bank holiday"],["2024-12-25","Christmas Day"],["2024-12-26","Boxing Day"],["2025-01-01","New Year’s Day"],["2025-03-17","St Patrick’s Day"],["2025-04-18","Good Friday"],["2025-04-21","Easter Monday"],["2025-05-05","Early May bank holiday"],["2025-05-26","Spring bank holiday"],["2025-07-14","Battle of the Boyne (Orangemen’s Day)"],["2025-08-25","Summer bank holiday"],["2025-12-25","Christmas Day"],["2025-12-26","Boxing Day"],["2026-01-01","New Year’s Day"],["2026-03-17","St Patrick’s Day"],["2026-04-03","Good Friday"],["2026-04-06","Easter Monday"],["2026-05-04","Early May bank holiday"],["2026-05-25","Spring bank holiday"],["2026-07-13","Battle of the Boyne (Orangemen’s Day)"],["2026-08-31","Summer bank holiday"],["2026-12-25","Christmas Day"],["2026-12-28","Boxing Day"],["2027-01-01","New Year’s Day"],["2027-03-17","St Patrick’s Day"],["2027-03-26","Good Friday"],["2027-03-29","Easter Monday"],["2027-05-03","Early May bank holiday"],["2027-05-31","Spring bank holiday"],["2027-07-12","Battle of the Boyne (Orangemen’s Day)"],["2027-08-30","Summer bank holiday"],["2027-12-27","Christmas Day"],["2027-12-28","Boxing Day"],["2028-01-03","New Year’s Day"],["2028-03-17","St Patrick’s Day"],["2028-04-14","Good Friday"],["2028-04-17","Easter Monday"],["2028-05-01","Early May bank holiday"],["2028-05-29","Spring bank holiday"],["2028-07-12","Battle of the Boyne (Orangemen’s Day)"],["2028-08-28","Summer bank holiday"],["2028-12-25","Christmas Day"],["2028-12-26","Boxing Day"]]}};
+      const bankHolidayCalendars = window.LifeOSWorkCalendar.catalog;
       const calendarRegions=[{effectiveDate:'1970-01-05',region:'england-and-wales',recordedAt:null}];
-      const regionForDate=date=>{let region=calendarRegions[0].region;calendarRegions.forEach(r=>{if(r.effectiveDate<=date)region=r.region;});return region;};
-      function calendarRows(from='2019-01-01',to='2028-12-31'){
-        const overrides=new Set(latestAbsences(true).map(r=>r.calendarKey).filter(Boolean)),rows=[];
-        Object.entries(bankHolidayCalendars).forEach(([region,calendar])=>calendar.dates.forEach(([date,title])=>{
-          const key=region+':'+date;if(date<from||date>to||regionForDate(date)!==region||overrides.has(key))return;
-          const minutes=schedule(date).minutes;
-          rows.push({id:'calendar:'+key,type:'bank',start:date,end:date,mode:'full',customMinutes:null,offsetMinutes:0,days:[{date,scheduledMinutes:minutes,fromMinute:0,toMinute:minutes}],note:title,source:'calendar',calendarKey:key,cancelled:false,automaticCalendar:true});
-        }));return rows.sort((a,b)=>a.start.localeCompare(b.start)||a.id.localeCompare(b.id));
-      }
-      function combinedAbsences(includeCancelled=false,from='1970-01-05',to='9998-12-31'){return latestAbsences(includeCancelled).filter(r=>r.start<=to&&r.end>=from&&(!r.calendarKey||r.calendarKey.startsWith(regionForDate(r.start)+':'))).concat(calendarRows(from,to));}
+      // Shared read-only policy; no snapshots or history writes during calendar queries.
+      const calendarInput=()=>({contractVersions,frozenTargets:[...frozenTargets],absenceVersions,calendarRegion,calendarRegions});
+      const regionForDate=date=>window.LifeOSWorkCalendar.regionForDate(calendarInput(),date);
+      const calendarRows=(from='2019-01-01',to='2028-12-31')=>window.LifeOSWorkCalendar.calendarRows(calendarInput(),from,to);
+      const combinedAbsences=(includeCancelled=false,from='1970-01-05',to='9998-12-31')=>window.LifeOSWorkCalendar.combinedAbsences(calendarInput(),includeCancelled,from,to);
       function latestAbsences(includeCancelled=false) {
         const byId = new Map();
         absenceVersions.forEach(row => byId.set(row.id,row));
         return [...byId.values()].filter(row => includeCancelled || !row.cancelled).sort((a,b)=>a.start.localeCompare(b.start)||a.id.localeCompare(b.id));
       }
-      function schedule(date) {
-        const weekStart=monday(date);
-        if(!weekStart)return {minutes:0,days:[]};
-        let days=[1,2,3,4,5];
-        contractVersions.forEach(v=>{if(v.effectiveWeek<=weekStart&&v.days)days=v.days;});
-        const weekday=new Date(date+'T12:00:00Z').getUTCDay();
-        return {minutes:days.includes(weekday)?currentTarget(weekStart)/days.length:0,days:days.slice()};
-      }
+      const schedule=date=>window.LifeOSWorkCalendar.schedule(calendarInput(),date);
       function buildAbsence(patch,existing=null) {
         if(!patch||!['annual','sick','bank'].includes(patch.type))return {ok:false,error:'Choose annual leave, sickness or a bank holiday.'};
         if(!validDate(patch.start)||!validDate(patch.end)||patch.start<'1970-01-05'||patch.end<patch.start)return {ok:false,error:'Choose a valid date range, from 5 January 1970 onward.'};
@@ -1253,14 +1241,7 @@ const WorkDemo = (() => {
         absenceVersions.push(entry);
         return {ok:true,entry:clone(entry)};
       }
-      function dayAbsences(date) {
-        const rows=combinedAbsences(false,date,date).map(row=>({...clone(row),day:clone(row.days.find(d=>d.date===date))}));
-        const intervals=rows.map(r=>[r.day.fromMinute,r.day.toMinute]).filter(([a,b])=>b>a).sort((a,b)=>a[0]-b[0]);
-        let credit=0,end=0;
-        intervals.forEach(([a,b])=>{credit+=Math.max(0,b-Math.max(end,a));end=Math.max(end,b);});
-        const scheduledMinutes=schedule(date).minutes;
-        return {date,rows,scheduledMinutes,creditMinutes:Math.min(scheduledMinutes,credit),expectedMinutes:Math.max(0,scheduledMinutes-credit)};
-      }
+      const dayAbsences=date=>window.LifeOSWorkCalendar.dayAbsences(calendarInput(),date);
       function refreshCalendarSchedule(effectiveWeek) {
         latestAbsences().filter(row=>row.source==='calendar'&&row.end>=effectiveWeek).forEach(row=>{
           const days=row.days.map(day=>{
@@ -4054,7 +4035,7 @@ document.addEventListener('submit',event=>{
       moneySetup:{snapshot:snapshotMoneySetup,restore:restoreMoneySetup},people:PeopleDemo,life:LifePlannerDemo,capture:CaptureDemo,
       captureReceipts:{snapshot:()=>CaptureTargetsDemo.persistenceSnapshot(),restore:(data,options)=>CaptureTargetsDemo.restore(data,options)},purchases:PurchasesDemo,planner:PlannerDemo
     };}
-    function captureWorkspace(){const domains={};for(const[name,part]of Object.entries(workspaceParts()))domains[name]=part.snapshot();return {format:'lifeos-state/1',minimumReaderVersion:69,domains,drafts:{capture:{draft:captureView.draft,date:captureView.date,source:captureView.source,fileName:captureView.fileName},ambitions:clone(lifeView.drafts),receipt:PurchaseUI.snapshotDraft()}};}
+    function captureWorkspace(){const domains={};for(const[name,part]of Object.entries(workspaceParts()))domains[name]=part.snapshot();return {format:'lifeos-state/1',minimumReaderVersion:70,domains,drafts:{capture:{draft:captureView.draft,date:captureView.date,source:captureView.source,fileName:captureView.fileName},ambitions:clone(lifeView.drafts),receipt:PurchaseUI.snapshotDraft(),planner:PlannerUI.snapshotDraft()}};}
 function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(payload);}
 
     function restoreWorkspace(payload){
@@ -4068,7 +4049,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
         if(capture.draft!==undefined&&(typeof capture.draft!=='string'||capture.draft.length>12000))throw new Error('The saved capture draft is invalid.');
         const ambitionDrafts=drafts.ambitions||{};if(!ambitionDrafts||Array.isArray(ambitionDrafts)||typeof ambitionDrafts!=='object'||Object.entries(ambitionDrafts).some(([k,v])=>k.length>250||typeof v!=='string'||v.length>8000))throw new Error('The saved ambition notes are invalid.');
         captureView.draft=capture.draft||'';captureView.date=todayAdapterDate(capture.date)||TODAY;captureView.source=['typed','file','transcript','plaud','paste','manual'].includes(capture.source)?capture.source:'typed';captureView.fileName=typeof capture.fileName==='string'?capture.fileName.slice(0,250):'';
-        lifeView.drafts=clone(ambitionDrafts);lifeView.id=null;goalView.id=null;PurchaseUI.restoreDraft(drafts.receipt??null);
+        lifeView.drafts=clone(ambitionDrafts);lifeView.id=null;goalView.id=null;PurchaseUI.restoreDraft(drafts.receipt??null);PlannerUI.restoreDraft(drafts.planner??null);
       }catch(error){for(const[name,part]of Object.entries(parts))part.restore(before[name]);throw error;}finally{restoringWorkspace=false;}
     }
     LifeOSWorkspace.registerValidators(Object.fromEntries(Object.entries(workspaceParts()).map(([name,part])=>[name,data=>part.restore(data,{validateOnly:true})])));
@@ -4088,18 +4069,21 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     PurchaseUI.configure({context:purchaseContext,today:()=>TODAY,foodOptions,dialog:showDialog,changed:queueWorkspaceSave,flush:()=>LifeOSRuntime.flush(),commit:commitPurchase,render,toast,addAccount:()=>moneyNewAccount(),openMoney:moneyTransactionDetail});
     function plannerContext(){return {workspace:captureWorkspace(),revision:LifeOSRuntime.revision,today:TODAY};}
     function preparePlanner(command){return PlannerOperations.prepare(command,plannerContext());}
-    async function commitPlanner(command,reviewDigest){
-      const input=clone(command);
+    async function commitPlanner(command,reviewDigest,options={}){
+      const input=clone(command),clearDraft=options&&options.clearDraft===true;
       const result=await LifeOSRuntime.transact({expectedRevision:input.expected.workspaceRevision,prepare:(workspace,{revision})=>{
         const checked=PlannerOperations.prepare(input,{workspace,revision});
         if(!checked.ok)throw new Error(checked.error||'Review the planner details again.');
         if(checked.status!=='already-committed'&&checked.reviewDigest!==reviewDigest)throw new Error('This plan changed after review. Review it again before saving.');
         const built=PlannerOperations.buildCandidate(checked,workspace);
         if(!built.ok)throw new Error(built.error||'The planner change could not be prepared.');
+        if(built.workspace&&clearDraft)built.workspace.drafts.planner=null;
         return built.unchanged?{unchanged:true,result:built.receipt}:{workspace:built.workspace,result:built.receipt};
       }});
       return {ok:true,...result};
     }
+    function plannerDraftChanged(){queueWorkspaceSave();}
+    function plannerDraftState(){const error=LifeOSRuntime.error;return {saving:!!LifeOSRuntime.saving,error:error?String(error.message||error):null,ready:!!LifeOSRuntime.ready};}
     // Exact evidence references for the planner: kind, stable root, exact version and the record's own date. Read-only.
     function plannerEvidenceRef(ref){
       if(!ref||typeof ref!=='object')return null;
@@ -4145,8 +4129,8 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
       if(route)return todayAdapterDomain(route,date);
       return false;
     }
-    PlannerUI.configure({context:plannerContext,commit:commitPlanner,flush:()=>LifeOSRuntime.flush(),dialog:showDialog,closeDialog,render,toast,navigate,actuals:plannerActuals,start:plannerStart,openEvidence:plannerOpenEvidence});
-    function workspaceStatus(kind,message){const button=$('workspaceStatus');if(!button)return;button.dataset.state=kind;button.textContent=message;button.title=message;if(kind==='error')button.setAttribute('aria-label','Save failed. '+message+' Open storage and backup options.');else button.removeAttribute('aria-label');}
+    PlannerUI.configure({context:plannerContext,commit:commitPlanner,flush:()=>LifeOSRuntime.flush(),dialog:showDialog,closeDialog,render,toast,navigate,actuals:plannerActuals,start:plannerStart,openEvidence:plannerOpenEvidence,draftChanged:plannerDraftChanged,draftState:plannerDraftState});
+    function workspaceStatus(kind,message){const button=$('workspaceStatus');if(!button)return;button.dataset.state=kind;button.textContent=message;button.title=message;if(kind==='error')button.setAttribute('aria-label','Save failed. '+message+' Open storage and backup options.');else button.removeAttribute('aria-label');if(state.route==='planner'&&(kind==='saved'||kind==='error'))setTimeout(()=>PlannerUI.refreshBanner?.(),0);}
     function queueWorkspaceSave(){if(!restoringWorkspace&&LifeOSRuntime.ready)LifeOSRuntime.queue();}
     function workspaceDialog(title,html){showDialog(title,html);$('dialog').dataset.workspaceUi='true';}
     function backupSummary(payload){
@@ -4228,7 +4212,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     for(const type of ['click','input','change','submit'])document.addEventListener(type,()=>queueMicrotask(queueWorkspaceSave));
     window.addEventListener('beforeunload',event=>{if(LifeOSRuntime.ready&&LifeOSRuntime.saving){event.preventDefault();event.returnValue='';}});
     window.addEventListener('error',()=>{if(LifeOSRuntime.ready)workspaceStatus('error','Something went wrong. Open backups before reloading.');});
-    window.LifeOSApp=Object.freeze({get version(){return 'v69';},snapshot:captureWorkspace,restore:async data=>LifeOSRuntime.restoreBackup({format:'lifeos-backup/2',workspace:data}),domains:()=>workspaceParts(),capture:CaptureDemo,captureTargets:CaptureTargetsDemo,commitCapture:commitCaptureDurably,preparePurchase,commitPurchase,preparePlanner,commitPlanner,save:()=>LifeOSRuntime.flush()});
+    window.LifeOSApp=Object.freeze({get version(){return 'v78';},snapshot:captureWorkspace,restore:async data=>LifeOSRuntime.restoreBackup({format:'lifeos-backup/2',workspace:data}),domains:()=>workspaceParts(),capture:CaptureDemo,captureTargets:CaptureTargetsDemo,commitCapture:commitCaptureDurably,preparePurchase,commitPurchase,preparePlanner,commitPlanner,save:()=>LifeOSRuntime.flush()});
 
     $('addEventButton').innerHTML=icon('plus');$('privacyNote').innerHTML=icon('shield')+'<p>A little more intention.<br>A record that stays yours.</p>';
     const initialRoute=window.location.hash.slice(1);if(nav.some(n=>n.id===initialRoute))state.route=initialRoute;

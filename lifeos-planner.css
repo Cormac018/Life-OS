@@ -104,6 +104,8 @@
 #plannerView .planner-notices p,.planner-dialog .planner-notices p{font-size:11px;line-height:1.8;color:#b9c6dc;margin:11px 0;padding-left:12px;border-left:1px solid #6c7aa480}
 #plannerView .planner-draft{display:flex;align-items:center;gap:15px;flex-wrap:wrap;font-size:11px;border-left:2px solid #b4a1e2;padding:3px 14px;background:#b4a1e20b;margin-bottom:20px}
 #plannerView .planner-draft .text-button{font-size:11px}
+#plannerView .planner-draft.is-error{border-left-color:#ffb2b5;background:#ffb2b50b}
+.planner-dialog .planner-conflict p{overflow-wrap:anywhere}
 #plannerView .planner-cancelled{margin:20px 0;font-size:11px;color:#98a9c5;border-top:1px solid var(--planner-border)}
 #plannerView .planner-cancelled summary{cursor:pointer;min-height:44px;padding:14px 0}
 #plannerView .planner-cancelled p{margin:9px 0;line-height:1.8}
