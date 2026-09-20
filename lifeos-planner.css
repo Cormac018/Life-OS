@@ -293,3 +293,55 @@
 .planner-dialog .planner-queue-item strong{display:block;font-weight:500;color:#eae4fb}
 .planner-dialog .planner-queue-item small{display:block;font-size:10px;color:var(--muted);line-height:1.5}
 @media (max-width:720px){.planner-dialog .planner-plan-controls{grid-template-columns:1fr}#plannerView .planner-header-actions{justify-content:flex-start}}
+/* v79: one-day proposals, with a full-day before and after map. */
+#plannerView .planner-day-actions{flex-wrap:wrap;justify-content:flex-end}
+#plannerView .planner-day-actions .button{min-height:44px}
+.planner-dialog .planner-day-proposal-intro{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start;margin:20px 0}
+.planner-dialog .planner-day-proposal-intro h3{font:400 29px/1.2 var(--serif);letter-spacing:-.5px;color:#f0e8ff;margin:8px 0 12px}
+.planner-dialog .planner-day-proposal-intro .planner-intro{margin-bottom:0}
+.planner-dialog .planner-planning-clock{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:102px;min-height:106px;border:1px solid #b4a4e655;border-radius:50%;background:radial-gradient(ellipse at 35% 20%,#9280bc38,#23364a38 70%);padding:12px;box-shadow:inset 0 1px #e3d4ff19}
+.planner-dialog .planner-planning-clock>span{font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#c4b5e6}
+.planner-dialog .planner-planning-clock>strong{font:400 30px/1.1 var(--serif);font-variant-numeric:tabular-nums;color:#edf5ff}
+.planner-dialog .planner-planning-clock>small{font-size:9px;color:var(--muted)}
+.planner-dialog .planner-day-comparison{padding:17px 15px 14px;border:1px solid #756c9e77;border-radius:15px;background:radial-gradient(ellipse at 15% 0,#8c79b929,transparent 75%),linear-gradient(150deg,#272c4466,#1a2d4155)}
+.planner-dialog .planner-comparison-title{display:flex;justify-content:space-between;align-items:baseline;gap:12px;color:#ded4f7;font-size:12px;margin-bottom:16px}
+.planner-dialog .planner-comparison-title small{font-size:9px;color:var(--muted);text-align:right}
+.planner-dialog .planner-comparison-row{margin-bottom:14px}
+.planner-dialog .planner-comparison-row>strong{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px;font-size:11px;font-weight:500;color:#d0d7e9}
+.planner-dialog .planner-comparison-row>strong small{font-size:9px;font-weight:400;color:var(--muted)}
+.planner-dialog .planner-comparison-row.is-proposed>strong{color:#a9e4d9}
+.planner-dialog .planner-day-comparison-rail{position:relative}
+.planner-dialog .planner-day-comparison-rail .planner-ribbon{margin:0;height:26px}
+.planner-dialog .planner-day-comparison .planner-map-labels{position:relative;height:18px;font-size:9px;color:#9caac7;margin:7px 0 0;font-variant-numeric:tabular-nums}
+.planner-dialog .planner-day-comparison .planner-map-labels>span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.planner-dialog .planner-day-comparison .planner-map-labels>span:first-child{transform:none}
+.planner-dialog .planner-day-comparison .planner-map-labels>span:last-child{transform:translateX(-100%)}
+.planner-dialog .planner-now-line{position:absolute;top:-3px;bottom:-3px;width:2px;background:#f5eddc;box-shadow:0 0 8px #f5eddc66;pointer-events:none;transform:translateX(-1px)}
+.planner-dialog .planner-now-line:before{content:'';position:absolute;top:-3px;left:-2px;width:6px;height:6px;border-radius:50%;background:#f5eddc}
+.planner-dialog .planner-comparison-key{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;font-size:9px;color:var(--muted)}
+.planner-dialog .planner-comparison-key>span{display:flex;align-items:center;gap:5px}
+.planner-dialog .planner-comparison-key i{width:7px;height:7px;border-radius:50%}
+.planner-dialog .planner-comparison-key .planner-now-key{width:2px;height:10px;border-radius:0;background:#f5eddc}
+.planner-dialog .planner-day-protections{padding:13px 0 13px 13px;border-left:2px solid #8ddbc977;margin:18px 0;color:#bed7d1}
+.planner-dialog .planner-day-protections>strong{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#a9e4d9}
+.planner-dialog .planner-day-protections>p{font-size:11px;line-height:1.6;margin:7px 0}
+.planner-dialog .planner-day-protections ul{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:7px}
+.planner-dialog .planner-day-protections li{display:flex;justify-content:space-between;gap:14px;font-size:11px}
+.planner-dialog .planner-day-protections li small{font-size:10px;color:var(--muted);text-align:right}
+.planner-dialog .planner-day-scenarios{border-top:1px solid #4d587a66;margin-top:18px;padding-top:13px}
+.planner-dialog .planner-day-scenarios>summary{font-size:12px;color:#d7d0ee;cursor:pointer;min-height:32px}
+.planner-dialog .planner-day-scenarios .planner-queue{margin-top:12px}
+.planner-dialog .planner-plan-single .planner-plan-day-head small{display:block;line-height:1.6}
+@media(max-width:720px){
+  #plannerView .planner-day-heading{align-items:flex-start;flex-direction:column}
+  #plannerView .planner-day-actions{justify-content:flex-start;gap:12px}
+  .planner-dialog .planner-day-proposal-intro{gap:12px}
+  .planner-dialog .planner-day-proposal-intro h3{font-size:25px}
+  .planner-dialog .planner-planning-clock{min-width:86px;min-height:90px;padding:9px}
+  .planner-dialog .planner-planning-clock>span{font-size:7px}
+  .planner-dialog .planner-planning-clock>strong{font-size:27px}
+  .planner-dialog .planner-day-comparison{padding:14px 10px 12px}
+  .planner-dialog .planner-comparison-title{align-items:flex-start;flex-direction:column;gap:4px}
+  .planner-dialog .planner-day-protections li{flex-direction:column;gap:2px}
+  .planner-dialog .planner-day-protections li small{text-align:left}
+}

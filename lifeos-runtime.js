@@ -115,6 +115,14 @@
       const checked = await hooks.validate(copy(candidate));
       if (checked === false || checked?.ok === false) throw new Error(checked?.error || 'The change workspace did not pass validation.');
       if (JSON.stringify(capture()) !== beforeText) throw transactionError('STALE_REVIEW', 'The workspace changed during validation. Review this change again.');
+      // Time-sensitive proposals must still be valid after asynchronous validation.
+      // This guard is ephemeral, synchronous and never serialized as approval.
+      if (options.beforeCommit !== undefined) {
+        if (typeof options.beforeCommit !== 'function') throw new Error('The final review guard must be a function.');
+        const guarded = options.beforeCommit();
+        if (guarded && typeof guarded.then === 'function') { Promise.resolve(guarded).catch(() => {}); throw new Error('The final review guard must be synchronous.'); }
+        if (JSON.stringify(capture()) !== beforeText) throw transactionError('STALE_REVIEW', 'The workspace changed during its final review. Review this change again.');
+      }
       let record;
       try {
         record = await LifeOSWrite.workspaceSnapshot(candidate, revision);

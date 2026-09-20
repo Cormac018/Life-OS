@@ -81,7 +81,7 @@
         const label=m=>{const e=Ops.endpointAt(dayStart+Math.max(0,Math.min(dayMinutes,m))*60000,zone);return e.ok?e.endpoint.time:'?';};
         const endpoints=(a,b)=>({start:Ops.endpointAt(dayStart+a*60000,zone).endpoint,end:Ops.endpointAt(dayStart+b*60000,zone).endpoint});
         const events=new Map();for(const e of domain.events)if(e.dayRootId===date)events.set(e.slotId,e);
-        const isToday=date===today,nowMinute=isToday?toMin(now):0,occupied=[];
+        const isToday=date===today,nowMinute=isToday?Math.ceil((nowMs-dayStart)/60000):0,occupied=[];
         // Waking ranges come from the generated sleep anchors, minus the wind-down before each sleep start.
         const sleeps=value.slots.filter(s=>!s.cancelled&&s.origin==='baseline'&&s.category==='sleep').map(s=>[Math.max(0,toMin(s.start.at)),Math.min(dayMinutes,toMin(s.end.at))]).filter(([a,b])=>b>a).sort((x,y)=>x[0]-y[0]);
         let waking=gaps(sleeps,0,dayMinutes).map(([a,b])=>[a,sleeps.some(([sa])=>sa===b)?Math.max(a,b-policy.windDownMinutes):b]).filter(([a,b])=>b>a);
@@ -93,12 +93,14 @@
         for(const s of value.slots){if(!s.cancelled&&s.category==='buffer'&&/_(before|after)$/.test(s.id)){const main=s.id.replace(/_(before|after)$/,'');if(value.slots.some(x=>x.id===main&&!x.cancelled))bufferOf.set(s.id,main);}}
         for(const s of value.slots){
           if(s.cancelled)continue;const a=toMin(s.start.at),b=toMin(s.end.at),event=events.get(s.id),state=Ops.checkoffState(s,event);
-          const past=isToday&&a<=nowMinute,pinned=s.origin==='baseline'||s.fixed||!!state;
+          const fresh=!headIds.has(s.id)&&s.origin!=='baseline',past=isToday&&Date.parse(s.start.at)<=nowMs&&!fresh,pinned=s.origin==='baseline'||s.fixed||!!state;
+          if(fresh&&s.fixed&&isToday&&Date.parse(s.start.at)<nowMs){day.unscheduled.push({id:s.id,title:s.title,reason:'Its fixed time has already passed. No earlier activity is invented.',alternatives:['Review this occurrence manually','Keep the next occurrence']});continue;}
           if(bufferOf.has(s.id))continue;
           if(pinned||past){occupy(occupied,Math.max(0,a),Math.min(dayMinutes,b));if(past&&s.origin!=='baseline'&&!state)day.unresolved.push({slotId:s.id,title:s.title,time:s.start.time,reason:'Planned at '+s.start.time+' with no check-off yet. Mark it done, skipped, or link a record.'});if(s.origin!=='baseline')day.changes.push({kind:'keep',slotId:s.id,title:s.title,reason:state?'Already '+(state==='skipped'?'skipped':'checked off')+'.':s.fixed?'Pinned timing.':'Already started or passed.'});}
           else movable.push(s);
         }
-        for(const [id,main] of bufferOf){const s=value.slots.find(x=>x.id===id),m=value.slots.find(x=>x.id===main);if(!movable.includes(m))occupy(occupied,Math.max(0,toMin(s.start.at)),Math.min(dayMinutes,toMin(s.end.at)));}
+        const missedFixed=new Set(day.unscheduled.filter(x=>!headIds.has(x.id)).map(x=>x.id));value.slots=value.slots.filter(s=>!missedFixed.has(s.id));
+        for(const [id,main] of bufferOf){const s=value.slots.find(x=>x.id===id),m=value.slots.find(x=>x.id===main);if(s&&m&&!movable.includes(m))occupy(occupied,Math.max(0,toMin(s.start.at)),Math.min(dayMinutes,toMin(s.end.at)));}
         const held=new Map();for(const s of movable){const a=Math.max(0,toMin(s.start.at)),b=Math.min(dayMinutes,toMin(s.end.at));if(b>a){held.set(s.id,[a,b]);occupy(occupied,a,b);}for(const [bid,mid] of bufferOf)if(mid===s.id){const bs=value.slots.find(x=>x.id===bid);const ba=Math.max(0,toMin(bs.start.at)),bb=Math.min(dayMinutes,toMin(bs.end.at));if(bb>ba){held.set(bid,[ba,bb]);occupy(occupied,ba,bb);}}}
         const release=c=>{for(const id of [c.id,c.id+'_before',c.id+'_after']){const h=held.get(id);if(!h)continue;const i=occupied.findIndex(([a,b])=>a===h[0]&&b===h[1]);if(i>=0)occupied.splice(i,1);held.delete(id);}};
         const processed=new Set();
@@ -124,7 +126,7 @@
         candidates.sort((a,b)=>a.priority-b.priority||(a.preferred??a.window?.[0]??a.current?.[0]??waking[0]?.[0]??0)-(b.preferred??b.window?.[0]??b.current?.[0]??waking[0]?.[0]??0)||a.id.localeCompare(b.id));
         const low=isToday?nowMinute:0,freeMinutes=()=>waking.reduce((n,[a,b])=>n+gaps(occupied,Math.max(a,low),b).reduce((m,[c,d])=>m+(d-c),0),0);
         const defer=(c,why)=>{const nextDate=addDays(date,1);if(nextDate>horizon.to)return false;carried.push({...c,slot:c.slot,source:'Deferred from '+date+': '+why,deferredFrom:c.slot?(c.deferredFrom||date):undefined});day.changes.push({kind:'defer',slotId:c.id,title:c.title,reason:why+' Proposed for '+nextDate+'.'});return true;};
-        const leave=(c,why,alternatives)=>{day.unscheduled.push({id:c.id,title:c.title,reason:why,alternatives});if(c.slot&&c.originDate===date){occupy(occupied,c.current[0],c.current[1]);day.changes.push({kind:'unplaced',slotId:c.id,title:c.title,reason:why+' It stays where it was so you can decide.'});}else if(c.slot){const origin=dayByDate.get(c.originDate);const ch=origin?.changes.find(x=>x.slotId===c.id&&x.kind==='defer');if(ch){ch.kind='unplaced';ch.reason=why+' It stays where it was so you can decide.';}}};
+        const leave=(c,why,alternatives)=>{day.unscheduled.push({id:c.id,title:c.title,reason:why,alternatives});if(c.fresh&&c.originDate===date){value.slots=value.slots.filter(s=>s.id!==c.id&&s.id!==c.id+'_before'&&s.id!==c.id+'_after');}else if(c.slot&&c.originDate===date){occupy(occupied,c.current[0],c.current[1]);day.changes.push({kind:'unplaced',slotId:c.id,title:c.title,reason:why+' It stays where it was so you can decide.'});}else if(c.slot){const origin=dayByDate.get(c.originDate);const ch=origin?.changes.find(x=>x.slotId===c.id&&x.kind==='defer');if(ch){ch.kind='unplaced';ch.reason=why+' It stays where it was so you can decide.';}}};
         const rangesFor=c=>(c.window?waking.map(([a,b])=>[Math.max(a,c.window[0]),Math.min(b,c.window[1])]):waking.map(([a,b])=>[a,c.category==='meal'?Math.max(b,Math.min(dayMinutes,b+policy.windDownMinutes)):b])).map(([a,b])=>[Math.max(a,low),b]).filter(([a,b])=>b>a);
         const fitsIn=(c,occ)=>{const total=(c.before||0)+c.minutes+(c.after||0);return rangesFor(c).some(([ra,rb])=>gaps(occ,ra,rb).some(([a,b])=>b-a>=total));};
         for(const c of candidates){

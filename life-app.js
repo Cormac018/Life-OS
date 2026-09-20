@@ -291,7 +291,8 @@ function todayPanorama(snapshot) {
     const todayView={filter:'all'};
     function todayPlannerRail(date){
       const saved=PlannerOperations.currentDay(plannerRecords,date),count=saved?saved.value.slots.filter(slot=>!slot.cancelled&&slot.origin!=='baseline').length:0;
-      return '<button class="today-capture-rail" data-action="planner-open" data-date="'+date+'"><span>'+icon('planner')+'</span><span><strong>Make space for your day</strong><small>'+(saved?count+' activities in your saved plan. Open your timeline and week.':'Arrange sleep, work and what matters in your day planner.')+'</small></span>'+icon('arrow')+'</button>';
+      const canPlan=!!PlannerOperations.currentProfile(plannerRecords)&&date>=TODAY;
+      return '<div class="today-planning-entry"><button class="today-capture-rail" data-action="planner-open" data-date="'+date+'"><span>'+icon('planner')+'</span><span><strong>Make space for your day</strong><small>'+(saved?count+' activities in your saved plan. Open your timeline and week.':'Arrange sleep, work and what matters in your day planner.')+'</small></span>'+icon('arrow')+'</button>'+(canPlan?'<div class="row between wrap"><span class="quiet">'+(date===TODAY?'Plans changed? See what still fits.':'Give this day a workable shape.')+'</span><button class="text-button" data-action="planner-replan" data-date="'+date+'">'+(date===TODAY?'Replan from now':'Plan this day')+' '+icon('arrow')+'</button></div>':'')+'</div>';
     }
     const todayColors={train:'#c0b3ff',sleep:'#94bbff',food:'#a0d4c0',work:'#f1bc7b',goals:'#bca5f7',money:'#91cbbb',people:'#e8b2d1',capture:'#85d6ff'};
     const todayNames={train:'Training',sleep:'Sleep',food:'Food',work:'Work',goals:'Goals',money:'Money',people:'People',capture:'Capture'};
@@ -3714,6 +3715,7 @@ function renderCaptureMap(summary,selected='all') {
       const button=event.target.closest('[data-action]');if(!button||button.disabled)return;const a=button.dataset.action;const d=button.dataset;
       if(a==='navigate'){navigate(d.route);return;}
       if(a==='planner-open'){PlannerUI.openDate(d.date);navigate('planner');return;}
+      if(a==='planner-replan'){PlannerUI.openDate(d.date);navigate('planner');PlannerUI.handleClick({closest:()=>({dataset:{plannerAction:'plan-day'}})});return;}
       if(a.startsWith('sleep-')){handleSleepAction(a,d);return;}
       if(a.startsWith('workspace-')){workspaceAction(a,d).catch(error=>showToast(error.message));return;}
       if(a.startsWith('life-')){handleLifeAction(a,d);return;}
@@ -4071,7 +4073,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     function preparePlanner(command){return PlannerOperations.prepare(command,plannerContext());}
     async function commitPlanner(command,reviewDigest,options={}){
       const input=clone(command),clearDraft=options&&options.clearDraft===true;
-      const result=await LifeOSRuntime.transact({expectedRevision:input.expected.workspaceRevision,prepare:(workspace,{revision})=>{
+      const result=await LifeOSRuntime.transact({expectedRevision:input.expected.workspaceRevision,beforeCommit:options?.beforeCommit,prepare:(workspace,{revision})=>{
         const checked=PlannerOperations.prepare(input,{workspace,revision});
         if(!checked.ok)throw new Error(checked.error||'Review the planner details again.');
         if(checked.status!=='already-committed'&&checked.reviewDigest!==reviewDigest)throw new Error('This plan changed after review. Review it again before saving.');
@@ -4212,7 +4214,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     for(const type of ['click','input','change','submit'])document.addEventListener(type,()=>queueMicrotask(queueWorkspaceSave));
     window.addEventListener('beforeunload',event=>{if(LifeOSRuntime.ready&&LifeOSRuntime.saving){event.preventDefault();event.returnValue='';}});
     window.addEventListener('error',()=>{if(LifeOSRuntime.ready)workspaceStatus('error','Something went wrong. Open backups before reloading.');});
-    window.LifeOSApp=Object.freeze({get version(){return 'v78';},snapshot:captureWorkspace,restore:async data=>LifeOSRuntime.restoreBackup({format:'lifeos-backup/2',workspace:data}),domains:()=>workspaceParts(),capture:CaptureDemo,captureTargets:CaptureTargetsDemo,commitCapture:commitCaptureDurably,preparePurchase,commitPurchase,preparePlanner,commitPlanner,save:()=>LifeOSRuntime.flush()});
+    window.LifeOSApp=Object.freeze({get version(){return 'v79';},snapshot:captureWorkspace,restore:async data=>LifeOSRuntime.restoreBackup({format:'lifeos-backup/2',workspace:data}),domains:()=>workspaceParts(),capture:CaptureDemo,captureTargets:CaptureTargetsDemo,commitCapture:commitCaptureDurably,preparePurchase,commitPurchase,preparePlanner,commitPlanner,save:()=>LifeOSRuntime.flush()});
 
     $('addEventButton').innerHTML=icon('plus');$('privacyNote').innerHTML=icon('shield')+'<p>A little more intention.<br>A record that stays yours.</p>';
     const initialRoute=window.location.hash.slice(1);if(nav.some(n=>n.id===initialRoute))state.route=initialRoute;
