@@ -54,8 +54,18 @@
       const people=object(domains.people)?domains.people:{people:[],gifts:[],plans:[]};
       const heads=new Map();for(const row of domain.days)heads.set(row.rootId,row);
       const activeIds=new Set();for(const row of heads.values())for(const s of row.value.slots)if(!s.cancelled)activeIds.add(s.id);
+      const cancelledPreparation=new Set();for(const row of heads.values())for(const s of row.value.slots)if(s.cancelled&&s.link?.preparation)cancelledPreparation.add(s.id);
       const dates=[];for(let d=horizon.from;d<=horizon.to;d=addDays(d,1))dates.push(d);
       const queue=buildQueue(people,today,horizon,policy,activeIds);
+      const preparation=domains.preparation&&global.PreparationOperations?global.PreparationOperations.list(workspace,today):{ok:true,actions:[]};
+      check(preparation.ok,'/preparation',preparation.error||'Preparation records need review.');
+      for(const row of preparation.actions){
+        if(['completed','paused','ended'].includes(row.status))continue;
+        const due=row.dueDate,placed=activeIds.has(row.purposeId),cancelled=cancelledPreparation.has(row.purposeId),sameZone=row.timeZone===zone,ready=row.status==='ready'&&!cancelled&&sameZone;
+        if(due&&due>horizon.to&&!placed)continue;
+        const status=placed?'placed':!ready?'unresolved':due<today?'overdue':due>horizon.to?'beyond-horizon':'due';
+        queue.push({id:row.purposeId,kind:'preparation',title:row.title,eventTitle:row.chainTitle,eventDate:due,leadDate:due,status,spending:!ready,category:row.category,minutes:row.durationMinutes,preparation:clone(row.binding),reason:placed?'Already planned. Its preparation record keeps the current readiness and any conflicts.':cancelled?'This occurrence was cancelled in a saved day. Open that activity to review and reopen it deliberately.':!sameZone?'Preparation uses '+row.timeZone+' while the planner uses '+zone+'. Review its local dates before placing it.':ready?'Preparation is ready; aim to finish by '+due+'.':row.reasons.join(' ')});
+      }
       const days=[],dayByDate=new Map(),proposedValues=new Map();let carried=[];
       const running=object(domains.work)&&object(domains.work.running)?domains.work.running:null;
       for(const date of dates){
@@ -75,6 +85,7 @@
         if(calendarDay.scheduledMinutes!==null&&((calendarDay.scheduledMinutes>0)!==profile.workDays.includes(new Date(date+'T12:00:00Z').getUTCDay()||7)))day.notices.push('Work contract days and planning attendance days differ here. The selected planning profile is retained; review both settings instead of assuming extra free time.');
         if(!generated.ok){day.notices.push(generated.error);day.value=head?clone(head.value):null;day.unchanged=true;continue;}
         const value=generated.value;for(const n of generated.notices)if(!/routine occurrence|no longer matches|not paused automatically/.test(n))day.notices.push(n);
+        if(date===dates[0])for(const row of queue.filter(q=>q.kind==='preparation'&&q.status==='unresolved'))day.unresolved.push({id:row.id,title:row.title,reason:row.reason});
         const bounds=Ops.dayBounds(date,zone);check(bounds.ok,'/horizon',bounds.error);const dayStart=bounds.start,dayEnd=bounds.end,dayMinutes=Math.round((dayEnd-dayStart)/60000);
         const toMin=at=>Math.round((Date.parse(at)-dayStart)/60000);
         const civil=(time,onDate=date)=>{for(let extra=0;extra<=180;extra++){const m=(Number(time.slice(0,2))*60+Number(time.slice(3))+extra)%1440,t=String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');const r=Ops.resolve(onDate,t,zone);if(r.ok)return toMin(r.endpoint.at);if(r.choices?.length)return toMin(r.choices[0].at);}return null;};
@@ -93,7 +104,10 @@
         for(const s of value.slots){if(!s.cancelled&&s.category==='buffer'&&/_(before|after)$/.test(s.id)){const main=s.id.replace(/_(before|after)$/,'');if(value.slots.some(x=>x.id===main&&!x.cancelled))bufferOf.set(s.id,main);}}
         for(const s of value.slots){
           if(s.cancelled)continue;const a=toMin(s.start.at),b=toMin(s.end.at),event=events.get(s.id),state=Ops.checkoffState(s,event);
-          const fresh=!headIds.has(s.id)&&s.origin!=='baseline',past=isToday&&Date.parse(s.start.at)<=nowMs&&!fresh,pinned=s.origin==='baseline'||s.fixed||!!state;
+          const prepState=s.link?.preparation?global.PreparationOperations.resolveOccurrence(s.link.preparation,workspace):null;
+          const prepBlocked=!!prepState&&(!prepState.ok||!prepState.current||prepState.status!=='ready');
+          if(prepBlocked)day.unresolved.push({slotId:s.id,title:s.title,reason:'Preparation changed or needs attention. Keep this saved commitment and review its exact action before doing it.'});
+          const fresh=!headIds.has(s.id)&&s.origin!=='baseline',past=isToday&&Date.parse(s.start.at)<=nowMs&&!fresh,pinned=s.origin==='baseline'||s.fixed||!!state||prepBlocked;
           if(fresh&&s.fixed&&isToday&&Date.parse(s.start.at)<nowMs){day.unscheduled.push({id:s.id,title:s.title,reason:'Its fixed time has already passed. No earlier activity is invented.',alternatives:['Review this occurrence manually','Keep the next occurrence']});continue;}
           if(bufferOf.has(s.id))continue;
           if(pinned||past){occupy(occupied,Math.max(0,a),Math.min(dayMinutes,b));if(past&&s.origin!=='baseline'&&!state)day.unresolved.push({slotId:s.id,title:s.title,time:s.start.time,reason:'Planned at '+s.start.time+' with no check-off yet. Mark it done, skipped, or link a record.'});if(s.origin!=='baseline')day.changes.push({kind:'keep',slotId:s.id,title:s.title,reason:state?'Already '+(state==='skipped'?'skipped':'checked off')+'.':s.fixed?'Pinned timing.':'Already started or passed.'});}
@@ -121,7 +135,7 @@
         }
         for(const plan of (food.plans||[]).filter(p=>object(p)&&p.date===date&&!loggedPlans.has(p.id))){const id='plan_meal_'+plan.id;if(activeIds.has(id)||value.slots.some(s=>s.id===id))continue;const recipe=(food.recipes||[]).find(r=>object(r)&&r.id===plan.mealId);const t=isTime(plan.time)?civil(plan.time):null;candidates.push({slot:null,id,title:'Meal: '+(recipe?recipe.name:'planned meal'),category:'meal',minutes:policy.mealMinutes,before:0,after:0,window:null,preferred:t,current:null,alternatives:[],priority:1,existing:false,deferrable:false,link:{route:'food',label:'Food'},source:'Planned meal'});}
         for(const action of (goals.actions||[]).filter(a=>object(a)&&(a.date===date||(isToday&&a.date<today))&&!actionDone(a.id))){const id='plan_action_'+action.id;if(activeIds.has(id)||value.slots.some(s=>s.id===id))continue;candidates.push({slot:null,id,title:action.title,category:'goal',minutes:Number.isInteger(action.minutes)&&action.minutes>0?action.minutes:policy.goalActionMinutes,before:0,after:0,window:null,preferred:null,current:null,alternatives:[],priority:4,existing:false,deferrable:true,optional:true,link:{route:'goals',label:'Goals'},source:action.date<date?'Open action since '+action.date:'Planned action'});}
-        for(const item of queue.filter(q=>!q.spending&&((q.status==='due'&&(q.leadDate===date||(q.leadDate<dates[0]&&date===dates[0])))||(q.status==='overdue'&&date===dates[0]))))candidates.push({slot:null,id:item.id,title:item.title,category:'admin',minutes:policy.prepMinutes,before:0,after:0,window:null,preferred:null,current:null,alternatives:[],priority:4,existing:false,deferrable:true,optional:true,link:{route:'people',label:'People'},source:item.reason});
+        for(const item of queue.filter(q=>!q.spending&&((q.status==='due'&&(q.leadDate===date||(q.leadDate<dates[0]&&date===dates[0])))||(q.status==='overdue'&&date===dates[0]))))candidates.push({slot:null,id:item.id,title:item.title,category:item.category||'admin',minutes:item.minutes||policy.prepMinutes,before:0,after:0,window:null,preferred:null,current:null,alternatives:[],priority:4,existing:false,deferrable:true,optional:true,link:item.preparation?{route:'preparation',label:'Preparation',preparation:clone(item.preparation)}:{route:'people',label:'People'},source:item.reason});
         for(const item of carried.splice(0))candidates.push({...item,current:null,source:item.source||'Deferred'});
         candidates.sort((a,b)=>a.priority-b.priority||(a.preferred??a.window?.[0]??a.current?.[0]??waking[0]?.[0]??0)-(b.preferred??b.window?.[0]??b.current?.[0]??waking[0]?.[0]??0)||a.id.localeCompare(b.id));
         const low=isToday?nowMinute:0,freeMinutes=()=>waking.reduce((n,[a,b])=>n+gaps(occupied,Math.max(a,low),b).reduce((m,[c,d])=>m+(d-c),0),0);
@@ -172,6 +186,7 @@
             else day.changes.push({kind:'keep',slotId:s.id,title:s.title,reason:'Fits as planned.'});
           }else{
             const e=endpoints(mainStart,mainEnd),slot={id:c.id,title,category:c.category,start:e.start,end:e.end,fixed:false,origin:'manual',cancelled:false,link:c.link||null};
+            if(c.link?.preparation)slot.anchor={date,routineRootId:null,routineVersionId:null};
             if(c.deferredFrom)slot.anchor={date:c.deferredFrom,routineRootId:null,routineVersionId:null};
             value.slots.push(slot);day.changes.push({kind:'add',slotId:slot.id,title,reason:(c.source||'Proposed')+'. Placed at '+label(mainStart)+(c.preferred!==null&&c.preferred!==undefined?', the free space nearest your planned time':', the first free space')+'.'});
             if(before){const b=endpoints(start,mainStart);value.slots.push({id:c.id+'_before',title:'Travel and changing',category:'buffer',start:b.start,end:b.end,fixed:false,origin:'manual',cancelled:false,link:null});}
@@ -210,7 +225,8 @@
       food:{plans:(d.food?.plans||[]).filter(object).map(p=>[p.id,n(p.date),n(p.time),n(p.mealId)]),logs:(d.food?.revisions||[]).filter(object).map(r=>[r.id,n(r.planId)]),recipes:(d.food?.recipes||[]).filter(object).map(r=>[r.id,n(r.name)])},
       goals:{actions:(d.goals?.actions||[]).filter(object).map(a=>[a.id,n(a.date),n(a.minutes),n(a.title)]),events:(d.goals?.completionEvents||[]).filter(object).map(e=>[e.id,n(e.actionId),n(e.type)])},
       people:{people:(d.people?.people||[]).filter(object).map(p=>[p.id,n(p.name),n(p.birthday),n(p.leapDay),!!p.archived]),gifts:(d.people?.gifts||[]).filter(object).map(g=>[g.id,n(g.personId),n(g.status),n(g.date)]),plans:(d.people?.plans||[]).filter(object).map(p=>[p.id,n(p.personId),n(p.date),n(p.status),n(p.title)])},
-      work:{calendar:global.LifeOSWorkCalendar?global.LifeOSWorkCalendar.decisionInputs(d.work):{policy:'unavailable'},running:object(d.work?.running)?[n(d.work.running.id),n(d.work.running.startAt)]:null}};
+      work:{calendar:global.LifeOSWorkCalendar?global.LifeOSWorkCalendar.decisionInputs(d.work):{policy:'unavailable'},running:object(d.work?.running)?[n(d.work.running.id),n(d.work.running.startAt)]:null},
+      preparation:n(d.preparation),preparationMoney:d.preparation?.chains?.length?(d.money?.versions||[]):[]};
     return fnv(stable(parts));
   }
   function buildQueue(people,today,horizon,policy,activeIds){

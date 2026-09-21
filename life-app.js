@@ -22,6 +22,7 @@
       transfer:'<path d="M3 7h17m-4-4 4 4-4 4M21 17H4m4-4-4 4 4 4"/>',
       calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18M7 14h3m4 0h3m-10 4h3"/>',
       planner:'<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2M3 12h2m14 0h2M12 3v2m0 14v2"/>',
+      preparation:'<circle cx="5" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><path d="M7 5h5a7 7 0 0 1 0 14H7M12 12h5"/>',
       goals:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12 21 3m-4 0h4v4"/>',
       home:'<path d="m3 11 9-8 9 8M5 10v11h14V10M9 21v-7h6v7"/>',
       circle:'<circle cx="12" cy="12" r="6"/>',
@@ -95,7 +96,7 @@
     const routine = () => routines.find(r=>r.id===state.routineId) || routines[0];
     const totalSets = r => r.items.reduce((n,e)=>n+e.targetSets,0);
     const performed = session => session.exercises.flatMap(e=>e.sets);
-    const nav = [{id:'today',label:'Today',title:'Your day'},{id:'planner',label:'Day planner',title:'Your time, with intention'},{id:'train',label:'Train',title:'Your training'},{id:'plan',label:'Programme',title:'Your programme'},{id:'progress',label:'Progress',title:'Your progress'},{id:'sleep',label:'Sleep',title:'Your sleep'},{id:'food',label:'Food',title:'Your food'},{id:'work',label:'Work',title:'Your work'},{id:'goals',label:'Goals',title:'Your goals'},{id:'life',label:'Life Planner',title:'Your bigger picture'},{id:'money',label:'Money',title:'Your money'},{id:'people',label:'People',title:'Your people'},{id:'capture',label:'Capture',title:'Your check-in'}];
+    const nav = [{id:'today',label:'Today',title:'Your day'},{id:'planner',label:'Day planner',title:'Your time, with intention'},{id:'preparation',label:'Preparation',title:'A little ahead of life'},{id:'train',label:'Train',title:'Your training'},{id:'plan',label:'Programme',title:'Your programme'},{id:'progress',label:'Progress',title:'Your progress'},{id:'sleep',label:'Sleep',title:'Your sleep'},{id:'food',label:'Food',title:'Your food'},{id:'work',label:'Work',title:'Your work'},{id:'goals',label:'Goals',title:'Your goals'},{id:'life',label:'Life Planner',title:'Your bigger picture'},{id:'money',label:'Money',title:'Your money'},{id:'people',label:'People',title:'Your people'},{id:'capture',label:'Capture',title:'Your check-in'}];
     const chronologicalHistory=()=>history.slice().sort((a,b)=>a.date.localeCompare(b.date)||a.completedAt.localeCompare(b.completedAt));
     function renderNav(){
       const markup = nav.map(n=>'<button class="nav-link" data-action="navigate" data-route="'+n.id+'" aria-label="'+n.label+'" '+(state.route===n.id?'aria-current="page"':'')+'>'+icon(n.id)+'<span>'+n.label+'</span></button>').join('');
@@ -107,7 +108,7 @@
       if(LifeOSRuntime.ready&&!restoringWorkspace)queueMicrotask(queueWorkspaceSave);
       if(chartObserver){chartObserver.disconnect();chartObserver=null;}
       renderNav();
-      $('main').innerHTML='<div class="view-enter">'+({today:renderToday,planner:()=>PlannerUI.render(),train:renderTrain,plan:renderPlan,progress:renderProgress,sleep:renderSleep,food:renderFood,work:renderWork,goals:renderGoals,money:renderMoney,people:renderPeople,capture:renderCapture,life:renderLifePlanner}[state.route]())+'</div>';
+      $('main').innerHTML='<div class="view-enter">'+({today:renderToday,planner:()=>PlannerUI.render(),preparation:()=>PreparationUI.render(),train:renderTrain,plan:renderPlan,progress:renderProgress,sleep:renderSleep,food:renderFood,work:renderWork,goals:renderGoals,money:renderMoney,people:renderPeople,capture:renderCapture,life:renderLifePlanner}[state.route]())+'</div>';
       if(state.route==='progress'){renderChart();chartObserver=new ResizeObserver(()=>renderChart());chartObserver.observe($('chart'));}
       if(state.active&&state.route==='train')updateTimer();
     }
@@ -3711,6 +3712,7 @@ function renderCaptureMap(summary,selected='all') {
     });
 
     document.addEventListener('click',event=>{
+      const preparationButton=event.target.closest('[data-preparation-action]');if(preparationButton){if(!preparationButton.disabled)PreparationUI.handleClick(preparationButton);return;}
       const plannerButton=event.target.closest('[data-planner-action]');if(plannerButton){if(!plannerButton.disabled)PlannerUI.handleClick(plannerButton);return;}
       const button=event.target.closest('[data-action]');if(!button||button.disabled)return;const a=button.dataset.action;const d=button.dataset;
       if(a==='navigate'){navigate(d.route);return;}
@@ -4031,13 +4033,15 @@ document.addEventListener('submit',event=>{
     const PurchasesDemo={snapshot:()=>clone(purchaseRecords),restore:(data,options={})=>{const checked=PurchaseOperations.validateDomain(data);if(!checked.ok)return checked;if(!options.validateOnly)purchaseRecords=clone(data);return {ok:true};}};
     let plannerRecords=PlannerOperations.empty();
     const PlannerDemo={snapshot:()=>clone(plannerRecords),restore:(data,options={})=>{const checked=PlannerOperations.validateDomain(data);if(!checked.ok)return checked;if(!options.validateOnly)plannerRecords=clone(data);return {ok:true};}};
+    let preparationRecords=PreparationOperations.empty();
+    const PreparationDemo={snapshot:()=>clone(preparationRecords),restore:(data,options={})=>{const checked=PreparationOperations.validateDomain(data);if(!checked.ok)return checked;if(!options.validateOnly)preparationRecords=clone(data);return {ok:true};}};
     function workspaceParts(){return {
       training:{snapshot:snapshotTraining,restore:restoreTraining},sleep:{snapshot:snapshotSleep,restore:restoreSleep},
       food:FoodDemo,work:WorkDemo,goals:GoalsDemo,money:MoneyDemo,recurring:RecurringMoneyDemo,reference:MoneyReferenceDemo,
       moneySetup:{snapshot:snapshotMoneySetup,restore:restoreMoneySetup},people:PeopleDemo,life:LifePlannerDemo,capture:CaptureDemo,
-      captureReceipts:{snapshot:()=>CaptureTargetsDemo.persistenceSnapshot(),restore:(data,options)=>CaptureTargetsDemo.restore(data,options)},purchases:PurchasesDemo,planner:PlannerDemo
+      captureReceipts:{snapshot:()=>CaptureTargetsDemo.persistenceSnapshot(),restore:(data,options)=>CaptureTargetsDemo.restore(data,options)},purchases:PurchasesDemo,planner:PlannerDemo,preparation:PreparationDemo
     };}
-    function captureWorkspace(){const domains={};for(const[name,part]of Object.entries(workspaceParts()))domains[name]=part.snapshot();return {format:'lifeos-state/1',minimumReaderVersion:70,domains,drafts:{capture:{draft:captureView.draft,date:captureView.date,source:captureView.source,fileName:captureView.fileName},ambitions:clone(lifeView.drafts),receipt:PurchaseUI.snapshotDraft(),planner:PlannerUI.snapshotDraft()}};}
+    function captureWorkspace(){const domains={};for(const[name,part]of Object.entries(workspaceParts()))domains[name]=part.snapshot();return {format:'lifeos-state/1',minimumReaderVersion:80,domains,drafts:{capture:{draft:captureView.draft,date:captureView.date,source:captureView.source,fileName:captureView.fileName},ambitions:clone(lifeView.drafts),receipt:PurchaseUI.snapshotDraft(),planner:PlannerUI.snapshotDraft(),preparation:PreparationUI.snapshotDraft()}};}
 function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(payload);}
 
     function restoreWorkspace(payload){
@@ -4051,7 +4055,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
         if(capture.draft!==undefined&&(typeof capture.draft!=='string'||capture.draft.length>12000))throw new Error('The saved capture draft is invalid.');
         const ambitionDrafts=drafts.ambitions||{};if(!ambitionDrafts||Array.isArray(ambitionDrafts)||typeof ambitionDrafts!=='object'||Object.entries(ambitionDrafts).some(([k,v])=>k.length>250||typeof v!=='string'||v.length>8000))throw new Error('The saved ambition notes are invalid.');
         captureView.draft=capture.draft||'';captureView.date=todayAdapterDate(capture.date)||TODAY;captureView.source=['typed','file','transcript','plaud','paste','manual'].includes(capture.source)?capture.source:'typed';captureView.fileName=typeof capture.fileName==='string'?capture.fileName.slice(0,250):'';
-        lifeView.drafts=clone(ambitionDrafts);lifeView.id=null;goalView.id=null;PurchaseUI.restoreDraft(drafts.receipt??null);PlannerUI.restoreDraft(drafts.planner??null);
+        lifeView.drafts=clone(ambitionDrafts);lifeView.id=null;goalView.id=null;PurchaseUI.restoreDraft(drafts.receipt??null);PlannerUI.restoreDraft(drafts.planner??null);PreparationUI.restoreDraft(drafts.preparation??null);
       }catch(error){for(const[name,part]of Object.entries(parts))part.restore(before[name]);throw error;}finally{restoringWorkspace=false;}
     }
     LifeOSWorkspace.registerValidators(Object.fromEntries(Object.entries(workspaceParts()).map(([name,part])=>[name,data=>part.restore(data,{validateOnly:true})])));
@@ -4085,6 +4089,21 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
       return {ok:true,...result};
     }
     function plannerDraftChanged(){queueWorkspaceSave();}
+    function preparePreparation(command){return PreparationOperations.prepare(command,plannerContext());}
+    async function commitPreparation(command,reviewDigest){
+      const input=clone(command);
+      const result=await LifeOSRuntime.transact({expectedRevision:input.expected.workspaceRevision,prepare:(workspace,{revision})=>{
+        const checked=PreparationOperations.prepare(input,{workspace,revision,today:TODAY});
+        if(!checked.ok)throw new Error(checked.error||'Review the preparation details again.');
+        if(checked.status!=='already-committed'&&checked.reviewDigest!==reviewDigest)throw new Error('The preparation or its source records changed. Review it again.');
+        const built=PreparationOperations.buildCandidate(checked,workspace);
+        if(!built.ok)throw new Error(built.error||'The preparation could not be saved.');
+        if(built.workspace)built.workspace.drafts.preparation=null;
+        return built.unchanged?{unchanged:true,result:built.receipt}:{workspace:built.workspace,result:built.receipt};
+      }});
+      return {ok:true,...result};
+    }
+    PreparationUI.configure({context:plannerContext,commit:commitPreparation,flush:()=>LifeOSRuntime.flush(),dialog:showDialog,closeDialog,render,toast,navigate,changed:queueWorkspaceSave,openEvidence:plannerOpenEvidence,plan:()=>{closeDialog();navigate('planner');PlannerUI.planWeek();}});
     function plannerDraftState(){const error=LifeOSRuntime.error;return {saving:!!LifeOSRuntime.saving,error:error?String(error.message||error):null,ready:!!LifeOSRuntime.ready};}
     // Exact evidence references for the planner: kind, stable root, exact version and the record's own date. Read-only.
     function plannerEvidenceRef(ref){
@@ -4101,11 +4120,16 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
       return null;
     }
     function plannerActuals(date){
-      return TodayDemo.snapshot(date).entries.filter(row=>row.status==='recorded'||row.status==='active'||row.ref.kind==='work-absence').map(row=>({id:row.id,title:row.title,detail:row.detail,route:row.route,time:row.time||null,kind:row.ref.kind==='work-absence'?'evidence':row.status==='active'?'active':'record',evidence:row.status==='recorded'?plannerEvidenceRef(row.ref):null}));
+      const actuals=TodayDemo.snapshot(date).entries.filter(row=>row.status==='recorded'||row.status==='active'||row.ref.kind==='work-absence').map(row=>({id:row.id,title:row.title,detail:row.detail,route:row.route,time:row.time||null,kind:row.ref.kind==='work-absence'?'evidence':row.status==='active'?'active':'record',evidence:row.status==='recorded'?plannerEvidenceRef(row.ref):null}));
+      const heads=new Map();for(const e of preparationRecords.events)heads.set(e.rootId,e);
+      const evidenceWorkspace={domains:{preparation:preparationRecords,money:MoneyDemo.snapshot()}};
+      for(const e of heads.values())if(e.occurredOn===date&&PreparationOperations.isEffectiveCompletion(e,evidenceWorkspace)){const chain=preparationRecords.chains.find(c=>c.id===e.binding.chainVersionId),action=chain?.value.actions.find(a=>a.id===e.binding.actionId);actuals.push({id:e.id,title:action?.title||'Preparation completed',detail:chain?.value.title||'Preparation',route:'preparation',time:null,kind:'record',evidence:{kind:'preparation-completion',rootId:e.rootId,versionId:e.id,date:e.occurredOn}});}
+      return actuals;
     }
     const plannerEvidenceRoutes={'training-session':'progress','sleep-record':'sleep','meal-log':'food','work-entry':'work','goal-progress':'goals','goal-action-event':'goals','people-event':'people','money-transaction':'money'};
     // Open the exact linked record, preferring its current version so a corrected entry still opens.
     function plannerOpenEvidence(reference){
+      if(reference?.kind==='preparation-completion'){const resolved=PlannerOperations.resolveEvidence(reference,captureWorkspace());if(!resolved.ok)return todayAdapterMissing(resolved.error);closeDialog();navigate('preparation');PreparationUI.openEvent(reference.versionId);return true;}
       if(!reference||!plannerEvidenceRoutes[reference.kind])return todayAdapterMissing('This linked record kind cannot be opened.');
       const resolved=PlannerOperations.resolveEvidence(reference,captureWorkspace());
       if(!resolved.ok)return todayAdapterMissing('This linked record is no longer readable: '+resolved.error);
@@ -4116,6 +4140,8 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     function plannerStart(slot,date){
       if(!slot||!todayAdapterDate(date))return todayAdapterMissing('Choose a valid day before starting an activity.');
       const category=slot.category,route=slot.link?.route||null;
+      if(slot.link?.preparation){closeDialog();navigate('preparation');PreparationUI.openAction(slot.link.preparation);return true;}
+      if(route==='preparation'){closeDialog();navigate('preparation');return true;}
       if(category==='training'){
         if(state.active){navigate('train');toast('A workout is already in progress. Continue or finish it here.');return true;}
         // Planner slots do not yet bind an exact workout version. A sport or shorter
@@ -4137,7 +4163,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     function workspaceDialog(title,html){showDialog(title,html);$('dialog').dataset.workspaceUi='true';}
     function backupSummary(payload){
       const d=payload.domains;
-      const rows=[['Training sessions',d.training.sessions?.length||d.training.history?.length||0],['Sleep versions',d.sleep.revisions.length],['Meal log versions',d.food.revisions.length],['Work versions',d.work.versions.length],['Goals',d.goals.goals.length],['Actions',d.goals.actions.length],['Money entries and corrections',d.money.versions.length],['People',d.people.people.length],['Ambitions',d.life.ambitions.length],['Capture check-ins',d.capture.batches.length],['Connected purchases',d.purchases?.versions.length||0],['Saved day plan versions',d.planner?.days.length||0],['Planning profile versions',d.planner?.profiles.length||0]];
+      const rows=[['Training sessions',d.training.sessions?.length||d.training.history?.length||0],['Sleep versions',d.sleep.revisions.length],['Meal log versions',d.food.revisions.length],['Work versions',d.work.versions.length],['Goals',d.goals.goals.length],['Actions',d.goals.actions.length],['Money entries and corrections',d.money.versions.length],['People',d.people.people.length],['Ambitions',d.life.ambitions.length],['Capture check-ins',d.capture.batches.length],['Connected purchases',d.purchases?.versions.length||0],['Saved day plan versions',d.planner?.days.length||0],['Planning profile versions',d.planner?.profiles.length||0],['Preparation chain versions',d.preparation?.chains.length||0],['Preparation completion versions',d.preparation?.events.length||0]];
       return '<dl class="backup-summary">'+rows.map(([label,n])=>'<div><dt>'+esc(label)+'</dt><dd>'+n+'</dd></div>').join('')+'</dl>';
     }
     function renderWorkspaceRecovery(error){
@@ -4214,7 +4240,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     for(const type of ['click','input','change','submit'])document.addEventListener(type,()=>queueMicrotask(queueWorkspaceSave));
     window.addEventListener('beforeunload',event=>{if(LifeOSRuntime.ready&&LifeOSRuntime.saving){event.preventDefault();event.returnValue='';}});
     window.addEventListener('error',()=>{if(LifeOSRuntime.ready)workspaceStatus('error','Something went wrong. Open backups before reloading.');});
-    window.LifeOSApp=Object.freeze({get version(){return 'v79';},snapshot:captureWorkspace,restore:async data=>LifeOSRuntime.restoreBackup({format:'lifeos-backup/2',workspace:data}),domains:()=>workspaceParts(),capture:CaptureDemo,captureTargets:CaptureTargetsDemo,commitCapture:commitCaptureDurably,preparePurchase,commitPurchase,preparePlanner,commitPlanner,save:()=>LifeOSRuntime.flush()});
+    window.LifeOSApp=Object.freeze({get version(){return 'v80';},snapshot:captureWorkspace,restore:async data=>LifeOSRuntime.restoreBackup({format:'lifeos-backup/2',workspace:data}),domains:()=>workspaceParts(),capture:CaptureDemo,captureTargets:CaptureTargetsDemo,commitCapture:commitCaptureDurably,preparePurchase,commitPurchase,preparePlanner,commitPlanner,preparePreparation,commitPreparation,save:()=>LifeOSRuntime.flush()});
 
     $('addEventButton').innerHTML=icon('plus');$('privacyNote').innerHTML=icon('shield')+'<p>A little more intention.<br>A record that stays yours.</p>';
     const initialRoute=window.location.hash.slice(1);if(nav.some(n=>n.id===initialRoute))state.route=initialRoute;

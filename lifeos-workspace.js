@@ -1,8 +1,8 @@
 /* Shared workspace validation. No DOM, storage or network access. */
 (function(global){
   'use strict';
-  const FORMAT='lifeos-state/1', READER_VERSION=70;
-  const DOMAINS=Object.freeze(['training','sleep','food','work','goals','money','recurring','reference','moneySetup','people','life','capture','captureReceipts','purchases','planner']);
+  const FORMAT='lifeos-state/1', READER_VERSION=80;
+  const DOMAINS=Object.freeze(['training','sleep','food','work','goals','money','recurring','reference','moneySetup','people','life','capture','captureReceipts','purchases','planner','preparation']);
   const DOMAIN_FIELDS={
     training:['version','routines','schedule','history','state'],sleep:['version','revisions','goal'],
     food:['version','foods','recipes','plans','revisions','movements','purchases','yields','targets','targetDays','receiptKeys','directLogOperations'],
@@ -12,7 +12,7 @@
     reference:['schema','reference'],moneySetup:['schema','allowances'],people:['schema','people','eventVersions','gifts','plans'],
     life:['schema','ambitions','versions','notes','connections','connectionVersions','goalLinks','actionLinks'],
     capture:['version','current','batches'],captureReceipts:['version','consumed'],purchases:['schema','products','versions','operations'],
-    planner:['schema','profiles','routines','days','events','operations']
+    planner:['schema','profiles','routines','days','events','operations'],preparation:['schema','chains','events','operations']
   };
   let validators=null;
   const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
@@ -21,9 +21,10 @@
   function registerValidators(input){if(validators)fail('Workspace validators are already registered.');if(!object(input)||DOMAINS.some(name=>typeof input[name]!=='function'))fail('All workspace validators must be provided.');validators=Object.freeze({...input});}
   function normalize(payload){
     if(!object(payload)||payload.format!==FORMAT||!object(payload.domains))return payload;
-    const reader=payload.minimumReaderVersion,knownOlder=reader===undefined||(Number.isSafeInteger(reader)&&reader>=1&&reader<=69);
+    const reader=payload.minimumReaderVersion,knownOlder=reader===undefined||(Number.isSafeInteger(reader)&&reader>=1&&reader<=70);
     if(!knownOlder)return payload;
     const domains={...payload.domains};
+    if(!Object.prototype.hasOwnProperty.call(domains,'preparation'))domains.preparation=global.PreparationOperations.empty();
     const beforePurchases=reader===undefined||reader<=62,beforePlanner=reader===undefined||reader<=65;
     if(beforePurchases&&!Object.prototype.hasOwnProperty.call(domains,'purchases'))domains.purchases=global.PurchaseOperations.empty();
     if(beforePlanner&&!Object.prototype.hasOwnProperty.call(domains,'planner'))domains.planner=global.PlannerOperations.empty();
@@ -32,7 +33,8 @@
     const drafts=payload.drafts===undefined?{}:payload.drafts;
     // v70 keeps unfinished planner work in the envelope; earlier payloads simply have none.
     const withPlanner=object(drafts)&&!Object.prototype.hasOwnProperty.call(drafts,'planner')?{...(beforePurchases?{receipt:null}:{}),...drafts,planner:null}:beforePurchases&&object(drafts)?{receipt:null,...drafts}:null;
-    return {...payload,domains,...(withPlanner?{drafts:withPlanner}:{})};
+    const normalDrafts=withPlanner||drafts;
+    return {...payload,domains,...(object(normalDrafts)?{drafts:Object.prototype.hasOwnProperty.call(normalDrafts,'preparation')?normalDrafts:{...normalDrafts,preparation:null}}:{})};
   }
   function validateReceiptDraft(draft){
     if(draft===null||draft===undefined)return {ok:true};
@@ -97,7 +99,7 @@
         listOf(d.unresolved,'proposal unresolved activities',u=>{plainObject(u,'unresolved activity');text(u.title,'unresolved title');text(u.reason,'unresolved reason');});textList(d.notices,'proposal day notices');
       });
       listOf(v.scenarios,'proposal scenarios',x=>{plainObject(x,'proposal scenario');text(x.scenario,'scenario identity');text(x.label,'scenario label');for(const k of ['freeMinutes','workMinutes','commuteMinutes'])number(x[k],'scenario '+k);if(x.contractMinutes!==null)number(x.contractMinutes,'scenario contract minutes');text(x.remark,'scenario remark');textList(x.notes,'scenario notes');});
-      listOf(v.queue,'proposal queue',q=>{plainObject(q,'queue item');for(const k of ['status','title','eventTitle','reason'])text(q[k],'queue '+k);date(q.eventDate,'queue event');});
+      listOf(v.queue,'proposal queue',q=>{plainObject(q,'queue item');for(const k of ['status','title','eventTitle','reason'])text(q[k],'queue '+k);if(q.kind!=='preparation'||q.eventDate!==null)date(q.eventDate,'queue event');if(q.kind==='preparation'){const binding=global.PreparationOperations.validateBinding(q.preparation);if(!binding.ok)fail(binding.error||'The proposal preparation reference is invalid.');}});
     };
     const commandShape=v=>{plainObject(v,'command');keys(v,['contract','operation','operationId','versionId','recordedAt','expected','entity'],'planner draft command');if(v.contract!=='lifeos-planner/1')fail('The planner draft command contract is unsupported.');if(!OPERATIONS.includes(v.operation))fail('The planner draft command operation is unsupported.');identity(v.operationId,'command operation');identity(v.versionId,'command version');text(v.recordedAt,'command time');plainObject(v.expected,'command expectation');keys(v.expected,['workspaceRevision','previousVersionId'],'planner draft command expectation');if(v.expected.workspaceRevision!==undefined&&!Number.isSafeInteger(v.expected.workspaceRevision))fail('The planner draft command revision is invalid.');if(v.expected.previousVersionId!==null&&v.expected.previousVersionId!==undefined)identity(v.expected.previousVersionId,'command predecessor');plainObject(v.entity,'command entity');noApproval(v);};
     const editorShape=(k,v,inner)=>{
@@ -124,13 +126,15 @@
     keys(payload,['format','minimumReaderVersion','domains','drafts','legacyArchive'],'workspace');
     if(payload.format!==FORMAT)fail('This workspace format is not supported.');
     if(payload.minimumReaderVersion!==undefined&&(!Number.isSafeInteger(payload.minimumReaderVersion)||payload.minimumReaderVersion<1||payload.minimumReaderVersion>READER_VERSION))fail('This workspace needs a newer Life OS version. Your records have not been replaced.');
+    if(payload.minimumReaderVersion>70&&payload.minimumReaderVersion<80)fail('This workspace needs a compatible Life OS version. This reader requirement was never supported. Your records have not been replaced.');
     keys(payload.domains,DOMAINS,'workspace sections');
     if(!validators)fail('Workspace validators are not ready. No data was written.');
     for(const name of DOMAINS){if(!object(payload.domains[name]))fail('Missing workspace section: '+name);keys(payload.domains[name],DOMAIN_FIELDS[name],name);const result=validators[name](payload.domains[name]);if(!result||!result.ok)fail('Could not validate '+name+': '+(result?.error||'invalid records'));}
     keys(payload.domains.training.state,['routineId','active','currentExercise','timer','chartExercise','chartMetric','chartRange','chartSessionId'],'training state');
     validateLinks(payload);
-    const drafts=payload.drafts===undefined?{}:payload.drafts;keys(drafts,['capture','ambitions','receipt','planner'],'drafts');
+    const drafts=payload.drafts===undefined?{}:payload.drafts;keys(drafts,['capture','ambitions','receipt','planner','preparation'],'drafts');
     validateReceiptDraft(drafts.receipt);validatePlannerDraft(drafts.planner);
+    const prepDraft=global.PreparationOperations.validateDraft(drafts.preparation??null);if(!prepDraft.ok)fail(prepDraft.error||'The preparation draft is invalid.');
     const capture=drafts.capture===undefined?{}:drafts.capture;keys(capture,['draft','date','source','fileName'],'capture draft');
     if(capture.draft!==undefined&&(typeof capture.draft!=='string'||capture.draft.length>12000))fail('The saved capture draft is invalid.');
     if(capture.date!==undefined&&(typeof capture.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(capture.date)||!Number.isFinite(Date.parse(capture.date+'T12:00:00Z'))||new Date(capture.date+'T12:00:00Z').toISOString().slice(0,10)!==capture.date))fail('The capture date is invalid.');
@@ -217,6 +221,7 @@ function validateLinks(payload) {
   for (const row of savedProposals) { const receipt = receipts.get(row.operationId); if (!receipt || receipt.id !== row.recordId || receipt.route !== routes[row.target]) fail('a saved Capture update is missing its matching operation receipt.'); }
   const purchaseLinks=global.PurchaseOperations.validateLinks(payload);if(!purchaseLinks.ok)fail(purchaseLinks.error||'Purchase links are invalid.');
   const plannerLinks=global.PlannerOperations.validateLinks(payload);if(!plannerLinks.ok)fail(plannerLinks.error||'Planner evidence links are invalid.');
+  const prepLinks=global.PreparationOperations.validateLinks(payload);if(!prepLinks.ok)fail(prepLinks.error||'Preparation links are invalid.');
   return { ok: true };
 }
   global.LifeOSWorkspace=Object.freeze({validate,validateLinks,registerValidators,normalize,validateReceiptDraft,validatePlannerDraft,FORMAT,READER_VERSION,DOMAINS});

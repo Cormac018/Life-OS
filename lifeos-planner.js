@@ -1,18 +1,18 @@
 /* Pure planning records and proposals. No DOM, storage, clock or transport reads. */
 (function(global){
   'use strict';
-  const CONTRACT='lifeos-planner/1',SCHEMA='lifeos.planner/2',LEGACY_SCHEMA='lifeos.planner/1',READER=70;
+  const CONTRACT='lifeos-planner/1',SCHEMA='lifeos.planner/2',LEGACY_SCHEMA='lifeos.planner/1',READER=80;
   const CATEGORIES=['sleep','work','commute','buffer','training','meal','goal','care','admin','rest','other'];
   const ROUTINE_CATEGORIES=['training','meal','goal','care','admin','rest','other'];
   const DAY_TYPES=['normal','travel','leave','sick','rest'],ORIGINS=['baseline','manual','routine'];
   const ROUTINE_FIELDS=['rootId','title','category','link','durationMinutes','window','fixed','recurrence','exceptions','dayTypes','alternatives','status','effectiveFrom','note'];
   const SLOT_FIELDS=['id','title','category','start','end','fixed','origin','cancelled','link'],SLOT_OPTIONAL=['anchor','window'];
   const STATUS_FIELDS=['dayRootId','slotId','status','note'],EVENT_FIELDS=['id','dayRootId','dayVersionId','slotId','status','note','recordedAt'];
-  const EVIDENCE_KINDS=['training-session','sleep-record','meal-log','work-entry','goal-progress','goal-action-event','people-event','money-transaction'];
-  const GENERAL_EVIDENCE=['goal-action-event','people-event','money-transaction'];
+  const EVIDENCE_KINDS=['training-session','sleep-record','meal-log','work-entry','goal-progress','goal-action-event','people-event','money-transaction','preparation-completion'];
+  const GENERAL_EVIDENCE=['goal-action-event','people-event','money-transaction','preparation-completion'];
   const COMPATIBLE={training:['training-session'],meal:['meal-log'],sleep:['sleep-record'],work:['work-entry'],goal:['goal-progress','goal-action-event'],care:GENERAL_EVIDENCE,admin:GENERAL_EVIDENCE,rest:GENERAL_EVIDENCE,other:EVIDENCE_KINDS};
   const SPECIALIST=['training','meal','sleep','work'];
-  const ROUTES=['train','plan','food','sleep','work','goals','money','people','life','capture'];
+  const ROUTES=['train','plan','food','sleep','work','goals','money','people','life','capture','preparation'];
   const PROFILE_FIELDS=['timeZone','workDays','intendedStart','intendedEnd','usualStart','usualEnd','contractMinutes','unpaidBreakMinutes','commuteMinutesEachWay','futureCommuteMinutesEachWay','sleepStart','sleepEnd','transitionMinutes','equipment','limitations','priorities'],PROFILE_PLANNING=['trainingMinutes','trainingTravelMinutes','changingMinutes','mealMinutes','spareMinutes','windDownMinutes'];
   const DAY_FIELDS=['date','timeZone','profileVersionId','dayType','scenario','note','slots'];
   const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
@@ -55,7 +55,7 @@
   }
   function evidenceRef(value,path){fields(value,['kind','rootId','versionId','date'],path);check(EVIDENCE_KINDS.includes(value.kind),path+'/kind','This evidence kind is unsupported.','unsupported');refId(value.rootId,path+'/rootId');refId(value.versionId,path+'/versionId');check(isDate(value.date),path+'/date','Evidence needs the record date.');}
   function window(value,path){fields(value,['start','end'],path);check(isTime(value.start)&&isTime(value.end),path,'Choose valid local times for the window.');check(minute(value.end)>minute(value.start),path,'The window must end after it starts on the same day.');}
-  function shortcut(link,path){fields(link,['route','label'],path);check(ROUTES.includes(link.route),path+'/route','This shortcut route is unsupported.');text(link.label,path+'/label',100);}
+  function shortcut(link,path){fields(link,['route','label'],path,['preparation']);check(ROUTES.includes(link.route),path+'/route','This shortcut route is unsupported.');text(link.label,path+'/label',100);if(own(link,'preparation')){check(link.route==='preparation',path,'A preparation reference opens Preparation.');const valid=global.PreparationOperations?.validateBinding(link.preparation);check(valid?.ok,path+'/preparation',valid?.error||'The preparation reference is invalid.');}}
   function routine(value,path){
     fields(value,ROUTINE_FIELDS,path);id(value.rootId,path+'/rootId');text(value.title,path+'/title',200);check(ROUTINE_CATEGORIES.includes(value.category),path+'/category','Choose a routine category. Sleep, work and commute anchors come from your setup.');
     nullable(value.link,link=>shortcut(link,path+'/link'));integer(value.durationMinutes,path+'/durationMinutes',1,1440);window(value.window,path+'/window');check(minute(value.window.end)-minute(value.window.start)>=value.durationMinutes,path+'/durationMinutes','The routine cannot last longer than its window.');
@@ -125,6 +125,7 @@
       check(CATEGORIES.includes(row.category),p+'/category','Choose a supported activity type.');for(const key of ['fixed','cancelled'])check(typeof row[key]==='boolean',p+'/'+key,'Use an explicit yes or no.');check(ORIGINS.includes(row.origin),p+'/origin','Keep an activity source.');
       endpoint(row.start,value.timeZone,p+'/start');endpoint(row.end,value.timeZone,p+'/end');const start=Date.parse(row.start.at),end=Date.parse(row.end.at);check(end>start&&end-start<=86400000,p,'An activity must last more than zero and at most 24 elapsed hours.');check(row.origin!=='baseline'?start<bounds.end&&end>bounds.start:start>=bounds.start-86400000&&start<bounds.end+86400000&&end<=bounds.end+86400000,p,'Manual and routine activities must overlap their day; generated anchors must remain within the neighbouring dates.');
       nullable(row.link,link=>shortcut(link,p+'/link'));
+      if(row.link?.preparation)check(row.origin==='manual'&&row.id===row.link.preparation.purposeId&&row.anchor&&row.anchor.routineRootId===null,p,'A preparation activity retains its exact purpose and original planning day.');
       const anchor=own(row,'anchor')?row.anchor:null;nullable(anchor,a=>{fields(a,['date','routineRootId','routineVersionId'],p+'/anchor');check(isDate(a.date),p+'/anchor/date','An anchor needs its original date.');nullable(a.routineRootId,v=>id(v,p+'/anchor/routineRootId'));nullable(a.routineVersionId,v=>id(v,p+'/anchor/routineVersionId'));check((a.routineRootId===null)===(a.routineVersionId===null),p+'/anchor','A routine anchor names both its routine and the exact version.');});
       if(row.origin==='routine')check(anchor&&anchor.routineRootId!==null&&row.id==='occ_'+anchor.routineRootId+'_'+anchor.date,p+'/anchor','A routine occurrence keeps the identity of its routine and original date.');else check(!anchor||anchor.routineRootId===null,p+'/anchor','Only routine occurrences carry a routine anchor.');
       if(row.origin==='baseline')check(!anchor&&(!own(row,'window')||row.window===null),p,'Generated anchors carry no routine anchor or window.');
@@ -263,6 +264,7 @@
     const present=new Map(slots.map(slot=>[slot.id,slot]));
     for(const slot of previous.value.slots)if(slot.origin!=='baseline'&&slot.id!==except){
       const next=present.get(slot.id);check(next&&next.origin===slot.origin,path,'Retain manual and routine activities and cancel them explicitly instead of deleting their identities.');
+      if(slot.link?.preparation){check(next.link?.preparation?.purposeId===slot.link.preparation.purposeId,path,'Keep the same preparation purpose when changing or refreshing its plan.');if(stable(next.link)===stable(slot.link))check(next.category===slot.category,path,'Keep the preparation action category with its exact reference.');}
       const last=lastEvents.get(previous.rootId+'|'+slot.id);check(last?.status!=='done'||taskMeaning(slot)===taskMeaning(next),path,'Reset this completed activity before changing its title, type, timing or shortcut.','needs-review');
     }
   }
@@ -355,6 +357,12 @@
         check(value.profileVersionId===null||domain.profiles.some(row=>row.id===value.profileVersionId),'/entity/profileVersionId','Choose an existing planning profile version.');
         if(value.profileVersionId!==null)check(c.recordedAt>=domain.profiles.find(row=>row.id===value.profileVersionId).recordedAt,'/recordedAt','A saved day cannot predate its source profile.');
         for(const slot of value.slots)if(slot.origin==='routine'){const version=domain.routines.find(row=>row.id===slot.anchor.routineVersionId);check(version&&version.rootId===slot.anchor.routineRootId&&c.recordedAt>=version.recordedAt,'/entity/slots','A routine occurrence must reference an existing version of its routine.');}
+        for(const slot of value.slots)if(slot.link?.preparation){
+          const bound=global.PreparationOperations?.resolveOccurrence(slot.link.preparation,context.workspace);check(bound?.ok,'/entity/slots',bound?.error||'This preparation action is missing.');
+          const retainedBinding=domain.days.some(d=>d.value.slots.some(s=>s.id===slot.id&&stable(s.link)===stable(slot.link)));
+          if(!retainedBinding)check(bound.current&&bound.status==='ready','/entity/slots','This preparation action is no longer ready. Review its prerequisites, dates and spending needs.','needs-review');
+          check(slot.category===bound.action.category,'/entity/slots','Keep the preparation action category with its exact reference.');
+        }
       }
       if(c.operation==='move'){const origin=map.get('days|'+c.entity.fromDate);if(origin)check(c.recordedAt>=origin.recordedAt,'/recordedAt','The new record cannot predate the version it reviews.');}
       if(c.operation==='plan')for(const d of c.entity.days){const head=map.get('days|'+d.date);if(head)check(c.recordedAt>=head.recordedAt,'/recordedAt','The new record cannot predate the version it reviews.');}
@@ -366,6 +374,12 @@
       if(c.operation==='routine'){summary.notices.push(previous?'This version applies from '+c.entity.effectiveFrom+'. Days you already saved are unchanged; rebuild a day to add missing occurrences.':'Occurrences appear when you preview or rebuild a day on or after '+c.entity.recurrence.startDate+'.');}
       if(c.operation==='status'){
         const slot=previous.value.slots.find(row=>row.id===c.entity.slotId),evidence=evidenceOf(c.entity);
+        if(evidence?.kind==='preparation-completion'){
+          const row=context.workspace.domains.preparation?.events.find(e=>e.id===evidence.versionId),head=row&&context.workspace.domains.preparation.events.filter(e=>e.rootId===row.rootId).at(-1);
+          check(row&&head.id===row.id&&global.PreparationOperations.isEffectiveCompletion(row,context.workspace),'/entity/evidence','Choose a current, verified preparation completion whose prerequisites and payment evidence still hold.');
+          if(slot.link?.preparation)check(row.binding.purposeId===slot.link.preparation.purposeId,'/entity/evidence','This completion belongs to a different preparation action.');
+        }
+        if(slot.link?.preparation&&evidence)check(evidence.kind==='preparation-completion','/entity/evidence','Link the exact preparation completion. Payments remain linked through that action.');
         if(evidence){const resolved=resolveEvidence(evidence,context.workspace);check(resolved.ok,'/entity/evidence',resolved.error||'This record could not be found.');summary.evidence=resolved;const shared=supportsOf(domain,evidence,c.entity.dayRootId+'|'+c.entity.slotId);summary.alsoSupports=shared;summary.notices.push('This check-off links an existing '+evidence.kind.replace('-',' ')+' record as evidence. That record is unchanged and still counts once in its own section.'+(resolved.superseded?' A newer version of it exists; the linked version stays readable.':''));if(shared.length)summary.notices.push('The same record already supports '+shared.map(s=>'"'+s.title+'" on '+s.dayRootId).join(', ')+'. One workout can fulfil several plans; its minutes and sets are never added up by the planner.');}
         else if(c.entity.status==='done'&&SPECIALIST.includes(slot.category))summary.notices.push('No actual '+slot.category+' record is linked. The check-off records that you followed the plan; the section keeps the real log.');
         else summary.notices.push('This records a planner check-off only. Workout, food, work and money records stay in their own sections.');
@@ -381,7 +395,8 @@
     'goal-progress':{domain:'goals',list:'progressVersions',root:r=>r.recordId,version:r=>r.id,date:r=>r.date,chain:'supersedes'},
     'goal-action-event':{domain:'goals',list:'completionEvents',root:r=>r.id,version:r=>r.id,date:r=>r.date,chain:'none'},
     'people-event':{domain:'people',list:'eventVersions',root:r=>r.rootId||r.id,version:r=>r.id,date:r=>r.date,chain:'last'},
-    'money-transaction':{domain:'money',list:'versions',root:r=>r.rootId||r.id,version:r=>r.id,date:r=>r.date,chain:'last'}
+    'money-transaction':{domain:'money',list:'versions',root:r=>r.rootId||r.id,version:r=>r.id,date:r=>r.date,chain:'last'},
+    'preparation-completion':{domain:'preparation',list:'events',root:r=>r.rootId,version:r=>r.id,date:r=>r.occurredOn,chain:'last'}
   };
   function resolveEvidence(reference,workspace){
     try{
@@ -413,6 +428,7 @@
       const lastEvents=new Map();for(const event of domain.events||[])if(object(event))lastEvents.set(event.dayRootId+'|'+event.slotId,event);
       for(const [key,event] of lastEvents){const evidence=evidenceOf(event);if(!evidence||event.status!=='done')continue;const resolved=resolveEvidence(evidence,payload);check(resolved.ok,'/planner/events',resolved.error);}
       for(const event of domain.events||[]){const evidence=evidenceOf(event);if(evidence)check(resolveEvidence(evidence,payload).ok,'/planner/events','A historical planner check-off references a missing record version.');}
+      for(const day of domain.days||[])for(const slot of day.value.slots){if(slot.link?.preparation){const resolved=global.PreparationOperations?.resolveOccurrence(slot.link.preparation,payload);check(resolved?.ok,'/planner/days',resolved?.error||'A historical preparation activity cannot be read.');}}
       return {ok:true};
     }catch(error){return caught(error);}
   }
