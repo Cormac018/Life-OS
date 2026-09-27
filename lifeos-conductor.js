@@ -107,7 +107,11 @@
           const prepState=s.link?.preparation?global.PreparationOperations.resolveOccurrence(s.link.preparation,workspace):null;
           const prepBlocked=!!prepState&&(!prepState.ok||!prepState.current||prepState.status!=='ready');
           if(prepBlocked)day.unresolved.push({slotId:s.id,title:s.title,reason:'Preparation changed or needs attention. Keep this saved commitment and review its exact action before doing it.'});
-          const fresh=!headIds.has(s.id)&&s.origin!=='baseline',past=isToday&&Date.parse(s.start.at)<=nowMs&&!fresh,pinned=s.origin==='baseline'||s.fixed||!!state||prepBlocked;
+          const athleticState=s.link?.athletics?global.AthleticsOperations?.resolvePrescription(s.link.athletics,workspace,date):null;
+          const athleticBlocked=!!s.link?.athletics&&(!athleticState?.ok||!athleticState.current);
+          const athleticStarted=!!s.link?.athletics&&(domains.athletics?.starts||[]).some(x=>x.binding.occurrenceId===s.link.athletics.occurrenceId);
+          if(athleticBlocked)day.unresolved.push({slotId:s.id,title:s.title,reason:'Equipment or reported restrictions changed. Keep this exact session visible and review a new prescription before starting.'});
+          const fresh=!headIds.has(s.id)&&s.origin!=='baseline',past=isToday&&Date.parse(s.start.at)<=nowMs&&!fresh,pinned=s.origin==='baseline'||s.fixed||!!state||prepBlocked||athleticBlocked||athleticStarted;
           if(fresh&&s.fixed&&isToday&&Date.parse(s.start.at)<nowMs){day.unscheduled.push({id:s.id,title:s.title,reason:'Its fixed time has already passed. No earlier activity is invented.',alternatives:['Review this occurrence manually','Keep the next occurrence']});continue;}
           if(bufferOf.has(s.id))continue;
           if(pinned||past){occupy(occupied,Math.max(0,a),Math.min(dayMinutes,b));if(past&&s.origin!=='baseline'&&!state)day.unresolved.push({slotId:s.id,title:s.title,time:s.start.time,reason:'Planned at '+s.start.time+' with no check-off yet. Mark it done, skipped, or link a record.'});if(s.origin!=='baseline')day.changes.push({kind:'keep',slotId:s.id,title:s.title,reason:state?'Already '+(state==='skipped'?'skipped':'checked off')+'.':s.fixed?'Pinned timing.':'Already started or passed.'});}
@@ -222,6 +226,7 @@
     const n=v=>v===undefined?null:v;
     const parts={profile:headIds(planner.profiles),routines:headIds(planner.routines),days:headIds(planner.days),events:(planner.events||[]).filter(object).map(e=>e.id),
       training:{history:(d.training?.history||[]).filter(object).map(s=>[s.id,n(s.date)]),schedule:object(d.training?.schedule)?Object.entries(d.training.schedule).sort():[],active:n(d.training?.state?.active?.id),routines:(d.training?.routines||[]).filter(object).map(r=>[r.id,n(r.name)])},
+      athletics:{equipment:headIds(d.athletics?.equipment),restrictions:(d.athletics?.restrictions||[]).map(r=>r.id),prescriptions:(d.athletics?.prescriptions||[]).map(r=>r.id),starts:(d.athletics?.starts||[]).map(r=>r.id)},
       food:{plans:(d.food?.plans||[]).filter(object).map(p=>[p.id,n(p.date),n(p.time),n(p.mealId)]),logs:(d.food?.revisions||[]).filter(object).map(r=>[r.id,n(r.planId)]),recipes:(d.food?.recipes||[]).filter(object).map(r=>[r.id,n(r.name)])},
       goals:{actions:(d.goals?.actions||[]).filter(object).map(a=>[a.id,n(a.date),n(a.minutes),n(a.title)]),events:(d.goals?.completionEvents||[]).filter(object).map(e=>[e.id,n(e.actionId),n(e.type)])},
       people:{people:(d.people?.people||[]).filter(object).map(p=>[p.id,n(p.name),n(p.birthday),n(p.leapDay),!!p.archived]),gifts:(d.people?.gifts||[]).filter(object).map(g=>[g.id,n(g.personId),n(g.status),n(g.date)]),plans:(d.people?.plans||[]).filter(object).map(p=>[p.id,n(p.personId),n(p.date),n(p.status),n(p.title)])},

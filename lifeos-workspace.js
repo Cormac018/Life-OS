@@ -1,8 +1,8 @@
 /* Shared workspace validation. No DOM, storage or network access. */
 (function(global){
   'use strict';
-  const FORMAT='lifeos-state/1', READER_VERSION=80;
-  const DOMAINS=Object.freeze(['training','sleep','food','work','goals','money','recurring','reference','moneySetup','people','life','capture','captureReceipts','purchases','planner','preparation']);
+  const FORMAT='lifeos-state/1', READER_VERSION=81;
+  const DOMAINS=Object.freeze(['training','sleep','food','work','goals','money','recurring','reference','moneySetup','people','life','capture','captureReceipts','purchases','planner','preparation','athletics']);
   const DOMAIN_FIELDS={
     training:['version','routines','schedule','history','state'],sleep:['version','revisions','goal'],
     food:['version','foods','recipes','plans','revisions','movements','purchases','yields','targets','targetDays','receiptKeys','directLogOperations'],
@@ -12,7 +12,7 @@
     reference:['schema','reference'],moneySetup:['schema','allowances'],people:['schema','people','eventVersions','gifts','plans'],
     life:['schema','ambitions','versions','notes','connections','connectionVersions','goalLinks','actionLinks'],
     capture:['version','current','batches'],captureReceipts:['version','consumed'],purchases:['schema','products','versions','operations'],
-    planner:['schema','profiles','routines','days','events','operations'],preparation:['schema','chains','events','operations']
+    planner:['schema','profiles','routines','days','events','operations'],preparation:['schema','chains','events','operations'],athletics:['schema','equipment','restrictions','prescriptions','starts','operations']
   };
   let validators=null;
   const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
@@ -21,10 +21,11 @@
   function registerValidators(input){if(validators)fail('Workspace validators are already registered.');if(!object(input)||DOMAINS.some(name=>typeof input[name]!=='function'))fail('All workspace validators must be provided.');validators=Object.freeze({...input});}
   function normalize(payload){
     if(!object(payload)||payload.format!==FORMAT||!object(payload.domains))return payload;
-    const reader=payload.minimumReaderVersion,knownOlder=reader===undefined||(Number.isSafeInteger(reader)&&reader>=1&&reader<=70);
+    const reader=payload.minimumReaderVersion,knownOlder=reader===undefined||(Number.isSafeInteger(reader)&&reader>=1&&(reader<=70||reader===80));
     if(!knownOlder)return payload;
     const domains={...payload.domains};
-    if(!Object.prototype.hasOwnProperty.call(domains,'preparation'))domains.preparation=global.PreparationOperations.empty();
+    if(reader!==80&&!Object.prototype.hasOwnProperty.call(domains,'preparation'))domains.preparation=global.PreparationOperations.empty();
+    if(!Object.prototype.hasOwnProperty.call(domains,'athletics'))domains.athletics=global.AthleticsOperations.empty();
     const beforePurchases=reader===undefined||reader<=62,beforePlanner=reader===undefined||reader<=65;
     if(beforePurchases&&!Object.prototype.hasOwnProperty.call(domains,'purchases'))domains.purchases=global.PurchaseOperations.empty();
     if(beforePlanner&&!Object.prototype.hasOwnProperty.call(domains,'planner'))domains.planner=global.PlannerOperations.empty();
@@ -33,7 +34,8 @@
     const drafts=payload.drafts===undefined?{}:payload.drafts;
     // v70 keeps unfinished planner work in the envelope; earlier payloads simply have none.
     const withPlanner=object(drafts)&&!Object.prototype.hasOwnProperty.call(drafts,'planner')?{...(beforePurchases?{receipt:null}:{}),...drafts,planner:null}:beforePurchases&&object(drafts)?{receipt:null,...drafts}:null;
-    const normalDrafts=withPlanner||drafts;
+    const rawDrafts=withPlanner||drafts;
+    const normalDrafts=object(rawDrafts)&&!Object.prototype.hasOwnProperty.call(rawDrafts,'athletics')?{...rawDrafts,athletics:null}:rawDrafts;
     return {...payload,domains,...(object(normalDrafts)?{drafts:Object.prototype.hasOwnProperty.call(normalDrafts,'preparation')?normalDrafts:{...normalDrafts,preparation:null}}:{})};
   }
   function validateReceiptDraft(draft){
@@ -132,8 +134,9 @@
     for(const name of DOMAINS){if(!object(payload.domains[name]))fail('Missing workspace section: '+name);keys(payload.domains[name],DOMAIN_FIELDS[name],name);const result=validators[name](payload.domains[name]);if(!result||!result.ok)fail('Could not validate '+name+': '+(result?.error||'invalid records'));}
     keys(payload.domains.training.state,['routineId','active','currentExercise','timer','chartExercise','chartMetric','chartRange','chartSessionId'],'training state');
     validateLinks(payload);
-    const drafts=payload.drafts===undefined?{}:payload.drafts;keys(drafts,['capture','ambitions','receipt','planner','preparation'],'drafts');
+    const drafts=payload.drafts===undefined?{}:payload.drafts;keys(drafts,['capture','ambitions','receipt','planner','preparation','athletics'],'drafts');
     validateReceiptDraft(drafts.receipt);validatePlannerDraft(drafts.planner);
+    const athleticDraft=global.AthleticsOperations.validateDraft(drafts.athletics??null);if(!athleticDraft.ok)fail(athleticDraft.error||'The athletic draft is invalid.');
     const prepDraft=global.PreparationOperations.validateDraft(drafts.preparation??null);if(!prepDraft.ok)fail(prepDraft.error||'The preparation draft is invalid.');
     const capture=drafts.capture===undefined?{}:drafts.capture;keys(capture,['draft','date','source','fileName'],'capture draft');
     if(capture.draft!==undefined&&(typeof capture.draft!=='string'||capture.draft.length>12000))fail('The saved capture draft is invalid.');
@@ -221,6 +224,7 @@ function validateLinks(payload) {
   for (const row of savedProposals) { const receipt = receipts.get(row.operationId); if (!receipt || receipt.id !== row.recordId || receipt.route !== routes[row.target]) fail('a saved Capture update is missing its matching operation receipt.'); }
   const purchaseLinks=global.PurchaseOperations.validateLinks(payload);if(!purchaseLinks.ok)fail(purchaseLinks.error||'Purchase links are invalid.');
   const plannerLinks=global.PlannerOperations.validateLinks(payload);if(!plannerLinks.ok)fail(plannerLinks.error||'Planner evidence links are invalid.');
+  const athleticsLinks=global.AthleticsOperations.validateLinks(payload);if(!athleticsLinks.ok)fail(athleticsLinks.error||'Athletic links are invalid.');
   const prepLinks=global.PreparationOperations.validateLinks(payload);if(!prepLinks.ok)fail(prepLinks.error||'Preparation links are invalid.');
   return { ok: true };
 }
