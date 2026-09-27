@@ -3732,6 +3732,7 @@ function renderCaptureMap(summary,selected='all') {
       const preparationButton=event.target.closest('[data-preparation-action]');if(preparationButton){if(!preparationButton.disabled)PreparationUI.handleClick(preparationButton);return;}
       const plannerButton=event.target.closest('[data-planner-action]');if(plannerButton){if(!plannerButton.disabled)PlannerUI.handleClick(plannerButton);return;}
       const button=event.target.closest('[data-action]');if(!button||button.disabled)return;const a=button.dataset.action;const d=button.dataset;
+      if(a.startsWith('coaching-')){CoachingUI.handleAction(a,d);return;}
       if(a.startsWith('conditioning-')){ConditioningUI.handleAction(a,d);return;}
       if(a.startsWith('athlete-')){AthleticsUI.handleAction(a,d);return;}
       if(a==='navigate'){navigate(d.route);return;}
@@ -4058,13 +4059,15 @@ document.addEventListener('submit',event=>{
     const AthleticsDemo={snapshot:()=>clone(athleticsRecords),restore:(data,options={})=>{const checked=AthleticsOperations.validateDomain(data);if(!checked.ok)return checked;if(!options.validateOnly)athleticsRecords=clone(data);return {ok:true};}};
     let conditioningRecords=ConditioningOperations.empty();
     const ConditioningDemo={snapshot:()=>clone(conditioningRecords),restore:(data,options={})=>{const checked=ConditioningOperations.validateDomain(data);if(!checked.ok)return checked;if(!options.validateOnly)conditioningRecords=clone(data);return {ok:true};}};
+    let coachingRecords=CoachingOperations.empty();
+    const CoachingDemo={snapshot:()=>clone(coachingRecords),restore:(data,options={})=>{const checked=CoachingOperations.validateDomain(data);if(!checked.ok)return checked;if(!options.validateOnly)coachingRecords=clone(data);return {ok:true};}};
     function workspaceParts(){return {
       training:{snapshot:snapshotTraining,restore:restoreTraining},sleep:{snapshot:snapshotSleep,restore:restoreSleep},
       food:FoodDemo,work:WorkDemo,goals:GoalsDemo,money:MoneyDemo,recurring:RecurringMoneyDemo,reference:MoneyReferenceDemo,
       moneySetup:{snapshot:snapshotMoneySetup,restore:restoreMoneySetup},people:PeopleDemo,life:LifePlannerDemo,capture:CaptureDemo,
-      captureReceipts:{snapshot:()=>CaptureTargetsDemo.persistenceSnapshot(),restore:(data,options)=>CaptureTargetsDemo.restore(data,options)},purchases:PurchasesDemo,planner:PlannerDemo,preparation:PreparationDemo,athletics:AthleticsDemo,conditioning:ConditioningDemo
+      captureReceipts:{snapshot:()=>CaptureTargetsDemo.persistenceSnapshot(),restore:(data,options)=>CaptureTargetsDemo.restore(data,options)},purchases:PurchasesDemo,planner:PlannerDemo,preparation:PreparationDemo,athletics:AthleticsDemo,conditioning:ConditioningDemo,coaching:CoachingDemo
     };}
-    function captureWorkspace(){const domains={};for(const[name,part]of Object.entries(workspaceParts()))domains[name]=part.snapshot();return {format:'lifeos-state/1',minimumReaderVersion:83,domains,drafts:{capture:{draft:captureView.draft,date:captureView.date,source:captureView.source,fileName:captureView.fileName},ambitions:clone(lifeView.drafts),receipt:PurchaseUI.snapshotDraft(),planner:PlannerUI.snapshotDraft(),preparation:PreparationUI.snapshotDraft(),athletics:AthleticsUI.snapshotDraft(),conditioning:ConditioningUI.snapshotDraft()}};}
+    function captureWorkspace(){const domains={};for(const[name,part]of Object.entries(workspaceParts()))domains[name]=part.snapshot();return {format:'lifeos-state/1',minimumReaderVersion:84,domains,drafts:{capture:{draft:captureView.draft,date:captureView.date,source:captureView.source,fileName:captureView.fileName},ambitions:clone(lifeView.drafts),receipt:PurchaseUI.snapshotDraft(),planner:PlannerUI.snapshotDraft(),preparation:PreparationUI.snapshotDraft(),athletics:AthleticsUI.snapshotDraft(),conditioning:ConditioningUI.snapshotDraft(),coaching:CoachingUI.snapshotDraft()}};}
 function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(payload);}
 
     function restoreWorkspace(payload){
@@ -4078,7 +4081,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
         if(capture.draft!==undefined&&(typeof capture.draft!=='string'||capture.draft.length>12000))throw new Error('The saved capture draft is invalid.');
         const ambitionDrafts=drafts.ambitions||{};if(!ambitionDrafts||Array.isArray(ambitionDrafts)||typeof ambitionDrafts!=='object'||Object.entries(ambitionDrafts).some(([k,v])=>k.length>250||typeof v!=='string'||v.length>8000))throw new Error('The saved ambition notes are invalid.');
         captureView.draft=capture.draft||'';captureView.date=todayAdapterDate(capture.date)||TODAY;captureView.source=['typed','file','transcript','plaud','paste','manual'].includes(capture.source)?capture.source:'typed';captureView.fileName=typeof capture.fileName==='string'?capture.fileName.slice(0,250):'';
-        lifeView.drafts=clone(ambitionDrafts);lifeView.id=null;goalView.id=null;PurchaseUI.restoreDraft(drafts.receipt??null);PlannerUI.restoreDraft(drafts.planner??null);PreparationUI.restoreDraft(drafts.preparation??null);AthleticsUI.restoreDraft(drafts.athletics??null);ConditioningUI.restoreDraft(drafts.conditioning??null);
+        lifeView.drafts=clone(ambitionDrafts);lifeView.id=null;goalView.id=null;PurchaseUI.restoreDraft(drafts.receipt??null);PlannerUI.restoreDraft(drafts.planner??null);PreparationUI.restoreDraft(drafts.preparation??null);AthleticsUI.restoreDraft(drafts.athletics??null);ConditioningUI.restoreDraft(drafts.conditioning??null);CoachingUI.restoreDraft(drafts.coaching??null);
       }catch(error){for(const[name,part]of Object.entries(parts))part.restore(before[name]);throw error;}finally{restoringWorkspace=false;}
     }
     LifeOSWorkspace.registerValidators(Object.fromEntries(Object.entries(workspaceParts()).map(([name,part])=>[name,data=>part.restore(data,{validateOnly:true})])));
@@ -4170,6 +4173,33 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
       return {ok:true,...result};
     }
     ConditioningUI.configure({plan:()=>{closeDialog();navigate('planner');PlannerUI.planWeek();},context:plannerContext,commit:commitConditioning,flush:()=>LifeOSRuntime.flush(),dialog:showDialog,closeDialog,render,toast,navigate,changed:queueWorkspaceSave,place:binding=>{closeDialog();navigate('planner');PlannerUI.placeConditioning(binding);}});
+    function coachingContext(){const workspace=captureWorkspace(),now=new Date().toISOString(),zone=CoachingOperations.currentProfile(workspace)?.value.timeZone||PlannerOperations.currentProfile(workspace.domains.planner)?.value.timeZone||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';return {workspace,revision:LifeOSRuntime.revision,now,today:CoachingOperations.localDate(now,zone)};}
+    function prepareCoaching(command){return CoachingOperations.prepare(command,coachingContext());}
+    async function commitCoaching(command,reviewDigest,options={}){
+      const input=clone(command);let guarded=null;
+      const beforeCommit=()=>{
+        if(options.beforeCommit)options.beforeCommit();
+        if(guarded){const fresh=CoachingOperations.checkNow(guarded,new Date().toISOString());if(!fresh.ok)throw new Error(fresh.error||'The training week needs a fresh review.');}
+      };
+      const result=await LifeOSRuntime.transact({expectedRevision:input.expected.workspaceRevision,beforeCommit,prepare:(workspace,{revision})=>{
+        const now=new Date().toISOString(),zone=CoachingOperations.currentProfile(workspace)?.value.timeZone||input.entity?.value?.timeZone||PlannerOperations.currentProfile(workspace.domains.planner)?.value.timeZone||'UTC';
+        const checked=CoachingOperations.prepare(input,{workspace,revision,today:CoachingOperations.localDate(now,zone),now});
+        if(!checked.ok)throw new Error(checked.error||'Review your training week again.');
+        if(checked.status!=='already-committed'&&checked.reviewDigest!==reviewDigest)throw new Error('Your training, recovery or schedule changed after review. Propose the week again.');
+        guarded=checked.status==='already-committed'?null:checked;
+        const built=CoachingOperations.buildCandidate(checked,workspace);
+        if(!built.ok)throw new Error(built.error||'The training week could not be prepared.');
+        if(built.workspace&&!built.unchanged&&options.clearDraft===true)built.workspace.drafts.coaching=null;
+        return built.unchanged?{unchanged:true,result:built.receipt}:{workspace:built.workspace,result:built.receipt};
+      }});
+      return {ok:true,...result};
+    }
+    CoachingUI.configure({context:coachingContext,commit:commitCoaching,flush:()=>LifeOSRuntime.flush(),dialog:showDialog,closeDialog,render,toast,navigate,changed:queueWorkspaceSave,openEvidence:plannerOpenEvidence,
+      beginStrength:()=>{closeDialog();navigate('athlete');AthleticsUI.handleAction('athlete-new-session');},
+      beginConditioning:()=>{closeDialog();navigate('athlete');ConditioningUI.handleAction('conditioning-choose');},
+      report:()=>{closeDialog();navigate('athlete');AthleticsUI.handleAction('athlete-restriction');},
+      planner:()=>{closeDialog();navigate('planner');}
+    });
     function plannerDraftState(){const error=LifeOSRuntime.error;return {saving:!!LifeOSRuntime.saving,error:error?String(error.message||error):null,ready:!!LifeOSRuntime.ready};}
     // Exact evidence references for the planner: kind, stable root, exact version and the record's own date. Read-only.
     function conditioningActualDetail(row){
@@ -4249,7 +4279,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     function workspaceDialog(title,html){showDialog(title,html);$('dialog').dataset.workspaceUi='true';}
     function backupSummary(payload){
       const d=payload.domains;
-      const rows=[['Training sessions',d.training.sessions?.length||d.training.history?.length||0],['Sleep versions',d.sleep.revisions.length],['Meal log versions',d.food.revisions.length],['Work versions',d.work.versions.length],['Goals',d.goals.goals.length],['Actions',d.goals.actions.length],['Money entries and corrections',d.money.versions.length],['People',d.people.people.length],['Ambitions',d.life.ambitions.length],['Capture check-ins',d.capture.batches.length],['Connected purchases',d.purchases?.versions.length||0],['Saved day plan versions',d.planner?.days.length||0],['Planning profile versions',d.planner?.profiles.length||0],['Preparation chain versions',d.preparation?.chains.length||0],['Preparation completion versions',d.preparation?.events.length||0],['Approved athletic sessions',d.athletics?.prescriptions.length||0],['Equipment versions',d.athletics?.equipment.length||0],['Timed activity plans',d.conditioning?.prescriptions.length||0],['Activity lifecycle and actual versions',d.conditioning?.events.length||0],['Sport and skill observation versions',d.conditioning?.observations.length||0]];
+      const rows=[['Training sessions',d.training.sessions?.length||d.training.history?.length||0],['Sleep versions',d.sleep.revisions.length],['Meal log versions',d.food.revisions.length],['Work versions',d.work.versions.length],['Goals',d.goals.goals.length],['Actions',d.goals.actions.length],['Money entries and corrections',d.money.versions.length],['People',d.people.people.length],['Ambitions',d.life.ambitions.length],['Capture check-ins',d.capture.batches.length],['Connected purchases',d.purchases?.versions.length||0],['Saved day plan versions',d.planner?.days.length||0],['Planning profile versions',d.planner?.profiles.length||0],['Preparation chain versions',d.preparation?.chains.length||0],['Preparation completion versions',d.preparation?.events.length||0],['Approved athletic sessions',d.athletics?.prescriptions.length||0],['Equipment versions',d.athletics?.equipment.length||0],['Timed activity plans',d.conditioning?.prescriptions.length||0],['Activity lifecycle and actual versions',d.conditioning?.events.length||0],['Sport and skill observation versions',d.conditioning?.observations.length||0],['Coaching profile versions',d.coaching?.profiles.length||0],['Accepted training weeks',d.coaching?.weeks.length||0]];
       return '<dl class="backup-summary">'+rows.map(([label,n])=>'<div><dt>'+esc(label)+'</dt><dd>'+n+'</dd></div>').join('')+'</dl>';
     }
     function renderWorkspaceRecovery(error){
@@ -4326,7 +4356,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     for(const type of ['click','input','change','submit'])document.addEventListener(type,()=>queueMicrotask(queueWorkspaceSave));
     window.addEventListener('beforeunload',event=>{if(LifeOSRuntime.ready&&LifeOSRuntime.saving){event.preventDefault();event.returnValue='';}});
     window.addEventListener('error',()=>{if(LifeOSRuntime.ready)workspaceStatus('error','Something went wrong. Open backups before reloading.');});
-    window.LifeOSApp=Object.freeze({get version(){return 'v83';},snapshot:captureWorkspace,restore:async data=>LifeOSRuntime.restoreBackup({format:'lifeos-backup/2',workspace:data}),domains:()=>workspaceParts(),capture:CaptureDemo,captureTargets:CaptureTargetsDemo,commitCapture:commitCaptureDurably,preparePurchase,commitPurchase,preparePlanner,commitPlanner,preparePreparation,commitPreparation,prepareAthletics,commitAthletics,prepareConditioning,commitConditioning,save:()=>LifeOSRuntime.flush()});
+    window.LifeOSApp=Object.freeze({get version(){return 'v84';},snapshot:captureWorkspace,restore:async data=>LifeOSRuntime.restoreBackup({format:'lifeos-backup/2',workspace:data}),domains:()=>workspaceParts(),capture:CaptureDemo,captureTargets:CaptureTargetsDemo,commitCapture:commitCaptureDurably,preparePurchase,commitPurchase,preparePlanner,commitPlanner,preparePreparation,commitPreparation,prepareAthletics,commitAthletics,prepareConditioning,commitConditioning,prepareCoaching,commitCoaching,save:()=>LifeOSRuntime.flush()});
 
     $('addEventButton').innerHTML=icon('plus');$('privacyNote').innerHTML=icon('shield')+'<p>A little more intention.<br>A record that stays yours.</p>';
     const initialRoute=window.location.hash.slice(1);if(nav.some(n=>n.id===initialRoute))state.route=initialRoute;

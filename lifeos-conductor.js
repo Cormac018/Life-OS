@@ -43,6 +43,10 @@
       const profileRow=Ops.currentProfile(domain);check(profileRow,'/profile','Save your planning profile first.');const profile=profileRow.value,zone=profile.timeZone;
       const nowMs=Date.parse(now),nowPoint=Ops.endpointAt(nowMs,zone);check(nowPoint.ok,'/now',nowPoint.error);const today=nowPoint.endpoint.date;
       if(options.scenario!==undefined)check(SCENARIOS.includes(options.scenario),'/options/scenario','Choose a supported planning scenario.');
+      if(options.preserveExisting!==undefined)check(typeof options.preserveExisting==='boolean','/options/preserveExisting','Choose whether to retain saved commitments.');
+      const athleticsDurations=options.athleticsDurations===undefined?{}:options.athleticsDurations;
+      check(object(athleticsDurations),'/options/athleticsDurations','Supply explicit durations for exact strength approvals.');
+      for(const [id,minutes] of Object.entries(athleticsDurations))check(/^[A-Za-z0-9_-]{1,64}$/.test(id)&&Number.isInteger(minutes)&&minutes>0&&minutes<=1440&&domains.athletics?.prescriptions.some(p=>p.id===id),'/options/athleticsDurations','Each explicit duration needs an existing exact strength approval and 1 to 1440 minutes.');
       const assumptions=[],policy=policyFrom(profile,options.policy,assumptions);
       check(horizon.from>=today,'/horizon','Plans start today. Earlier days are history and are not replanned.');check(daysBetween(horizon.from,horizon.to)<policy.horizonMaxDays,'/horizon','Plan at most '+policy.horizonMaxDays+' days at a time.');
       const dayTypeOverrides=object(options.dayTypes)?options.dayTypes:{};for(const [d,t] of Object.entries(dayTypeOverrides))check(isDate(d)&&DAY_TYPES.includes(t),'/options/dayTypes','Choose supported day types.');
@@ -77,8 +81,8 @@
         let dayType=chosenType||inferredType||'normal',typeReason=null;
         const recoveryGuard=calendarDay.recovery;
         if(!chosenType&&inferredType){const kind=calendarDay.recovery?'sickness':calendarDay.rows.some(r=>r.type==='annual')?'annual leave':'a bank holiday';typeReason='Work calendar shows '+kind+' covering the full scheduled day ('+duration(calendarDay.creditMinutes)+').';}
-        const scenario=options.scenario||head?.value.scenario||'usual';
-        const generated=Ops.generateDay({id:profileRow.id,value:profile},{date,dayType,scenario,note:head?.value.note||''},head,domain);
+        const scenario=options.preserveExisting&&head?head.value.scenario:options.scenario||head?.value.scenario||'usual';
+        const generated=options.preserveExisting&&head?{ok:true,value:clone(head.value),notices:['Saved day timing and commitments are retained while adding new sessions.']} : Ops.generateDay({id:profileRow.id,value:profile},{date,dayType,scenario,note:head?.value.note||''},head,domain);
         const day={date,dayType,scenario,previousVersionId:head?.id||null,changes:[],unscheduled:[],notices:[],assumptions:[],value:null,unchanged:false,spareMinutes:null,unresolved:[],analysis:null};
         days.push(day);dayByDate.set(date,day);
         if(typeReason)day.notices.push(typeReason+' Change the day type if that is wrong.');
@@ -116,7 +120,7 @@
           if(athleticBlocked)day.unresolved.push({slotId:s.id,title:s.title,reason:'Equipment or reported restrictions changed. Keep this exact session visible and review a new prescription before starting.'});
           const typedState=s.link?.conditioning?conditioningEngine?.resolvePrescription(s.link.conditioning,workspace,date):null,typedBlocked=!!s.link?.conditioning&&(!typedState?.ok||!typedState.current),typedStarted=!!s.link?.conditioning&&conditioning.events.some(e=>e.operation==='start'&&e.value.binding.occurrenceId===s.link.conditioning.occurrenceId);
           if(typedBlocked)day.unresolved.push({slotId:s.id,title:s.title,reason:'Equipment or reported restrictions changed. Keep this exact conditioning session visible and review a new prescription before starting.'});
-          const fresh=!headIds.has(s.id)&&s.origin!=='baseline',past=isToday&&Date.parse(s.start.at)<=nowMs&&!fresh,pinned=s.origin==='baseline'||s.fixed||!!state||prepBlocked||athleticBlocked||athleticStarted||typedBlocked||typedStarted;
+          const fresh=!headIds.has(s.id)&&s.origin!=='baseline',past=isToday&&Date.parse(s.start.at)<=nowMs&&!fresh,pinned=s.origin==='baseline'||s.fixed||!!state||prepBlocked||athleticBlocked||athleticStarted||typedBlocked||typedStarted||(options.preserveExisting&&headIds.has(s.id));
           if(fresh&&s.fixed&&isToday&&Date.parse(s.start.at)<nowMs){day.unscheduled.push({id:s.id,title:s.title,reason:'Its fixed time has already passed. No earlier activity is invented.',alternatives:['Review this occurrence manually','Keep the next occurrence']});continue;}
           if(bufferOf.has(s.id))continue;
           if(pinned||past){occupy(occupied,Math.max(0,a),Math.min(dayMinutes,b));if(past&&s.origin!=='baseline'&&!state)day.unresolved.push({slotId:s.id,title:s.title,time:s.start.time,reason:'Planned at '+s.start.time+' with no check-off yet. Mark it done, skipped, or link a record.'});if(s.origin!=='baseline')day.changes.push({kind:'keep',slotId:s.id,title:s.title,reason:state?'Already '+(state==='skipped'?'skipped':'checked off')+'.':s.fixed?'Pinned timing.':'Already started or passed.'});}
@@ -153,12 +157,26 @@
           if(otherRecorded||typedAdded||value.slots.some(s=>!s.cancelled&&s.category==='training'))day.notices.push(v.title+': other training is already recorded or planned today. Recovery balance has not been assessed; review the combined load.');
           candidates.push({slot:null,id,title:v.title,category:'training',minutes:Math.ceil(durationTarget.durationMs/60000),before:policy.trainingTravelMinutes+policy.changingMinutes,after:policy.changingMinutes+policy.trainingTravelMinutes,window:null,preferred:null,current:null,alternatives:[],priority:2,existing:false,deferrable:false,link:{route:'athlete',label:'Athlete',conditioning:clone(binding)},source:v.type==='sequence'?'Explicitly approved sequence; all work and rest targets included, rounded up to whole planner minutes':'Explicitly approved '+v.activity+' activity; target duration rounded up to whole planner minutes'});typedAdded++;
         }
-        const hasTraining=value.slots.some(s=>!s.cancelled&&s.category==='training')||typedAdded>0,trainedToday=strengthRecorded;
+        let strengthAdded=0;
+        for(const prescription of (domains.athletics?.prescriptions||[]).filter(p=>p.value.date===date&&Object.prototype.hasOwnProperty.call(athleticsDurations,p.id))){
+          const v=prescription.value,binding={prescriptionId:prescription.id,occurrenceId:'athlete_'+prescription.id},id=binding.occurrenceId;
+          if(activeIds.has(id)||value.slots.some(s=>s.id===id))continue;
+          const reason=text=>day.unscheduled.push({id,title:v.title,reason:text,alternatives:['Review this exact session in Athlete']});
+          if((domains.athletics?.starts||[]).some(s=>s.binding.prescriptionId===prescription.id)){reason('This exact strength approval already started. Its occurrence is not added again.');continue;}
+          const resolved=global.AthleticsOperations?.resolvePrescription(binding,workspace,date);
+          if(!resolved?.ok||!resolved.current){reason('This approved strength session needs review: '+(resolved?.error||resolved?.issues?.join(' ')||'its source changed.'));continue;}
+          if(v.timeZone!==zone||value.timeZone!==zone){reason('The session and saved planning day need the same time zone.');continue;}
+          if(['sick','travel'].includes(dayType)||recoveryGuard){reason('Sickness or travel prevents new automatic strength placement on this day.');continue;}
+          if(isToday&&(training.state?.active||typedCurrent.session)){reason('Another session is active. Its finish time is unknown.');continue;}
+          if(otherRecorded||typedAdded||value.slots.some(s=>!s.cancelled&&s.category==='training'))day.notices.push(v.title+': other training is recorded or planned today. Recovery balance has not been assessed; review the combined load.');
+          candidates.push({slot:null,id,title:v.title,category:'training',minutes:athleticsDurations[prescription.id],before:policy.trainingTravelMinutes+policy.changingMinutes,after:policy.changingMinutes+policy.trainingTravelMinutes,window:null,preferred:null,current:null,alternatives:[],priority:2,existing:false,deferrable:false,link:{route:'athlete',label:'Athlete',athletics:clone(binding)},source:'Exact approved strength session; explicitly chosen time budget'});strengthAdded++;
+        }
+        const hasTraining=value.slots.some(s=>!s.cancelled&&s.category==='training')||typedAdded>0||strengthAdded>0,trainedToday=strengthRecorded;
         const scheduled=object(training.schedule)?training.schedule[date]:null,routine=scheduled&&(training.routines||[]).find(r=>object(r)&&r.id===scheduled);
         if(routine&&!activeIds.has('plan_training_'+date)&&!value.slots.some(s=>s.id==='plan_training_'+date)){
           if(typedRecorded)day.notices.push(routine.name+': a separate timed or distance activity is recorded today. It does not complete this scheduled strength session. Recovery balance has not been assessed; review the combined load.');
           if(trainedToday)day.notices.push('A workout is already recorded on this date; the scheduled '+routine.name+' is not added again.');
-          else if(hasTraining){const other=value.slots.find(s=>!s.cancelled&&s.category==='training')||candidates.find(c=>c.link?.conditioning);day.unscheduled.push({id:'plan_training_'+date,title:routine.name,reason:'Training is already planned today ('+other.title+'). A second session is not stacked automatically; keep recovery.',alternatives:['Keep '+other.title+' only','Move '+routine.name+' to a rest day in the Training programme']});}
+          else if(hasTraining){const other=value.slots.find(s=>!s.cancelled&&s.category==='training')||candidates.find(c=>c.link?.conditioning||c.link?.athletics);day.unscheduled.push({id:'plan_training_'+date,title:routine.name,reason:'Training is already planned today ('+other.title+'). A second session is not stacked automatically; keep recovery.',alternatives:['Keep '+other.title+' only','Move '+routine.name+' to a rest day in the Training programme']});}
           else if(['travel','sick'].includes(dayType)||recoveryGuard)day.unscheduled.push({id:'plan_training_'+date,title:routine.name,reason:dayType==='travel'?'Work-travel day: ordinary training is not scheduled. The missed session is not stacked onto another day.':'Sickness is recorded: training is not scheduled automatically. Recovery comes first.',alternatives:['Rest','Review the Training programme when you are back']});
           else if(isToday&&typedCurrent.session)day.unscheduled.push({id:'plan_training_'+date,title:routine.name,reason:'A timed activity is still active and its finish time is unknown. This scheduled strength session remains outstanding, not completed. Finish or discard the active activity, then review the timing.',alternatives:['Resume the active activity','Review this scheduled strength session after it ends']});
           else candidates.push({slot:null,id:'plan_training_'+date,title:routine.name,category:'training',minutes:policy.trainingMinutes,before:policy.trainingTravelMinutes+policy.changingMinutes,after:policy.changingMinutes+policy.trainingTravelMinutes,window:null,preferred:null,current:null,alternatives:[],priority:2,existing:false,deferrable:false,link:{route:'train',label:'Train'},source:'Training schedule'});
@@ -216,7 +234,7 @@
             else day.changes.push({kind:'keep',slotId:s.id,title:s.title,reason:'Fits as planned.'});
           }else{
             const e=endpoints(mainStart,mainEnd),slot={id:c.id,title,category:c.category,start:e.start,end:e.end,fixed:false,origin:'manual',cancelled:false,link:c.link||null};
-            if(c.link?.preparation||c.link?.conditioning)slot.anchor={date,routineRootId:null,routineVersionId:null};
+            if(c.link?.preparation||c.link?.conditioning||c.link?.athletics)slot.anchor={date,routineRootId:null,routineVersionId:null};
             if(c.deferredFrom)slot.anchor={date:c.deferredFrom,routineRootId:null,routineVersionId:null};
             value.slots.push(slot);day.changes.push({kind:'add',slotId:slot.id,title,reason:(c.source||'Proposed')+'. Placed at '+label(mainStart)+(c.preferred!==null&&c.preferred!==undefined?', the free space nearest your planned time':', the first free space')+'.'});
             if(before){const b=endpoints(start,mainStart);value.slots.push({id:c.id+'_before',title:'Travel and changing',category:'buffer',start:b.start,end:b.end,fixed:false,origin:'manual',cancelled:false,link:null});}

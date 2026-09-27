@@ -6,14 +6,15 @@
   <meta name="theme-color" content="#0c1020">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'">
   <meta name="description" content="Your private life planner and lifelong record.">
-<link rel="manifest" href="./manifest.json?v=82">
-<link rel="icon" href="./icon-192.png?v=82">
+<link rel="manifest" href="./manifest.json?v=84">
+<link rel="icon" href="./icon-192.png?v=84">
 <title>Life OS</title>
-  <link rel="stylesheet" href="./life-app.css?v=82">
-  <link rel="stylesheet" href="./lifeos-planner.css?v=82">
-<link rel="stylesheet" href="./lifeos-preparation.css?v=82">
-<link rel="stylesheet" href="./lifeos-athletics.css?v=82">
-<link rel="stylesheet" href="./lifeos-conditioning.css?v=82">
+  <link rel="stylesheet" href="./life-app.css?v=84">
+  <link rel="stylesheet" href="./lifeos-planner.css?v=84">
+<link rel="stylesheet" href="./lifeos-preparation.css?v=84">
+<link rel="stylesheet" href="./lifeos-athletics.css?v=84">
+<link rel="stylesheet" href="./lifeos-conditioning.css?v=84">
+<link rel="stylesheet" href="./lifeos-coaching.css?v=84">
 </head>
 <body>
   <div class="preview-bar live-status"><button id="workspaceStatus" type="button" data-action="workspace-settings" aria-live="polite">Opening your private workspace...</button><button id="updateButton" type="button" hidden>Update ready</button></div>
@@ -24,32 +25,35 @@
       <div class="sidebar-foot" id="privacyNote"></div>
     </aside>
     <div class="workspace">
-      <header class="topbar"><div class="topbar-label"><strong id="breadcrumb">Your day</strong><span> / Life OS</span></div><div class="topbar-actions"><button class="pill" data-action="workspace-settings" aria-label="Storage, backups and app settings"><span class="dot"></span>v83</button><button class="icon-button" data-action="add-event" aria-label="Add to your day" id="addEventButton"></button><div class="avatar" aria-label="Personal workspace">ME</div></div></header>
+      <header class="topbar"><div class="topbar-label"><strong id="breadcrumb">Your day</strong><span> / Life OS</span></div><div class="topbar-actions"><button class="pill" data-action="workspace-settings" aria-label="Storage, backups and app settings"><span class="dot"></span>v84</button><button class="icon-button" data-action="add-event" aria-label="Add to your day" id="addEventButton"></button><div class="avatar" aria-label="Personal workspace">ME</div></div></header>
       <main class="main" id="main"><h1>Your life, kept here.</h1><p>Opening the private database on this device...</p></main>
     </div>
   </div>
   <nav class="bottom-nav" id="mobileNav" aria-label="Main navigation"></nav>
   <dialog id="dialog" aria-labelledby="dialogTitle"><div class="dialog-inner" id="dialogContent"></div></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="./lifeos-storage.js?v=82" defer></script>
-<script src="./db.js?v=82" data-lifeos-client="workspace" defer></script>
-<script src="./lifeos-purchases.js?v=82" defer></script>
-<script src="./lifeos-planner.js?v=82" defer></script>
-<script src="./lifeos-work-calendar.js?v=82" defer></script>
-<script src="./lifeos-preparation.js?v=82" defer></script>
-<script src="./lifeos-athletics.js?v=82" defer></script>
-<script src="./lifeos-conditioning.js?v=82" defer></script>
-<script src="./lifeos-conductor.js?v=82" defer></script>
-<script src="./lifeos-workspace.js?v=82" defer></script>
-<script src="./lifeos-writers.js?v=82" defer></script>
-<script src="./lifeos-vault.js?v=82" defer></script>
-<script src="./lifeos-runtime.js?v=82" defer></script>
-<script src="./lifeos-purchase-ui.js?v=82" defer></script>
-<script src="./lifeos-planner-ui.js?v=82" defer></script>
-<script src="./lifeos-preparation-ui.js?v=82" defer></script>
-<script src="./lifeos-athletics-ui.js?v=82" defer></script>
-<script src="./lifeos-conditioning-ui.js?v=82" defer></script>
-<script src="./life-app.js?v=82" defer></script>
+  <script src="./lifeos-storage.js?v=84" defer></script>
+<script src="./db.js?v=84" data-lifeos-client="workspace" defer></script>
+<script src="./lifeos-purchases.js?v=84" defer></script>
+<script src="./lifeos-planner.js?v=84" defer></script>
+<script src="./lifeos-work-calendar.js?v=84" defer></script>
+<script src="./lifeos-preparation.js?v=84" defer></script>
+<script src="./lifeos-athletics.js?v=84" defer></script>
+<script src="./lifeos-conditioning.js?v=84" defer></script>
+<script src="./lifeos-conductor.js?v=84" defer></script>
+<script src="./lifeos-coaching-schedule.js?v=84" defer></script>
+<script src="./lifeos-coaching.js?v=84" defer></script>
+<script src="./lifeos-workspace.js?v=84" defer></script>
+<script src="./lifeos-writers.js?v=84" defer></script>
+<script src="./lifeos-vault.js?v=84" defer></script>
+<script src="./lifeos-runtime.js?v=84" defer></script>
+<script src="./lifeos-purchase-ui.js?v=84" defer></script>
+<script src="./lifeos-planner-ui.js?v=84" defer></script>
+<script src="./lifeos-preparation-ui.js?v=84" defer></script>
+<script src="./lifeos-athletics-ui.js?v=84" defer></script>
+<script src="./lifeos-conditioning-ui.js?v=84" defer></script>
+<script src="./lifeos-coaching-ui.js?v=84" defer></script>
+<script src="./life-app.js?v=84" defer></script>
 <noscript>Life OS needs JavaScript to open your on-device records.</noscript>
 </body>
 </html>
