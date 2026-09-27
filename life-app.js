@@ -109,7 +109,7 @@
       if(LifeOSRuntime.ready&&!restoringWorkspace)queueMicrotask(queueWorkspaceSave);
       if(chartObserver){chartObserver.disconnect();chartObserver=null;}
       renderNav();
-      $('main').innerHTML='<div class="view-enter">'+({today:renderToday,planner:()=>PlannerUI.render(),preparation:()=>PreparationUI.render(),athlete:()=>AthleticsUI.render(),train:renderTrain,plan:renderPlan,progress:renderProgress,sleep:renderSleep,food:renderFood,work:renderWork,goals:renderGoals,money:renderMoney,people:renderPeople,capture:renderCapture,life:renderLifePlanner}[state.route]())+'</div>';
+      $('main').innerHTML='<div class="view-enter">'+({today:renderToday,planner:()=>PlannerUI.render(),preparation:()=>PreparationUI.render(),athlete:()=>AthleticsUI.render()+ConditioningUI.renderPanel(),train:renderTrain,plan:renderPlan,progress:()=>renderProgress()+ConditioningUI.renderProgress(),sleep:renderSleep,food:renderFood,work:renderWork,goals:renderGoals,money:renderMoney,people:renderPeople,capture:renderCapture,life:renderLifePlanner}[state.route]())+'</div>';
       if(state.route==='progress'){renderChart();chartObserver=new ResizeObserver(()=>renderChart());chartObserver.observe($('chart'));}
       if(state.active&&state.route==='train')updateTimer();
     }
@@ -149,7 +149,13 @@ const TodayDemo = (() => {
     };
     const summary = (key, label, value, detail, data = {}) => domains.push({key, label, value, detail, route: key, ref: ref('domain', null, {domain: key}), ...data});
     const notice = (key, title, detail, reason, route, reference, rank) => attention.push({id: key, title, detail, reason, route, ref: reference, rank});
-    const allSessions = history.slice(), sessions = allSessions.filter(s => s.date === date);
+    const typedActuals=ConditioningOperations.currentActuals(conditioningRecords).actuals||[];
+    const typedDay=typedActuals.filter(s=>s.date===date);
+    const allSessions = [...history,...typedActuals.map(s=>({id:s.sessionId,date:s.date,templateId:null}))], sessions = history.filter(s => s.date === date);
+    const typedActive=isToday?ConditioningOperations.currentSession(conditioningRecords).session:null;
+    typedDay.forEach(s=>add('train',s.id,s.prescription.value.title,conditioningActualDetail(s),'recorded',null,ref('conditioning-session',s.id)));
+    let typedLive=null;
+    if(typedActive)typedLive=add('train','typed-active',typedActive.prescription.value.title,'Timed activity in progress · resume its saved session','active',null,ref('conditioning-active',typedActive.sessionId));
     const plannedRoutine = routines.find(r => r.id === schedule[date]) || null;
     const activeWorkout = isToday ? state.active : null;
     sessions.forEach(s => {
@@ -161,7 +167,7 @@ const TodayDemo = (() => {
     if (plannedRoutine && !sessions.some(s => s.templateId === plannedRoutine.id) && !(activeWorkout && activeWorkout.templateId === plannedRoutine.id)) trainingPlan = add('train', 'plan-' + date, plannedRoutine.name, count(plannedRoutine.items.length, 'exercise') + ' · time not set', 'planned', null, ref('training-plan', null, {routineId: plannedRoutine.id}));
     let trainingLive = null;
     if (activeWorkout) trainingLive = add('train', 'active-' + activeWorkout.id, activeWorkout.name, 'Workout in progress · recorded sets are kept in the session' + (activeWorkout.date !== date ? ' · started ' + activeWorkout.date + (stampTime(activeWorkout.startedAt, activeWorkout.date) ? ' ' + stampTime(activeWorkout.startedAt, activeWorkout.date) : '') : ''), 'active', activeWorkout.date === date ? stampTime(activeWorkout.startedAt, date) : null, ref('training-active', activeWorkout.id));
-    summary('train', 'Training', activeWorkout ? 'In progress' : sessions.length ? count(sessions.length, 'session') : plannedRoutine ? 'Planned' : 'No session', sessions.length ? 'Recorded on this date' + (trainingPlan ? ' · another session planned' : '') : trainingPlan ? plannedRoutine.name + ' · time not set' : 'No workout recorded on this date');
+    summary('train', 'Training', activeWorkout||typedActive ? 'In progress' : sessions.length+typedDay.length ? count(sessions.length+typedDay.length, 'session') : plannedRoutine ? 'Planned' : 'No session', sessions.length+typedDay.length ? 'Recorded on this date' + (trainingPlan ? ' · another session planned' : '') : trainingPlan ? plannedRoutine.name + ' · time not set' : 'No workout recorded on this date');
 
     const sleeps = activeSleepRecords().filter(s => s.wakeDate === date), mainSleep = sleeps.filter(s => s.kind === 'main'), naps = sleeps.filter(s => s.kind === 'nap');
     sleeps.forEach(s => add('sleep', s.id, s.kind === 'nap' ? 'Nap recorded' : 'Sleep recorded', duration(s.duration) + (s.bedTime && s.wakeTime ? ' · ' + s.bedTime + ' to ' + s.wakeTime : ' · duration only') + (s.note ? ' · ' + s.note : ''), 'recorded', s.wakeTime, ref('sleep-record', s.id, {wakeDate: s.wakeDate}), {timeMeaning: s.wakeTime ? 'wake' : null}));
@@ -239,7 +245,8 @@ const TodayDemo = (() => {
 
     let focus = null;
     const focusOn = (entry, reason, actionLabel) => ({title: entry.title, detail: entry.detail, reason, route: entry.route, ref: entry.ref, actionLabel, status: entry.status});
-    if (trainingLive) focus = focusOn(trainingLive, 'Your workout is already in progress', 'Continue workout');
+    if (typedLive) focus = focusOn(typedLive, 'Your timed activity is already in progress', 'Continue activity');
+    else if (trainingLive) focus = focusOn(trainingLive, 'Your workout is already in progress', 'Continue workout');
     else if (workLive) focus = focusOn(workLive, 'Your work clock is already running', 'Open work clock');
     else if (!isPast) {
       const nowTime = isToday ? WorkDemo.civilNow().slice(11, 16) : '00:00';
@@ -348,6 +355,8 @@ function todayPanorama(snapshot) {
       if (ref.kind === 'food-shopping') { foodView.tab = 'shop'; foodView.shopDays = ref.days === 7 ? 7 : 3; closeDialog(); navigate('food'); return true; }
       if (ref.kind === 'sleep-add') { if (date > TODAY) return todayAdapterMissing('Record sleep after you wake up.'); todayAdapterDomain('sleep', date); sleepLog(date); return true; }
       if (ref.kind === 'domain') return todayAdapterDomain(ref.domain || route, date, route || ref.domain);
+      if(ref.kind==='conditioning-session'){if(!conditioningRecords.events.some(e=>e.id===ref.id))return todayAdapterMissing();closeDialog();navigate('athlete');ConditioningUI.openActual(ref.id);return true;}
+      if(ref.kind==='conditioning-active'){if(!ConditioningOperations.currentSession(conditioningRecords).session)return todayAdapterMissing('That activity is no longer in progress.');closeDialog();navigate('train');return true;}
       if (ref.kind === 'training-session') {
         if (!history.some(s => s.id === ref.id)) return todayAdapterMissing();
         closeDialog(); navigate('progress'); historyDialog(ref.id); return true;
@@ -482,12 +491,14 @@ function todayPanorama(snapshot) {
       return {...evidence,weight,reps,message:reason+' Keep the recorded '+(consistent?'load':'opening load')+' of '+weight+' '+e.unit+' from '+dateLabel(latest.session.date)+'. Review it for today before adding load.'};
     }
     function renderTrain(){
+      if(ConditioningOperations.currentSession(conditioningRecords).session)return ConditioningUI.renderActive();
       if(state.active)return renderActive();
       if(state.lastFinished&&state.showFinished)return renderFinished();
       const r=routine();if(!r)return '<div class="page-head"><div><h1>Your training starts here.</h1><p>Create a routine, then record your first session.</p></div><button class="button primary" data-action="new-routine">Create a routine</button></div>';const first=r.items[0];const e=first&&exercise(first.exerciseId);const advice=first?suggestion(first):null;
       return '<div class="page-head"><div><div class="kicker"><span class="dot"></span><span class="eyebrow">Your training</span></div><h1>Build useful strength.</h1><p>Every session part of your wider athletic development.</p><button class="button ghost" data-action="navigate" data-route="athlete">Your athlete plan ↗</button></div><button class="button small ghost" data-action="navigate" data-route="progress">Your progress '+icon('arrow')+'</button></div><div class="two-col"><section><div class="routine-pills" aria-label="Choose routine">'+routines.map(x=>'<button data-action="routine" data-id="'+esc(x.id)+'" aria-pressed="'+(x.id===r.id)+'">'+esc(x.name)+'</button>').join('')+'</div><div class="routine-banner"><span class="eyebrow">The next chapter</span><h2>'+esc(r.name)+'</h2><p>'+esc(r.subtitle)+'</p><div class="routine-stats"><div><strong>'+r.items.length+'</strong><small>Exercises</small></div><div><strong>'+totalSets(r)+'</strong><small>Work sets</small></div><div><strong>'+Math.round(totalSets(r)*2.5)+'</strong><small>Approx. min</small></div></div><div class="row"><button class="button primary" data-action="start" data-routine="'+esc(r.id)+'">Start '+esc(r.name)+' '+icon('arrow')+'</button><button class="button ghost" data-action="edit-routine" data-id="'+esc(r.id)+'">Edit routine</button></div></div><div class="exercise-list">'+r.items.map((p,i)=>{const ex=exercise(p.exerciseId);return '<button class="exercise-row" data-action="exercise-info" data-id="'+esc(ex.id)+'"><span class="exercise-order">'+String(i+1).padStart(2,'0')+'</span><span><span class="exercise-name">'+esc(ex.name)+'</span><span class="exercise-meta" style="display:block">'+esc(ex.pattern)+' · '+esc(ex.equipment)+'</span></span><span class="exercise-reps">'+p.targetSets+' sets<span class="rep-range">'+p.minReps+' to '+p.maxReps+' reps</span><small>'+p.restSeconds+'s rest</small></span></button>';}).join('')+'</div></section><aside class="side-content routine-side"><section class="coach"><div class="row between"><span class="eyebrow">One step forward</span>'+icon('progress')+'</div><h3 class="coach-title">'+(advice&&advice.weight===e.base?'Earn the next rep.':'Progress with a reason.')+'</h3><p>'+esc(advice?advice.message:'Add an exercise to begin.')+'</p>'+(e?miniTrend(e.id)+'<p><strong>Comparable sessions only.</strong> Loads are '+esc(e.unit)+'. Different machines and variants keep separate histories.</p>':'')+'<button class="text-button" data-action="exercise-progress" data-id="'+esc(e?e.id:'db-incline')+'">Explore the exercise '+icon('arrow')+'</button></section><div class="insight"><p>Your routine is a living plan. A completed workout keeps the exercises and targets you used that day.</p></div></aside></div>';
     }
     function startWorkout(routineId){
+      if(ConditioningOperations.currentSession(conditioningRecords).session){navigate('train');toast('Finish or discard your active timed activity before starting strength training.');return;}
       if(state.active){navigate('train');return;}
       if(routineId)state.routineId=routineId;
       const r=routine();
@@ -550,9 +561,9 @@ function todayPanorama(snapshot) {
     function progressData(){const all=history.map(s=>{const e=combinedExercise(s,state.chartExercise);if(!e||!e.sets.length)return null;const best=e.sets.reduce((a,b)=>b.weight>a.weight||(b.weight===a.weight&&b.reps>a.reps)?b:a);return {session:s,exercise:e,best,value:state.chartMetric==='weight'?best.weight:e.sets.reduce((n,x)=>n+x.reps,0)};}).filter(Boolean).sort((a,b)=>a.session.date.localeCompare(b.session.date)||a.session.completedAt.localeCompare(b.session.completedAt));let record=null;all.forEach(d=>{d.isLoadPR=!['assistance','bodyweight'].includes(d.exercise.exercise.convention)&&record!==null&&d.best.weight>record;record=Math.max(record===null?0:record,d.best.weight);});return all.filter(x=>state.chartRange===0||x.session.date>=addDays(TODAY,-state.chartRange));}
     function renderProgress(){
       const e=exercise(state.chartExercise);const data=progressData();const latest=data[data.length-1];const best=data.length?Math.max(...data.map(d=>d.value)):null;
-      return '<div class="page-head"><div><div class="kicker"><span class="dot"></span><span class="eyebrow">Your training history</span></div><h1>See how far<br>you have come.</h1><p>Every point is a session. Every session is yours.</p></div></div><div class="two-col"><section><div class="progress-controls"><label>Exercise<select id="chartExercise">'+progressExercises().map(e=>'<option value="'+esc(e.id)+'" '+(e.id===state.chartExercise?'selected':'')+'>'+esc(e.name)+'</option>').join('')+'</select></label><div class="period-switch" aria-label="History range">'+[[28,'4 weeks'],[84,'12 weeks'],[0,'All']].map(([n,label])=>'<button data-action="chart-range" data-range="'+n+'" aria-pressed="'+(state.chartRange===n)+'">'+label+'</button>').join('')+'</div></div><div class="chart-heading"><div><span class="eyebrow">'+(state.chartMetric==='weight'?(e.convention==='assistance'?'Most assistance recorded':e.convention==='bodyweight'?'External load, bodyweight session':'Heaviest recorded set'):'Most reps in a session')+'</span><div class="chart-big">'+(best===null?'No data':best)+' <span>'+(state.chartMetric==='weight'?esc(e.unit):'reps')+'</span></div></div><div class="tabset"><button data-action="chart-metric" data-metric="weight" aria-pressed="'+(state.chartMetric==='weight')+'">Load</button><button data-action="chart-metric" data-metric="reps" aria-pressed="'+(state.chartMetric==='reps')+'">Reps</button></div></div><p class="chart-caption">'+esc(e.equipment)+' · '+data.length+' comparable sessions'+(latest?' · Latest '+dateLabel(latest.session.date):'')+'</p>'+(state.chartMetric==='weight'&&!['assistance','bodyweight'].includes(e.convention)?'<div class="legend"><span><i style="background:var(--mint)"></i>Session</span><span><span style="color:var(--amber)">◆</span> New load PR</span></div>':'')+'<div id="chart" class="chart-container"></div><div id="chartDetail" class="chart-detail" aria-live="polite"></div><div class="row between gap-top"><h2 style="font-size:26px">The sessions behind it</h2><span class="quiet" style="font-size:11px">Newest first</span></div><div class="history-list">'+(data.length?data.slice().reverse().map(d=>'<button class="history-row" data-action="history" data-id="'+esc(d.session.id)+'"><span><span>'+esc(d.session.name)+'</span><span class="date" style="display:block">'+dateLabel(d.session.date,{weekday:'short',day:'numeric',month:'short'})+' · '+d.exercise.sets.length+' sets</span></span><span class="load">'+setResult(d.best,d.exercise.exercise)+'</span>'+icon('chevron')+'</button>').join(''):'<p class="empty">No recorded sessions for this exercise in this range. Try another range or log it in a workout.</p>')+'</div></section><aside class="side-content"><section><div class="row between"><h3>Showing up adds up.</h3>'+icon('train')+'</div><div class="week-total"><strong>'+history.length+'</strong><span>recorded sessions</span></div>'+renderHeatmap()+'<div class="stat-line"><span>Most recent session</span><strong>'+(history.length?dateLabel(chronologicalHistory().slice(-1)[0].date):'No sessions yet')+'</strong></div><div class="stat-line"><span>Recorded working sets</span><strong>'+history.reduce((n,s)=>n+performed(s).length,0)+'</strong></div><div class="stat-line"><span>History starts</span><strong>'+(history.length?dateLabel(chronologicalHistory()[0].date):'Your first session')+'</strong></div></section><div class="insight"><p><strong>Compare the same thing.</strong><br>Load records stay separate for each exercise and measurement convention. A machine press never becomes a dumbbell PR.</p></div></aside></div>';
+      return '<div class="page-head"><div><div class="kicker"><span class="dot"></span><span class="eyebrow">Your training history</span></div><h1>See how far<br>you have come.</h1><p>Every point is a session. Every session is yours.</p></div></div><div class="two-col"><section><div class="progress-controls"><label>Exercise<select id="chartExercise">'+progressExercises().map(e=>'<option value="'+esc(e.id)+'" '+(e.id===state.chartExercise?'selected':'')+'>'+esc(e.name)+'</option>').join('')+'</select></label><div class="period-switch" aria-label="History range">'+[[28,'4 weeks'],[84,'12 weeks'],[0,'All']].map(([n,label])=>'<button data-action="chart-range" data-range="'+n+'" aria-pressed="'+(state.chartRange===n)+'">'+label+'</button>').join('')+'</div></div><div class="chart-heading"><div><span class="eyebrow">'+(state.chartMetric==='weight'?(e.convention==='assistance'?'Most assistance recorded':e.convention==='bodyweight'?'External load, bodyweight session':'Heaviest recorded set'):'Most reps in a session')+'</span><div class="chart-big">'+(best===null?'No data':best)+' <span>'+(state.chartMetric==='weight'?esc(e.unit):'reps')+'</span></div></div><div class="tabset"><button data-action="chart-metric" data-metric="weight" aria-pressed="'+(state.chartMetric==='weight')+'">Load</button><button data-action="chart-metric" data-metric="reps" aria-pressed="'+(state.chartMetric==='reps')+'">Reps</button></div></div><p class="chart-caption">'+esc(e.equipment)+' · '+data.length+' comparable sessions'+(latest?' · Latest '+dateLabel(latest.session.date):'')+'</p>'+(state.chartMetric==='weight'&&!['assistance','bodyweight'].includes(e.convention)?'<div class="legend"><span><i style="background:var(--mint)"></i>Session</span><span><span style="color:var(--amber)">◆</span> New load PR</span></div>':'')+'<div id="chart" class="chart-container"></div><div id="chartDetail" class="chart-detail" aria-live="polite"></div><div class="row between gap-top"><h2 style="font-size:26px">The sessions behind it</h2><span class="quiet" style="font-size:11px">Newest first</span></div><div class="history-list">'+(data.length?data.slice().reverse().map(d=>'<button class="history-row" data-action="history" data-id="'+esc(d.session.id)+'"><span><span>'+esc(d.session.name)+'</span><span class="date" style="display:block">'+dateLabel(d.session.date,{weekday:'short',day:'numeric',month:'short'})+' · '+d.exercise.sets.length+' sets</span></span><span class="load">'+setResult(d.best,d.exercise.exercise)+'</span>'+icon('chevron')+'</button>').join(''):'<p class="empty">No recorded sessions for this exercise in this range. Try another range or log it in a workout.</p>')+'</div></section><aside class="side-content"><section><div class="row between"><h3>Showing up adds up.</h3>'+icon('train')+'</div><div class="week-total"><strong>'+history.length+'</strong><span>recorded strength sessions</span></div>'+renderHeatmap()+'<div class="stat-line"><span>Most recent session</span><strong>'+(history.length?dateLabel(chronologicalHistory().slice(-1)[0].date):'No sessions yet')+'</strong></div><div class="stat-line"><span>Recorded working sets</span><strong>'+history.reduce((n,s)=>n+performed(s).length,0)+'</strong></div><div class="stat-line"><span>History starts</span><strong>'+(history.length?dateLabel(chronologicalHistory()[0].date):'Your first session')+'</strong></div></section><div class="insight"><p><strong>Compare the same thing.</strong><br>Load records stay separate for each exercise and measurement convention. A machine press never becomes a dumbbell PR.</p></div></aside></div>';
     }
-    function renderHeatmap(){const dates=Array.from({length:56},(_,i)=>addDays(WEEK[0],i-49));return '<div class="heatmap" aria-label="Training calendar from '+dateLabel(dates[0])+' to '+dateLabel(dates[55])+'">'+dates.map(d=>{const s=history.find(x=>x.date===d);return '<button class="'+(s?'has-session ':'')+(d===TODAY?'today':'')+'" data-action="calendar-day" data-date="'+d+'" aria-label="'+dateLabel(d,{weekday:'long',day:'numeric',month:'long'})+': '+(s?'workout recorded':'no recorded workout')+'" title="'+dateLabel(d)+': '+(s?'Workout':'No workout')+'"></button>';}).join('')+'</div><div class="heatmap-labels"><span>'+dateLabel(dates[0])+'</span><span>'+dateLabel(dates[55])+'</span></div><p class="quiet gap-sm" style="font-size:11px">Each column is a week, Monday to Sunday.</p>';}
+    function renderHeatmap(){const dates=Array.from({length:56},(_,i)=>addDays(WEEK[0],i-49));return '<div class="heatmap" aria-label="Strength training calendar from '+dateLabel(dates[0])+' to '+dateLabel(dates[55])+'">'+dates.map(d=>{const s=history.find(x=>x.date===d);return '<button class="'+(s?'has-session ':'')+(d===TODAY?'today':'')+'" data-action="calendar-day" data-date="'+d+'" aria-label="'+dateLabel(d,{weekday:'long',day:'numeric',month:'long'})+': '+(s?'workout recorded':'no recorded workout')+'" title="'+dateLabel(d)+': '+(s?'Workout':'No workout')+'"></button>';}).join('')+'</div><div class="heatmap-labels"><span>'+dateLabel(dates[0])+'</span><span>'+dateLabel(dates[55])+'</span></div><p class="quiet gap-sm" style="font-size:11px">Each column is a week, Monday to Sunday.</p>';}
     function renderChart(){
       if(!$('chart'))return;const data=progressData();const e=exercise(state.chartExercise);const width=Math.max(270,Math.floor($('chart').getBoundingClientRect().width));const height=255;const left=39,right=18,top=23,bottom=43;
       if(!data.length){$('chart').innerHTML='<p class="empty">Your first session will start this line.</p>';$('chartDetail').innerHTML='<span class="muted">No recorded sessions to inspect.</span>';return;}
@@ -3718,6 +3729,7 @@ function renderCaptureMap(summary,selected='all') {
       const preparationButton=event.target.closest('[data-preparation-action]');if(preparationButton){if(!preparationButton.disabled)PreparationUI.handleClick(preparationButton);return;}
       const plannerButton=event.target.closest('[data-planner-action]');if(plannerButton){if(!plannerButton.disabled)PlannerUI.handleClick(plannerButton);return;}
       const button=event.target.closest('[data-action]');if(!button||button.disabled)return;const a=button.dataset.action;const d=button.dataset;
+      if(a.startsWith('conditioning-')){ConditioningUI.handleAction(a,d);return;}
       if(a.startsWith('athlete-')){AthleticsUI.handleAction(a,d);return;}
       if(a==='navigate'){navigate(d.route);return;}
       if(a==='planner-open'){PlannerUI.openDate(d.date);navigate('planner');return;}
@@ -4041,13 +4053,15 @@ document.addEventListener('submit',event=>{
     const PreparationDemo={snapshot:()=>clone(preparationRecords),restore:(data,options={})=>{const checked=PreparationOperations.validateDomain(data);if(!checked.ok)return checked;if(!options.validateOnly)preparationRecords=clone(data);return {ok:true};}};
     let athleticsRecords=AthleticsOperations.empty();
     const AthleticsDemo={snapshot:()=>clone(athleticsRecords),restore:(data,options={})=>{const checked=AthleticsOperations.validateDomain(data);if(!checked.ok)return checked;if(!options.validateOnly)athleticsRecords=clone(data);return {ok:true};}};
+    let conditioningRecords=ConditioningOperations.empty();
+    const ConditioningDemo={snapshot:()=>clone(conditioningRecords),restore:(data,options={})=>{const checked=ConditioningOperations.validateDomain(data);if(!checked.ok)return checked;if(!options.validateOnly)conditioningRecords=clone(data);return {ok:true};}};
     function workspaceParts(){return {
       training:{snapshot:snapshotTraining,restore:restoreTraining},sleep:{snapshot:snapshotSleep,restore:restoreSleep},
       food:FoodDemo,work:WorkDemo,goals:GoalsDemo,money:MoneyDemo,recurring:RecurringMoneyDemo,reference:MoneyReferenceDemo,
       moneySetup:{snapshot:snapshotMoneySetup,restore:restoreMoneySetup},people:PeopleDemo,life:LifePlannerDemo,capture:CaptureDemo,
-      captureReceipts:{snapshot:()=>CaptureTargetsDemo.persistenceSnapshot(),restore:(data,options)=>CaptureTargetsDemo.restore(data,options)},purchases:PurchasesDemo,planner:PlannerDemo,preparation:PreparationDemo,athletics:AthleticsDemo
+      captureReceipts:{snapshot:()=>CaptureTargetsDemo.persistenceSnapshot(),restore:(data,options)=>CaptureTargetsDemo.restore(data,options)},purchases:PurchasesDemo,planner:PlannerDemo,preparation:PreparationDemo,athletics:AthleticsDemo,conditioning:ConditioningDemo
     };}
-    function captureWorkspace(){const domains={};for(const[name,part]of Object.entries(workspaceParts()))domains[name]=part.snapshot();return {format:'lifeos-state/1',minimumReaderVersion:81,domains,drafts:{capture:{draft:captureView.draft,date:captureView.date,source:captureView.source,fileName:captureView.fileName},ambitions:clone(lifeView.drafts),receipt:PurchaseUI.snapshotDraft(),planner:PlannerUI.snapshotDraft(),preparation:PreparationUI.snapshotDraft(),athletics:AthleticsUI.snapshotDraft()}};}
+    function captureWorkspace(){const domains={};for(const[name,part]of Object.entries(workspaceParts()))domains[name]=part.snapshot();return {format:'lifeos-state/1',minimumReaderVersion:82,domains,drafts:{capture:{draft:captureView.draft,date:captureView.date,source:captureView.source,fileName:captureView.fileName},ambitions:clone(lifeView.drafts),receipt:PurchaseUI.snapshotDraft(),planner:PlannerUI.snapshotDraft(),preparation:PreparationUI.snapshotDraft(),athletics:AthleticsUI.snapshotDraft(),conditioning:ConditioningUI.snapshotDraft()}};}
 function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(payload);}
 
     function restoreWorkspace(payload){
@@ -4061,7 +4075,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
         if(capture.draft!==undefined&&(typeof capture.draft!=='string'||capture.draft.length>12000))throw new Error('The saved capture draft is invalid.');
         const ambitionDrafts=drafts.ambitions||{};if(!ambitionDrafts||Array.isArray(ambitionDrafts)||typeof ambitionDrafts!=='object'||Object.entries(ambitionDrafts).some(([k,v])=>k.length>250||typeof v!=='string'||v.length>8000))throw new Error('The saved ambition notes are invalid.');
         captureView.draft=capture.draft||'';captureView.date=todayAdapterDate(capture.date)||TODAY;captureView.source=['typed','file','transcript','plaud','paste','manual'].includes(capture.source)?capture.source:'typed';captureView.fileName=typeof capture.fileName==='string'?capture.fileName.slice(0,250):'';
-        lifeView.drafts=clone(ambitionDrafts);lifeView.id=null;goalView.id=null;PurchaseUI.restoreDraft(drafts.receipt??null);PlannerUI.restoreDraft(drafts.planner??null);PreparationUI.restoreDraft(drafts.preparation??null);AthleticsUI.restoreDraft(drafts.athletics??null);
+        lifeView.drafts=clone(ambitionDrafts);lifeView.id=null;goalView.id=null;PurchaseUI.restoreDraft(drafts.receipt??null);PlannerUI.restoreDraft(drafts.planner??null);PreparationUI.restoreDraft(drafts.preparation??null);AthleticsUI.restoreDraft(drafts.athletics??null);ConditioningUI.restoreDraft(drafts.conditioning??null);
       }catch(error){for(const[name,part]of Object.entries(parts))part.restore(before[name]);throw error;}finally{restoringWorkspace=false;}
     }
     LifeOSWorkspace.registerValidators(Object.fromEntries(Object.entries(workspaceParts()).map(([name,part])=>[name,data=>part.restore(data,{validateOnly:true})])));
@@ -4131,11 +4145,40 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
       return {ok:true,...result};
     }
     AthleticsUI.configure({context:plannerContext,commit:commitAthletics,flush:()=>LifeOSRuntime.flush(),dialog:showDialog,closeDialog,render,toast,navigate,changed:queueWorkspaceSave,place:binding=>{closeDialog();navigate('planner');PlannerUI.placeAthletics(binding);}});
+    function prepareConditioning(command){return ConditioningOperations.prepare(command,plannerContext());}
+    async function commitConditioning(command,reviewDigest,options={}){
+      const input=clone(command);let startDays=[];
+      const checkStartDay=()=>{const now=new Date().toISOString();if(startDays.some(day=>PreparationOperations.localDate(now,day.timeZone).date!==day.date))throw new Error('The activity date has changed in its training, Work or planning calendar. Review your session again.');};
+      const result=await LifeOSRuntime.transact({expectedRevision:input.expected.workspaceRevision,beforeCommit:checkStartDay,prepare:(workspace,{revision})=>{
+        const checked=ConditioningOperations.prepare(input,{workspace,revision,today:TODAY});
+        if(!checked.ok)throw new Error(checked.error||'Review the activity details again.');
+        if(checked.status!=='already-committed'&&checked.reviewDigest!==reviewDigest)throw new Error('The activity or its context changed. Review it again.');
+        if(input.operation==='start'&&checked.status!=='already-committed'){
+          const p=ConditioningOperations.resolvePrescription(input.entity.binding,workspace);
+          if(!p.ok)throw new Error(p.error||'The exact activity is missing.');
+          const zones=[p.prescription.value.timeZone,LifeOSWorkCalendar.timeZone,workspace.domains.planner.profiles.at(-1)?.value.timeZone].filter(Boolean);
+          startDays=[...new Set(zones)].map(timeZone=>({timeZone,date:PreparationOperations.localDate(input.recordedAt,timeZone).date}));checkStartDay();
+        }
+        const built=ConditioningOperations.buildCandidate(checked,workspace);
+        if(!built.ok)throw new Error(built.error||'The activity could not be saved.');
+        if(built.workspace&&!built.unchanged&&options.clearDraft===true)built.workspace.drafts.conditioning=null;
+        return built.unchanged?{unchanged:true,result:built.receipt}:{workspace:built.workspace,result:built.receipt};
+      }});
+      return {ok:true,...result};
+    }
+    ConditioningUI.configure({plan:()=>{closeDialog();navigate('planner');PlannerUI.planWeek();},context:plannerContext,commit:commitConditioning,flush:()=>LifeOSRuntime.flush(),dialog:showDialog,closeDialog,render,toast,navigate,changed:queueWorkspaceSave,place:binding=>{closeDialog();navigate('planner');PlannerUI.placeConditioning(binding);}});
     function plannerDraftState(){const error=LifeOSRuntime.error;return {saving:!!LifeOSRuntime.saving,error:error?String(error.message||error):null,ready:!!LifeOSRuntime.ready};}
     // Exact evidence references for the planner: kind, stable root, exact version and the record's own date. Read-only.
+    function conditioningActualDetail(row){
+      const a=row.actual,parts=[row.outcome==='incomplete'?'Partly completed':'Recorded activity'];
+      if(a.durationMs!==null)parts.push((a.durationMs<60000?a.durationMs/1000+' sec':Number((a.durationMs/60000).toFixed(2))+' min')+' · '+a.durationSource);
+      if(a.distanceMm!==null)parts.push((a.distanceMm<1000000?a.distanceMm/1000+' m':a.distanceMm/1000000+' km')+' · '+a.distanceSource);
+      return parts.join(' · ');
+    }
     function plannerEvidenceRef(ref){
       if(!ref||typeof ref!=='object')return null;
       let row;
+      if(ref.kind==='conditioning-session'){row=(ConditioningOperations.currentActuals(conditioningRecords).actuals||[]).find(s=>s.id===ref.id);return row?{kind:'conditioning-session',rootId:row.rootId,versionId:row.versionId,date:row.date}:null;}
       if(ref.kind==='training-session'){row=history.find(s=>s.id===ref.id);return row?{kind:'training-session',rootId:row.id,versionId:row.id,date:row.date}:null;}
       if(ref.kind==='sleep-record'){row=activeSleepRecords().find(r=>r.id===ref.id);return row?{kind:'sleep-record',rootId:row.sessionId,versionId:row.id,date:row.wakeDate}:null;}
       if(ref.kind==='meal-log'){row=FoodDemo.logs.find(l=>l.id===ref.id);return row?{kind:'meal-log',rootId:row.planId,versionId:row.id,date:row.date}:null;}
@@ -4156,6 +4199,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     const plannerEvidenceRoutes={'training-session':'progress','sleep-record':'sleep','meal-log':'food','work-entry':'work','goal-progress':'goals','goal-action-event':'goals','people-event':'people','money-transaction':'money'};
     // Open the exact linked record, preferring its current version so a corrected entry still opens.
     function plannerOpenEvidence(reference){
+      if(reference?.kind==='conditioning-session'){const resolved=PlannerOperations.resolveEvidence(reference,captureWorkspace());if(!resolved.ok)return todayAdapterMissing(resolved.error);closeDialog();navigate('athlete');ConditioningUI.openActual(reference.versionId);return true;}
       if(reference?.kind==='preparation-completion'){const resolved=PlannerOperations.resolveEvidence(reference,captureWorkspace());if(!resolved.ok)return todayAdapterMissing(resolved.error);closeDialog();navigate('preparation');PreparationUI.openEvent(reference.versionId);return true;}
       if(!reference||!plannerEvidenceRoutes[reference.kind])return todayAdapterMissing('This linked record kind cannot be opened.');
       const resolved=PlannerOperations.resolveEvidence(reference,captureWorkspace());
@@ -4169,6 +4213,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
       const category=slot.category,route=slot.link?.route||null;
       if(slot.link?.preparation){closeDialog();navigate('preparation');PreparationUI.openAction(slot.link.preparation);return true;}
       if(route==='preparation'){closeDialog();navigate('preparation');return true;}
+      if(slot.link?.conditioning){ConditioningUI.openStart(slot.link.conditioning,date,slot.id);return true;}
       if(slot.link?.athletics){AthleticsUI.openStart(slot.link.athletics,date,slot.id);return true;}
       if(category==='training'){
         if(state.active){navigate('train');toast('A workout is already in progress. Continue or finish it here.');return true;}
@@ -4191,7 +4236,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     function workspaceDialog(title,html){showDialog(title,html);$('dialog').dataset.workspaceUi='true';}
     function backupSummary(payload){
       const d=payload.domains;
-      const rows=[['Training sessions',d.training.sessions?.length||d.training.history?.length||0],['Sleep versions',d.sleep.revisions.length],['Meal log versions',d.food.revisions.length],['Work versions',d.work.versions.length],['Goals',d.goals.goals.length],['Actions',d.goals.actions.length],['Money entries and corrections',d.money.versions.length],['People',d.people.people.length],['Ambitions',d.life.ambitions.length],['Capture check-ins',d.capture.batches.length],['Connected purchases',d.purchases?.versions.length||0],['Saved day plan versions',d.planner?.days.length||0],['Planning profile versions',d.planner?.profiles.length||0],['Preparation chain versions',d.preparation?.chains.length||0],['Preparation completion versions',d.preparation?.events.length||0],['Approved athletic sessions',d.athletics?.prescriptions.length||0],['Equipment versions',d.athletics?.equipment.length||0]];
+      const rows=[['Training sessions',d.training.sessions?.length||d.training.history?.length||0],['Sleep versions',d.sleep.revisions.length],['Meal log versions',d.food.revisions.length],['Work versions',d.work.versions.length],['Goals',d.goals.goals.length],['Actions',d.goals.actions.length],['Money entries and corrections',d.money.versions.length],['People',d.people.people.length],['Ambitions',d.life.ambitions.length],['Capture check-ins',d.capture.batches.length],['Connected purchases',d.purchases?.versions.length||0],['Saved day plan versions',d.planner?.days.length||0],['Planning profile versions',d.planner?.profiles.length||0],['Preparation chain versions',d.preparation?.chains.length||0],['Preparation completion versions',d.preparation?.events.length||0],['Approved athletic sessions',d.athletics?.prescriptions.length||0],['Equipment versions',d.athletics?.equipment.length||0],['Timed activity plans',d.conditioning?.prescriptions.length||0],['Activity lifecycle and actual versions',d.conditioning?.events.length||0]];
       return '<dl class="backup-summary">'+rows.map(([label,n])=>'<div><dt>'+esc(label)+'</dt><dd>'+n+'</dd></div>').join('')+'</dl>';
     }
     function renderWorkspaceRecovery(error){
@@ -4268,7 +4313,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     for(const type of ['click','input','change','submit'])document.addEventListener(type,()=>queueMicrotask(queueWorkspaceSave));
     window.addEventListener('beforeunload',event=>{if(LifeOSRuntime.ready&&LifeOSRuntime.saving){event.preventDefault();event.returnValue='';}});
     window.addEventListener('error',()=>{if(LifeOSRuntime.ready)workspaceStatus('error','Something went wrong. Open backups before reloading.');});
-    window.LifeOSApp=Object.freeze({get version(){return 'v81';},snapshot:captureWorkspace,restore:async data=>LifeOSRuntime.restoreBackup({format:'lifeos-backup/2',workspace:data}),domains:()=>workspaceParts(),capture:CaptureDemo,captureTargets:CaptureTargetsDemo,commitCapture:commitCaptureDurably,preparePurchase,commitPurchase,preparePlanner,commitPlanner,preparePreparation,commitPreparation,prepareAthletics,commitAthletics,save:()=>LifeOSRuntime.flush()});
+    window.LifeOSApp=Object.freeze({get version(){return 'v82';},snapshot:captureWorkspace,restore:async data=>LifeOSRuntime.restoreBackup({format:'lifeos-backup/2',workspace:data}),domains:()=>workspaceParts(),capture:CaptureDemo,captureTargets:CaptureTargetsDemo,commitCapture:commitCaptureDurably,preparePurchase,commitPurchase,preparePlanner,commitPlanner,preparePreparation,commitPreparation,prepareAthletics,commitAthletics,prepareConditioning,commitConditioning,save:()=>LifeOSRuntime.flush()});
 
     $('addEventButton').innerHTML=icon('plus');$('privacyNote').innerHTML=icon('shield')+'<p>A little more intention.<br>A record that stays yours.</p>';
     const initialRoute=window.location.hash.slice(1);if(nav.some(n=>n.id===initialRoute))state.route=initialRoute;
