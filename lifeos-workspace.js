@@ -1,7 +1,7 @@
 /* Shared workspace validation. No DOM, storage or network access. */
 (function(global){
   'use strict';
-  const FORMAT='lifeos-state/1', READER_VERSION=82;
+  const FORMAT='lifeos-state/1', READER_VERSION=83;
   const DOMAINS=Object.freeze(['training','sleep','food','work','goals','money','recurring','reference','moneySetup','people','life','capture','captureReceipts','purchases','planner','preparation','athletics','conditioning']);
   const DOMAIN_FIELDS={
     training:['version','routines','schedule','history','state'],sleep:['version','revisions','goal'],
@@ -12,7 +12,7 @@
     reference:['schema','reference'],moneySetup:['schema','allowances'],people:['schema','people','eventVersions','gifts','plans'],
     life:['schema','ambitions','versions','notes','connections','connectionVersions','goalLinks','actionLinks'],
     capture:['version','current','batches'],captureReceipts:['version','consumed'],purchases:['schema','products','versions','operations'],
-    planner:['schema','profiles','routines','days','events','operations'],preparation:['schema','chains','events','operations'],athletics:['schema','equipment','restrictions','prescriptions','starts','operations'],conditioning:['schema','prescriptions','events','operations']
+    planner:['schema','profiles','routines','days','events','operations'],preparation:['schema','chains','events','operations'],athletics:['schema','equipment','restrictions','prescriptions','starts','operations'],conditioning:['schema','prescriptions','events','observations','operations']
   };
   let validators=null;
   const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
@@ -21,12 +21,13 @@
   function registerValidators(input){if(validators)fail('Workspace validators are already registered.');if(!object(input)||DOMAINS.some(name=>typeof input[name]!=='function'))fail('All workspace validators must be provided.');validators=Object.freeze({...input});}
   function normalize(payload){
     if(!object(payload)||payload.format!==FORMAT||!object(payload.domains))return payload;
-    const reader=payload.minimumReaderVersion,knownOlder=reader===undefined||(Number.isSafeInteger(reader)&&reader>=1&&(reader<=70||reader===80||reader===81));
+    const reader=payload.minimumReaderVersion,knownOlder=reader===undefined||(Number.isSafeInteger(reader)&&reader>=1&&(reader<=70||reader===80||reader===81||reader===82));
     if(!knownOlder)return payload;
     const domains={...payload.domains};
-    if(reader!==80&&reader!==81&&!Object.prototype.hasOwnProperty.call(domains,'preparation'))domains.preparation=global.PreparationOperations.empty();
-    if(reader!==81&&!Object.prototype.hasOwnProperty.call(domains,'athletics'))domains.athletics=global.AthleticsOperations.empty();
-    if(!Object.prototype.hasOwnProperty.call(domains,'conditioning'))domains.conditioning=global.ConditioningOperations.empty();
+    if(reader!==80&&reader!==81&&reader!==82&&!Object.prototype.hasOwnProperty.call(domains,'preparation'))domains.preparation=global.PreparationOperations.empty();
+    if(reader!==81&&reader!==82&&!Object.prototype.hasOwnProperty.call(domains,'athletics'))domains.athletics=global.AthleticsOperations.empty();
+    if(reader!==82&&!Object.prototype.hasOwnProperty.call(domains,'conditioning'))domains.conditioning=global.ConditioningOperations.empty();
+    if(object(domains.conditioning)&&!Object.prototype.hasOwnProperty.call(domains.conditioning,'observations'))domains.conditioning={...domains.conditioning,observations:[]};
     const beforePurchases=reader===undefined||reader<=62,beforePlanner=reader===undefined||reader<=65;
     if(beforePurchases&&!Object.prototype.hasOwnProperty.call(domains,'purchases'))domains.purchases=global.PurchaseOperations.empty();
     if(beforePlanner&&!Object.prototype.hasOwnProperty.call(domains,'planner'))domains.planner=global.PlannerOperations.empty();
@@ -132,6 +133,7 @@
     if(payload.minimumReaderVersion!==undefined&&(!Number.isSafeInteger(payload.minimumReaderVersion)||payload.minimumReaderVersion<1||payload.minimumReaderVersion>READER_VERSION))fail('This workspace needs a newer Life OS version. Your records have not been replaced.');
     if(payload.minimumReaderVersion>70&&payload.minimumReaderVersion<80)fail('This workspace needs a compatible Life OS version. This reader requirement was never supported. Your records have not been replaced.');
     keys(payload.domains,DOMAINS,'workspace sections');
+    if(payload.minimumReaderVersion>=83&&!Array.isArray(payload.domains.conditioning?.observations))fail('The current workspace is missing sport and skill observation history. Nothing has been replaced.');
     if(!validators)fail('Workspace validators are not ready. No data was written.');
     for(const name of DOMAINS){if(!object(payload.domains[name]))fail('Missing workspace section: '+name);keys(payload.domains[name],DOMAIN_FIELDS[name],name);const result=validators[name](payload.domains[name]);if(!result||!result.ok)fail('Could not validate '+name+': '+(result?.error||'invalid records'));}
     keys(payload.domains.training.state,['routineId','active','currentExercise','timer','chartExercise','chartMetric','chartRange','chartSessionId'],'training state');

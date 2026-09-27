@@ -8,9 +8,9 @@
   const ROUTINE_FIELDS=['rootId','title','category','link','durationMinutes','window','fixed','recurrence','exceptions','dayTypes','alternatives','status','effectiveFrom','note'];
   const SLOT_FIELDS=['id','title','category','start','end','fixed','origin','cancelled','link'],SLOT_OPTIONAL=['anchor','window'];
   const STATUS_FIELDS=['dayRootId','slotId','status','note'],EVENT_FIELDS=['id','dayRootId','dayVersionId','slotId','status','note','recordedAt'];
-  const EVIDENCE_KINDS=['conditioning-session','training-session','sleep-record','meal-log','work-entry','goal-progress','goal-action-event','people-event','money-transaction','preparation-completion'];
+  const EVIDENCE_KINDS=['conditioning-session','conditioning-observation','training-session','sleep-record','meal-log','work-entry','goal-progress','goal-action-event','people-event','money-transaction','preparation-completion'];
   const GENERAL_EVIDENCE=['goal-action-event','people-event','money-transaction','preparation-completion'];
-  const COMPATIBLE={training:['training-session','conditioning-session'],meal:['meal-log'],sleep:['sleep-record'],work:['work-entry'],goal:['goal-progress','goal-action-event'],care:GENERAL_EVIDENCE,admin:GENERAL_EVIDENCE,rest:GENERAL_EVIDENCE,other:EVIDENCE_KINDS};
+  const COMPATIBLE={training:['training-session','conditioning-session','conditioning-observation'],meal:['meal-log'],sleep:['sleep-record'],work:['work-entry'],goal:['goal-progress','goal-action-event'],care:GENERAL_EVIDENCE,admin:GENERAL_EVIDENCE,rest:GENERAL_EVIDENCE,other:EVIDENCE_KINDS};
   const SPECIALIST=['training','meal','sleep','work'];
   const ROUTES=['train','plan','food','sleep','work','goals','money','people','life','capture','preparation','athlete'];
   const PROFILE_FIELDS=['timeZone','workDays','intendedStart','intendedEnd','usualStart','usualEnd','contractMinutes','unpaidBreakMinutes','commuteMinutesEachWay','futureCommuteMinutesEachWay','sleepStart','sleepEnd','transitionMinutes','equipment','limitations','priorities'],PROFILE_PLANNING=['trainingMinutes','trainingTravelMinutes','changingMinutes','mealMinutes','spareMinutes','windDownMinutes'];
@@ -406,7 +406,6 @@
     }catch(error){return caught(error);}
   }
   const EVIDENCE={
-    'conditioning-session':{domain:'conditioning',list:'events',root:r=>r.sessionId,version:r=>r.id,date:r=>r.date,chain:'last',accept:r=>['finish','correct'].includes(r.operation)&&object(r.actual)},
     'training-session':{domain:'training',list:'history',root:r=>r.id,version:r=>r.id,date:r=>r.date,chain:'none'},
     'sleep-record':{domain:'sleep',list:'revisions',root:r=>r.sessionId,version:r=>r.id,date:r=>r.wakeDate,chain:'supersedes'},
     'meal-log':{domain:'food',list:'revisions',root:r=>r.planId,version:r=>r.id,date:r=>r.date,chain:'supersedes'},
@@ -419,7 +418,12 @@
   };
   function resolveEvidence(reference,workspace){
     try{
-      evidenceRef(reference,'/evidence');const spec=EVIDENCE[reference.kind];check(object(workspace)&&object(workspace.domains)&&object(workspace.domains[spec.domain])&&Array.isArray(workspace.domains[spec.domain][spec.list]),'/evidence','The '+spec.domain+' records are unavailable.');
+      evidenceRef(reference,'/evidence');
+      if(reference.kind==='conditioning-session'||reference.kind==='conditioning-observation'){
+        const resolved=global.ConditioningOperations?.resolveActual(reference,workspace);check(resolved?.ok,'/evidence',resolved?.error||'This conditioning record could not be found.');
+        return {ok:true,reference:clone(reference),current:{versionId:resolved.current.versionId,date:resolved.current.date},superseded:resolved.current.versionId!==reference.versionId};
+      }
+      const spec=EVIDENCE[reference.kind];check(object(workspace)&&object(workspace.domains)&&object(workspace.domains[spec.domain])&&Array.isArray(workspace.domains[spec.domain][spec.list]),'/evidence','The '+spec.domain+' records are unavailable.');
       const rows=workspace.domains[spec.domain][spec.list].filter(r=>object(r)&&(!spec.accept||spec.accept(r)));
       const row=rows.find(r=>spec.version(r)===reference.versionId);check(row,'/evidence/versionId','This '+reference.kind.replace('-',' ')+' record could not be found.');
       const rootId=spec.root(row);check(rootId===reference.rootId,'/evidence/rootId','This record belongs to a different root identity.');check(spec.date(row)===reference.date,'/evidence/date','The linked version is dated differently.');
@@ -459,9 +463,8 @@
     return resolved;
   }
   function conditioningEvidence(slot,evidence,workspace,path){
-    const event=evidence.kind==='conditioning-session'&&workspace.domains.conditioning?.events.find(e=>e.id===evidence.versionId&&['finish','correct'].includes(e.operation)&&e.actual);
-    const start=event&&workspace.domains.conditioning.events.find(e=>e.sessionId===event.sessionId&&e.operation==='start');
-    check(start?.value?.binding?.prescriptionId===slot.link.conditioning.prescriptionId,path,'Link the actual activity performed from this exact approved conditioning session.');
+    const resolved=evidence.kind==='conditioning-session'&&global.ConditioningOperations?.resolveActual(evidence,workspace);
+    check(resolved?.ok&&resolved.record.binding?.prescriptionId===slot.link.conditioning.prescriptionId,path,'Link the actual activity performed from this exact approved conditioning session.');
   }
   function validateLinks(payload){
     try{

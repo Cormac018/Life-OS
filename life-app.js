@@ -151,9 +151,11 @@ const TodayDemo = (() => {
     const notice = (key, title, detail, reason, route, reference, rank) => attention.push({id: key, title, detail, reason, route, ref: reference, rank});
     const typedActuals=ConditioningOperations.currentActuals(conditioningRecords).actuals||[];
     const typedDay=typedActuals.filter(s=>s.date===date);
+    const observedDay=(ConditioningOperations.currentObservations(conditioningRecords).observations||[]).filter(s=>s.date===date);
     const allSessions = [...history,...typedActuals.map(s=>({id:s.sessionId,date:s.date,templateId:null}))], sessions = history.filter(s => s.date === date);
     const typedActive=isToday?ConditioningOperations.currentSession(conditioningRecords).session:null;
     typedDay.forEach(s=>add('train',s.id,s.prescription.value.title,conditioningActualDetail(s),'recorded',null,ref('conditioning-session',s.id)));
+    observedDay.forEach(s=>add('train',s.id,s.title,conditioningActualDetail(s),'recorded',null,ref('conditioning-observation',s.id)));
     let typedLive=null;
     if(typedActive)typedLive=add('train','typed-active',typedActive.prescription.value.title,'Timed activity in progress · resume its saved session','active',null,ref('conditioning-active',typedActive.sessionId));
     const plannedRoutine = routines.find(r => r.id === schedule[date]) || null;
@@ -167,7 +169,7 @@ const TodayDemo = (() => {
     if (plannedRoutine && !sessions.some(s => s.templateId === plannedRoutine.id) && !(activeWorkout && activeWorkout.templateId === plannedRoutine.id)) trainingPlan = add('train', 'plan-' + date, plannedRoutine.name, count(plannedRoutine.items.length, 'exercise') + ' · time not set', 'planned', null, ref('training-plan', null, {routineId: plannedRoutine.id}));
     let trainingLive = null;
     if (activeWorkout) trainingLive = add('train', 'active-' + activeWorkout.id, activeWorkout.name, 'Workout in progress · recorded sets are kept in the session' + (activeWorkout.date !== date ? ' · started ' + activeWorkout.date + (stampTime(activeWorkout.startedAt, activeWorkout.date) ? ' ' + stampTime(activeWorkout.startedAt, activeWorkout.date) : '') : ''), 'active', activeWorkout.date === date ? stampTime(activeWorkout.startedAt, date) : null, ref('training-active', activeWorkout.id));
-    summary('train', 'Training', activeWorkout||typedActive ? 'In progress' : sessions.length+typedDay.length ? count(sessions.length+typedDay.length, 'session') : plannedRoutine ? 'Planned' : 'No session', sessions.length+typedDay.length ? 'Recorded on this date' + (trainingPlan ? ' · another session planned' : '') : trainingPlan ? plannedRoutine.name + ' · time not set' : 'No workout recorded on this date');
+    summary('train', 'Training', activeWorkout||typedActive ? 'In progress' : sessions.length+typedDay.length ? count(sessions.length+typedDay.length, 'session') : observedDay.length ? count(observedDay.length,'activity record') : plannedRoutine ? 'Planned' : 'No session', (sessions.length+typedDay.length ? 'Recorded on this date' + (trainingPlan ? ' · another session planned' : '') : trainingPlan ? plannedRoutine.name + ' · time not set' : 'No workout recorded on this date')+(observedDay.length?' · '+count(observedDay.length,'sport or skill record'):''));
 
     const sleeps = activeSleepRecords().filter(s => s.wakeDate === date), mainSleep = sleeps.filter(s => s.kind === 'main'), naps = sleeps.filter(s => s.kind === 'nap');
     sleeps.forEach(s => add('sleep', s.id, s.kind === 'nap' ? 'Nap recorded' : 'Sleep recorded', duration(s.duration) + (s.bedTime && s.wakeTime ? ' · ' + s.bedTime + ' to ' + s.wakeTime : ' · duration only') + (s.note ? ' · ' + s.note : ''), 'recorded', s.wakeTime, ref('sleep-record', s.id, {wakeDate: s.wakeDate}), {timeMeaning: s.wakeTime ? 'wake' : null}));
@@ -356,6 +358,7 @@ function todayPanorama(snapshot) {
       if (ref.kind === 'sleep-add') { if (date > TODAY) return todayAdapterMissing('Record sleep after you wake up.'); todayAdapterDomain('sleep', date); sleepLog(date); return true; }
       if (ref.kind === 'domain') return todayAdapterDomain(ref.domain || route, date, route || ref.domain);
       if(ref.kind==='conditioning-session'){if(!conditioningRecords.events.some(e=>e.id===ref.id))return todayAdapterMissing();closeDialog();navigate('athlete');ConditioningUI.openActual(ref.id);return true;}
+      if(ref.kind==='conditioning-observation'){if(!conditioningRecords.observations.some(e=>e.id===ref.id))return todayAdapterMissing();closeDialog();navigate('athlete');ConditioningUI.openObservation(ref.id);return true;}
       if(ref.kind==='conditioning-active'){if(!ConditioningOperations.currentSession(conditioningRecords).session)return todayAdapterMissing('That activity is no longer in progress.');closeDialog();navigate('train');return true;}
       if (ref.kind === 'training-session') {
         if (!history.some(s => s.id === ref.id)) return todayAdapterMissing();
@@ -4061,7 +4064,7 @@ document.addEventListener('submit',event=>{
       moneySetup:{snapshot:snapshotMoneySetup,restore:restoreMoneySetup},people:PeopleDemo,life:LifePlannerDemo,capture:CaptureDemo,
       captureReceipts:{snapshot:()=>CaptureTargetsDemo.persistenceSnapshot(),restore:(data,options)=>CaptureTargetsDemo.restore(data,options)},purchases:PurchasesDemo,planner:PlannerDemo,preparation:PreparationDemo,athletics:AthleticsDemo,conditioning:ConditioningDemo
     };}
-    function captureWorkspace(){const domains={};for(const[name,part]of Object.entries(workspaceParts()))domains[name]=part.snapshot();return {format:'lifeos-state/1',minimumReaderVersion:82,domains,drafts:{capture:{draft:captureView.draft,date:captureView.date,source:captureView.source,fileName:captureView.fileName},ambitions:clone(lifeView.drafts),receipt:PurchaseUI.snapshotDraft(),planner:PlannerUI.snapshotDraft(),preparation:PreparationUI.snapshotDraft(),athletics:AthleticsUI.snapshotDraft(),conditioning:ConditioningUI.snapshotDraft()}};}
+    function captureWorkspace(){const domains={};for(const[name,part]of Object.entries(workspaceParts()))domains[name]=part.snapshot();return {format:'lifeos-state/1',minimumReaderVersion:83,domains,drafts:{capture:{draft:captureView.draft,date:captureView.date,source:captureView.source,fileName:captureView.fileName},ambitions:clone(lifeView.drafts),receipt:PurchaseUI.snapshotDraft(),planner:PlannerUI.snapshotDraft(),preparation:PreparationUI.snapshotDraft(),athletics:AthleticsUI.snapshotDraft(),conditioning:ConditioningUI.snapshotDraft()}};}
 function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(payload);}
 
     function restoreWorkspace(payload){
@@ -4170,15 +4173,24 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     function plannerDraftState(){const error=LifeOSRuntime.error;return {saving:!!LifeOSRuntime.saving,error:error?String(error.message||error):null,ready:!!LifeOSRuntime.ready};}
     // Exact evidence references for the planner: kind, stable root, exact version and the record's own date. Read-only.
     function conditioningActualDetail(row){
-      const a=row.actual,parts=[row.outcome==='incomplete'?'Partly completed':'Recorded activity'];
-      if(a.durationMs!==null)parts.push((a.durationMs<60000?a.durationMs/1000+' sec':Number((a.durationMs/60000).toFixed(2))+' min')+' · '+a.durationSource);
-      if(a.distanceMm!==null)parts.push((a.distanceMm<1000000?a.distanceMm/1000+' m':a.distanceMm/1000000+' km')+' · '+a.distanceSource);
+      const a=row.actual,parts=[row.outcome==='incomplete'?'Partly completed':row.kind==='conditioning-observation'?(row.value?.kind==='skill'?'Skill practice':'Other activity'):'Recorded activity'];
+      const time=ms=>ms<60000?Number((ms/1000).toFixed(2))+' sec':Number((ms/60000).toFixed(2))+' min';
+      if(a.type==='sequence'){
+        parts.push(a.segments.filter(s=>s.status==='complete'||s.status==='partial').length+' of '+a.segments.length+' intervals recorded');
+        parts.push(a.summary.workDurationMs===null?'Work time not fully recorded':time(a.summary.workDurationMs)+' work');
+        parts.push(a.summary.restDurationMs===null?'Rest time not fully recorded':time(a.summary.restDurationMs)+' rest');
+      }else{
+        if(Number.isFinite(a.durationMs))parts.push(time(a.durationMs)+' · '+a.durationSource);
+        if(Number.isFinite(a.distanceMm))parts.push((a.distanceMm<1000000?a.distanceMm/1000+' m':a.distanceMm/1000000+' km')+' · '+a.distanceSource);
+        if(row.value?.kind==='skill'&&row.value.result!=='unknown')parts.push('Reported result: '+row.value.result.replace('-',' '));
+      }
       return parts.join(' · ');
     }
     function plannerEvidenceRef(ref){
       if(!ref||typeof ref!=='object')return null;
       let row;
       if(ref.kind==='conditioning-session'){row=(ConditioningOperations.currentActuals(conditioningRecords).actuals||[]).find(s=>s.id===ref.id);return row?{kind:'conditioning-session',rootId:row.rootId,versionId:row.versionId,date:row.date}:null;}
+      if(ref.kind==='conditioning-observation'){row=(ConditioningOperations.currentObservations(conditioningRecords).observations||[]).find(s=>s.id===ref.id);return row?{kind:'conditioning-observation',rootId:row.rootId,versionId:row.versionId,date:row.date}:null;}
       if(ref.kind==='training-session'){row=history.find(s=>s.id===ref.id);return row?{kind:'training-session',rootId:row.id,versionId:row.id,date:row.date}:null;}
       if(ref.kind==='sleep-record'){row=activeSleepRecords().find(r=>r.id===ref.id);return row?{kind:'sleep-record',rootId:row.sessionId,versionId:row.id,date:row.wakeDate}:null;}
       if(ref.kind==='meal-log'){row=FoodDemo.logs.find(l=>l.id===ref.id);return row?{kind:'meal-log',rootId:row.planId,versionId:row.id,date:row.date}:null;}
@@ -4200,6 +4212,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     // Open the exact linked record, preferring its current version so a corrected entry still opens.
     function plannerOpenEvidence(reference){
       if(reference?.kind==='conditioning-session'){const resolved=PlannerOperations.resolveEvidence(reference,captureWorkspace());if(!resolved.ok)return todayAdapterMissing(resolved.error);closeDialog();navigate('athlete');ConditioningUI.openActual(reference.versionId);return true;}
+      if(reference?.kind==='conditioning-observation'){const resolved=PlannerOperations.resolveEvidence(reference,captureWorkspace());if(!resolved.ok)return todayAdapterMissing(resolved.error);closeDialog();navigate('athlete');ConditioningUI.openObservation(reference.versionId);return true;}
       if(reference?.kind==='preparation-completion'){const resolved=PlannerOperations.resolveEvidence(reference,captureWorkspace());if(!resolved.ok)return todayAdapterMissing(resolved.error);closeDialog();navigate('preparation');PreparationUI.openEvent(reference.versionId);return true;}
       if(!reference||!plannerEvidenceRoutes[reference.kind])return todayAdapterMissing('This linked record kind cannot be opened.');
       const resolved=PlannerOperations.resolveEvidence(reference,captureWorkspace());
@@ -4236,7 +4249,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     function workspaceDialog(title,html){showDialog(title,html);$('dialog').dataset.workspaceUi='true';}
     function backupSummary(payload){
       const d=payload.domains;
-      const rows=[['Training sessions',d.training.sessions?.length||d.training.history?.length||0],['Sleep versions',d.sleep.revisions.length],['Meal log versions',d.food.revisions.length],['Work versions',d.work.versions.length],['Goals',d.goals.goals.length],['Actions',d.goals.actions.length],['Money entries and corrections',d.money.versions.length],['People',d.people.people.length],['Ambitions',d.life.ambitions.length],['Capture check-ins',d.capture.batches.length],['Connected purchases',d.purchases?.versions.length||0],['Saved day plan versions',d.planner?.days.length||0],['Planning profile versions',d.planner?.profiles.length||0],['Preparation chain versions',d.preparation?.chains.length||0],['Preparation completion versions',d.preparation?.events.length||0],['Approved athletic sessions',d.athletics?.prescriptions.length||0],['Equipment versions',d.athletics?.equipment.length||0],['Timed activity plans',d.conditioning?.prescriptions.length||0],['Activity lifecycle and actual versions',d.conditioning?.events.length||0]];
+      const rows=[['Training sessions',d.training.sessions?.length||d.training.history?.length||0],['Sleep versions',d.sleep.revisions.length],['Meal log versions',d.food.revisions.length],['Work versions',d.work.versions.length],['Goals',d.goals.goals.length],['Actions',d.goals.actions.length],['Money entries and corrections',d.money.versions.length],['People',d.people.people.length],['Ambitions',d.life.ambitions.length],['Capture check-ins',d.capture.batches.length],['Connected purchases',d.purchases?.versions.length||0],['Saved day plan versions',d.planner?.days.length||0],['Planning profile versions',d.planner?.profiles.length||0],['Preparation chain versions',d.preparation?.chains.length||0],['Preparation completion versions',d.preparation?.events.length||0],['Approved athletic sessions',d.athletics?.prescriptions.length||0],['Equipment versions',d.athletics?.equipment.length||0],['Timed activity plans',d.conditioning?.prescriptions.length||0],['Activity lifecycle and actual versions',d.conditioning?.events.length||0],['Sport and skill observation versions',d.conditioning?.observations.length||0]];
       return '<dl class="backup-summary">'+rows.map(([label,n])=>'<div><dt>'+esc(label)+'</dt><dd>'+n+'</dd></div>').join('')+'</dl>';
     }
     function renderWorkspaceRecovery(error){
@@ -4313,7 +4326,7 @@ function validateWorkspaceLinks(payload){return LifeOSWorkspace.validateLinks(pa
     for(const type of ['click','input','change','submit'])document.addEventListener(type,()=>queueMicrotask(queueWorkspaceSave));
     window.addEventListener('beforeunload',event=>{if(LifeOSRuntime.ready&&LifeOSRuntime.saving){event.preventDefault();event.returnValue='';}});
     window.addEventListener('error',()=>{if(LifeOSRuntime.ready)workspaceStatus('error','Something went wrong. Open backups before reloading.');});
-    window.LifeOSApp=Object.freeze({get version(){return 'v82';},snapshot:captureWorkspace,restore:async data=>LifeOSRuntime.restoreBackup({format:'lifeos-backup/2',workspace:data}),domains:()=>workspaceParts(),capture:CaptureDemo,captureTargets:CaptureTargetsDemo,commitCapture:commitCaptureDurably,preparePurchase,commitPurchase,preparePlanner,commitPlanner,preparePreparation,commitPreparation,prepareAthletics,commitAthletics,prepareConditioning,commitConditioning,save:()=>LifeOSRuntime.flush()});
+    window.LifeOSApp=Object.freeze({get version(){return 'v83';},snapshot:captureWorkspace,restore:async data=>LifeOSRuntime.restoreBackup({format:'lifeos-backup/2',workspace:data}),domains:()=>workspaceParts(),capture:CaptureDemo,captureTargets:CaptureTargetsDemo,commitCapture:commitCaptureDurably,preparePurchase,commitPurchase,preparePlanner,commitPlanner,preparePreparation,commitPreparation,prepareAthletics,commitAthletics,prepareConditioning,commitConditioning,save:()=>LifeOSRuntime.flush()});
 
     $('addEventButton').innerHTML=icon('plus');$('privacyNote').innerHTML=icon('shield')+'<p>A little more intention.<br>A record that stays yours.</p>';
     const initialRoute=window.location.hash.slice(1);if(nav.some(n=>n.id===initialRoute))state.route=initialRoute;
